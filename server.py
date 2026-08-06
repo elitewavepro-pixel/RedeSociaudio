@@ -4,7 +4,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 
-APP_VERSION = 'Beta 1.0'
+APP_VERSION = 'Beta 1.0.1'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -1170,7 +1170,17 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if p == '/api/settings':
             return self.send_json(get_admin_settings())
-        if p == '/api/health': return self.send_json({'ok':True,'version':'20.2','database':'sqlite-wal','write_protection':True})
+        if p == '/api/health':
+            db=database_diagnostics()
+            status=200 if db.get('ok') else 503
+            return self.send_json({
+                'ok':bool(db.get('ok')),
+                'version':APP_VERSION,
+                'environment':APP_ENV,
+                'started_at':STARTED_AT,
+                'database':db
+            },status)
+
         if p == '/api/me':
             u = auth_user(self.headers)
             if not u:
