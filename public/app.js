@@ -195,7 +195,134 @@ async function joinCommunity(id){
 async function featurePost(id){await api(`/api/admin/posts/${id}/feature`,{method:'POST'});loadAll()} async function removePost(id){if(!confirm('Deseja realmente excluir esta publicação? Esta ação não poderá ser desfeita.'))return;try{await api(`/api/posts/${id}`,{method:'DELETE'});toast('Publicação excluída.');await loadAll()}catch(e){toast(e.message,true)}}
 function postGalleryCard(p){let items=(p.media_items||[]).filter(x=>x.media_type?.startsWith('image/'));if(!items.length)return'';let cls='count-'+Math.min(items.length,4);return `<div class="post-gallery ${cls}">${items.slice(0,6).map((x,i)=>`<button onclick="openImageViewer('${esc(x.media_url)}','${esc(p.title)}')"><img src="${esc(x.media_url)}" alt="Foto da publicação">${i===5&&items.length>6?`<span>+${items.length-6}</span>`:''}</button>`).join('')}</div>`}
 function safeLink(url){try{let u=new URL(url);return ['http:','https:'].includes(u.protocol)?u.href:''}catch{return ''}} function linkCard(url){let href=safeLink(url);if(!href)return '';let host='';try{host=new URL(href).hostname.replace(/^www\./,'')}catch{}return `<a class="post-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer"><span class="link-icon">${icon('link')}</span><span><b>${esc(host||'Abrir link')}</b><small>${esc(href)}</small></span><strong>Abrir</strong></a>`} function fileCard(md,mt,name,size){let ext=fileExt(name),pdf=ext==='.pdf';return `<div class="post-file-card"><span>${icon(ext==='.pdf'?'file':'file')}</span><div><b>${esc(name||'Arquivo')}</b><small>${esc(ext.replace('.','').toUpperCase()||'ARQUIVO')} · ${humanSize(Number(size||0))}</small></div>${pdf?`<a class="secondary btn" href="${esc(md)}" target="_blank" rel="noopener">Visualizar</a>`:''}<a class="primary btn" href="${esc(md)}" download="${esc(name||'arquivo')}">Baixar</a></div>`} function commentsBlock(p){if(!openCommentPosts.has(p.id))return '';return `<section class="comments-panel"><div class="comment-compose">${avatar(me)}<textarea id="comment-${p.id}" placeholder="Escreva um comentário..."></textarea><button class="primary" onclick="submitComment(${p.id})">Comentar</button></div>${p.answers.length?p.answers.map(a=>`<div class="answer"><b>${esc(a.name)}${a.is_admin?' ✓':''}</b><span class="meta"> ${esc(a.role)} · ${new Date(a.created_at).toLocaleString('pt-BR')}</span><p>${esc(a.body)}</p></div>`).join(''):'<p class="no-comments">Ainda não há comentários. Seja o primeiro a comentar.</p>'}</section>`} function postCard(p){let canEdit=p.user_id===me.id||me.is_admin;let edited=p.updated_at?` · <span class="edited">Editado em ${new Date(p.updated_at).toLocaleString('pt-BR')}</span>`:'';return `<article class="card post ${p.is_featured?'featured':''}"><div class="post-author">${avatar(p)}<div><button class="link-name" onclick="openProfile(${p.user_id})"><b>${esc(p.name)}${p.is_admin?' ✓':''}</b></button><div class="meta">${esc(p.role)} · ${new Date(p.created_at).toLocaleString('pt-BR')}${edited}</div></div>${p.is_featured?'<span class="featured-label">DESTAQUE</span>':''}</div><h2>${esc(p.title)}</h2><div><span class="tag">${esc(p.type)}</span><span class="tag muted">${esc(p.category)}</span></div><p class="post-body">${esc(p.body)}</p>${linkCard(p.link_url||'')}${postGalleryCard(p)||(()=>{let md=p.media_data||p.image_data||'',mt=p.media_type||(md.startsWith('data:image/')?'image/jpeg':'');if(!md)return '';return mt.startsWith('video/')?`<video class="post-video" src="${esc(md)}" controls preload="metadata" playsinline></video>`:mt.startsWith('audio/')?`<div class="post-audio-wrap"><div class="post-audio-head">${icon('audio')}<span><b>${esc(p.media_name||'Áudio')}</b><small>Publicação de áudio</small></span></div><audio class="post-audio" src="${esc(md)}" controls preload="metadata"></audio></div>`:mt.startsWith('image/')?`<img class="post-image" src="${md}" onclick="openImageViewer(this.src,'${esc(p.title)}')" alt="Mídia da publicação">`:fileCard(md,mt,p.media_name,p.media_size)})()}<div class="engagement-summary"><span>${p.likes} curtida(s)</span><span>${p.comments} comentário(s)</span></div><div class="actions"><button class="${p.liked?'active':''}" onclick="like(${p.id})">${icon('like')}<span>Curtir</span></button><button class="${openCommentPosts.has(p.id)?'active':''}" onclick="toggleComments(${p.id})">${icon('comment')}<span>Comentários</span></button><button onclick="navigator.clipboard?.writeText(location.href);toast('Link copiado.')">${icon('share')}<span>Compartilhar</span></button><button class="${p.bookmarked?'active':''}" onclick="bookmark(${p.id})">${icon('saved')}<span>${p.bookmarked?'Salvo':'Salvar'}</span></button>${canEdit?`<button onclick="editPost(${p.id})">${icon('edit')}<span>Editar</span></button><button class="danger-action" onclick="removePost(${p.id})">${icon('trash')}<span>Excluir</span></button>`:''}${me.is_admin?`<button class="post-more" onclick="featurePost(${p.id})" title="Destacar">${icon('more')}</button>`:''}</div>${commentsBlock(p)}</article>`}
-function renderFeed(saved=false){let q=(search.value||'').toLowerCase(),list=posts.filter(p=>(!saved||p.bookmarked)&&(p.title+' '+p.body+' '+p.category+' '+p.name).toLowerCase().includes(q));content.innerHTML=`<section class="card composer"><div class="composer-main">${avatar(me)}<button onclick="openNewPost()">No que você está pensando, ${esc(me.name.split(' ')[0])}?</button></div><div class="composer-tools"><button onclick="openNewPost('video')">${icon('video')}<span>Vídeo</span></button><button onclick="openNewPost('photo')">${icon('photo')}<span>Foto</span></button><button onclick="openNewPost('audio')">${icon('audio')}<span>Áudio</span></button><button onclick="openNewPost('file')">${icon('file')}<span>Arquivo</span></button></div></section><section class="story-strip"><button class="story create-story" onclick="openNewPost()"><span class="story-plus">${icon('plus')}</span><b>Criar story</b></button><div class="story story-console"><span>${avatar(me)}</span><b>Seu conteúdo</b></div><div class="story story-stage"><span>${icon('audio')}</span><b>Dicas de áudio</b></div><div class="story story-mic"><span>${icon('professionals')}</span><b>Profissionais</b></div></section>${list.length?list.map(postCard).join(''):'<div class="empty">Nenhuma publicação encontrada.</div>'}`}
+
+let globalSearchTimer=null;
+
+function normalizeSearchText(value){
+  return String(value||'')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .trim();
+}
+
+function globalUserResult(user){
+  return `<article class="search-result-card search-person">
+    <button class="search-result-main" onclick="openProfile(${user.id})">
+      ${avatar(user)}
+      <span>
+        <b>${esc(user.name)}</b>
+        <small>${esc(user.professional_title||user.headline||user.role||'Usuário da Rede Sociaudio')}</small>
+        <em>${esc(user.city||'Localização não informada')}</em>
+      </span>
+    </button>
+    <div class="search-result-actions">
+      <button class="primary" onclick="openProfile(${user.id})">Ver perfil</button>
+      ${user.id!==me.id?`<button class="secondary" onclick="followUser(${user.id})">${user.is_following?'Deixar de seguir':'Seguir'}</button>`:''}
+    </div>
+  </article>`;
+}
+
+function globalPostResult(post){
+  return `<article class="search-result-card">
+    <button class="search-result-main" onclick="view='feed';search.value='${esc(post.title)}';renderFeed()">
+      ${avatar({name:post.name||'U',avatar:post.avatar||''})}
+      <span>
+        <b>${esc(post.title)}</b>
+        <small>Publicação de ${esc(post.name||'Usuário')}</small>
+        <em>${esc(post.category||'Geral')}</em>
+      </span>
+    </button>
+  </article>`;
+}
+
+function globalCommunityResult(community){
+  return `<article class="search-result-card">
+    <button class="search-result-main" onclick="view='communities';renderCommunities()">
+      <span class="search-result-icon">${esc(community.icon||'🎚️')}</span>
+      <span>
+        <b>${esc(community.name)}</b>
+        <small>${esc(community.description||'Comunidade da Rede Sociaudio')}</small>
+        <em>${Number(community.members||0)} membro(s)</em>
+      </span>
+    </button>
+  </article>`;
+}
+
+function globalCompanyResult(company){
+  return `<article class="search-result-card">
+    <button class="search-result-main" onclick="openCompany(${company.id})">
+      ${company.logo?`<img class="avatar" src="${esc(company.logo)}" alt="">`:`<span class="search-result-icon">${esc((company.name||'E').slice(0,1))}</span>`}
+      <span>
+        <b>${esc(company.name)}</b>
+        <small>${esc(company.category||'Empresa')}</small>
+        <em>${esc(company.city||'Localização não informada')}</em>
+      </span>
+    </button>
+    <div class="search-result-actions"><button class="primary" onclick="openCompany(${company.id})">Ver empresa</button></div>
+  </article>`;
+}
+
+async function performGlobalSearch(force=false){
+  const query=String(search?.value||'').trim();
+  if(!query){
+    if(force){view='feed';render()}
+    return;
+  }
+  if(query.length<2){
+    content.innerHTML='<div class="card empty">Digite pelo menos 2 letras para pesquisar.</div>';
+    return;
+  }
+
+  view='search';
+  const normalized=normalizeSearchText(query);
+  content.innerHTML=`<div class="page-title"><h1>Resultados da pesquisa</h1><p>Buscando por “${esc(query)}”...</p></div><div class="card search-loading">Pesquisando usuários, publicações, comunidades e empresas...</div>`;
+
+  let companies=[];
+  try{companies=await api('/api/companies')}catch{}
+
+  const foundUsers=(users||[]).filter(u=>
+    normalizeSearchText([u.name,u.role,u.professional_title,u.headline,u.company,u.city,u.specialties].join(' ')).includes(normalized)
+  );
+
+  const foundPosts=(posts||[]).filter(p=>
+    normalizeSearchText([p.title,p.body,p.category,p.name].join(' ')).includes(normalized)
+  ).slice(0,20);
+
+  const foundCommunities=(communities||[]).filter(c=>
+    normalizeSearchText([c.name,c.description,c.category].join(' ')).includes(normalized)
+  );
+
+  const foundCompanies=(companies||[]).filter(c=>
+    normalizeSearchText([c.name,c.category,c.tagline,c.description,c.city].join(' ')).includes(normalized)
+  );
+
+  const total=foundUsers.length+foundPosts.length+foundCommunities.length+foundCompanies.length;
+
+  content.innerHTML=`<div class="page-title search-page-title">
+    <div><h1>Resultados da pesquisa</h1><p>${total} resultado(s) para “${esc(query)}”.</p></div>
+    <button class="secondary" onclick="search.value='';view='feed';render()">Limpar pesquisa</button>
+  </div>
+  ${foundUsers.length?`<section class="search-section"><h2>Profissionais e usuários <span>${foundUsers.length}</span></h2><div class="search-results">${foundUsers.map(globalUserResult).join('')}</div></section>`:''}
+  ${foundCompanies.length?`<section class="search-section"><h2>Empresas <span>${foundCompanies.length}</span></h2><div class="search-results">${foundCompanies.map(globalCompanyResult).join('')}</div></section>`:''}
+  ${foundCommunities.length?`<section class="search-section"><h2>Comunidades <span>${foundCommunities.length}</span></h2><div class="search-results">${foundCommunities.map(globalCommunityResult).join('')}</div></section>`:''}
+  ${foundPosts.length?`<section class="search-section"><h2>Publicações <span>${foundPosts.length}</span></h2><div class="search-results">${foundPosts.map(globalPostResult).join('')}</div></section>`:''}
+  ${!total?`<div class="card empty search-empty"><h2>Nenhum resultado encontrado</h2><p>Confira a escrita do nome. Se a conta foi apagada após um deploy no Render gratuito, ela precisará ser cadastrada novamente.</p></div>`:''}`;
+
+  hydrateIcons(content);
+}
+
+function scheduleGlobalSearch(){
+  clearTimeout(globalSearchTimer);
+  const query=String(search?.value||'').trim();
+  if(!query){
+    if(view==='search'){view='feed';render()}
+    return;
+  }
+  globalSearchTimer=setTimeout(()=>performGlobalSearch(),300);
+}
+
+function renderFeed(saved=false){let list=posts.filter(p=>(!saved||p.bookmarked));content.innerHTML=`<section class="card composer"><div class="composer-main">${avatar(me)}<button onclick="openNewPost()">No que você está pensando, ${esc(me.name.split(' ')[0])}?</button></div><div class="composer-tools"><button onclick="openNewPost('video')">${icon('video')}<span>Vídeo</span></button><button onclick="openNewPost('photo')">${icon('photo')}<span>Foto</span></button><button onclick="openNewPost('audio')">${icon('audio')}<span>Áudio</span></button><button onclick="openNewPost('file')">${icon('file')}<span>Arquivo</span></button></div></section><section class="story-strip"><button class="story create-story" onclick="openNewPost()"><span class="story-plus">${icon('plus')}</span><b>Criar story</b></button><div class="story story-console"><span>${avatar(me)}</span><b>Seu conteúdo</b></div><div class="story story-stage"><span>${icon('audio')}</span><b>Dicas de áudio</b></div><div class="story story-mic"><span>${icon('professionals')}</span><b>Profissionais</b></div></section>${list.length?list.map(postCard).join(''):'<div class="empty">Nenhuma publicação encontrada.</div>'}`}
 function renderExperts(){content.innerHTML=`<div class="page-title"><h1>Profissionais</h1><p>Encontre especialistas, conheça seus serviços e faça contatos.</p></div><div class="people-grid">${users.map(u=>`<article class="card person"><div class="mini-cover" style="${u.cover?`background-image:url('${u.cover}')`:''}"></div>${avatar(u,'big')}<h3>${esc(u.name)}${u.is_admin?' ✓':''}</h3><b>${esc(u.role)}</b><p class="availability">● ${esc(u.availability||'Disponível para trabalhos')}</p><p class="meta">${icon('location')} ${esc(u.city||'Cidade não informada')}</p><div class="skills">${lines(u.specialties)}</div><div class="follow-stats"><span><b>${u.followers}</b> seguidores</span><span><b>${u.following}</b> seguindo</span></div><button class="secondary" onclick="openProfile(${u.id})">Ver perfil</button>${u.id!==me.id?`<button class="${u.is_following?'secondary':'primary'}" onclick="followUser(${u.id})">${u.is_following?'Deixar de seguir':'Seguir'}</button>`:''}</article>`).join('')}</div>`}
 async function openProfile(id){try{let u=await api(`/api/users/${id}/profile`);let portfolio=(u.portfolio_links||'').split(/\n/).map(x=>x.trim()).filter(Boolean);let history=(u.work_history||'').split(/\n/).map(x=>x.trim()).filter(Boolean);content.innerHTML=`<article class="profile-public pro-v10 card"><div class="cover" style="${u.cover?`background-image:url('${u.cover}')`:''}"></div><div class="profile-head">${avatar(u,'huge')}<div class="profile-identity"><h1>${esc(u.name)}${u.is_admin?' <span class="verified">✓</span>':''}</h1><h2>${esc(u.headline||u.role)}</h2>${u.company?`<p class="company-line">${esc(u.company)}</p>`:''}<p class="availability">● ${esc(u.availability||'Disponível para trabalhos')}</p><p>${icon('location')} ${esc(u.city||'Cidade não informada')} ${u.service_region?`· Atende: ${esc(u.service_region)}`:''}</p></div></div><div class="profile-actions">${u.id!==me.id?`<button class="${u.is_following?'secondary':'primary'}" onclick="followUser(${u.id});openProfile(${u.id})">${u.is_following?'Deixar de seguir':'Seguir'}</button><button class="primary" onclick="openQuote(${u.id},${JSON.stringify(u.name)})">Solicitar orçamento</button>`:`<button class="primary" onclick="view='profile';render()">Editar meu perfil</button>`}${u.whatsapp?`<a class="secondary btn" target="_blank" href="https://wa.me/${u.whatsapp.replace(/\D/g,'')}">WhatsApp</a>`:''}</div><div class="pro-summary"><div><b>${esc(u.experience||'—')}</b><span>Experiência</span></div><div><b>${esc(u.completed_projects||'—')}</b><span>Projetos</span></div><div><b>${u.followers}</b><span>Seguidores</span></div><div><b>${esc(u.response_time||'Até 24h')}</b><span>Tempo de resposta</span></div></div><section><h2>Sobre</h2><p>${esc(u.bio||'Perfil em construção.')}</p></section><section><h2>Especialidades</h2><div class="skills">${lines(u.specialties)}</div></section><section><h2>Serviços oferecidos</h2><p>${esc(u.services||'Não informado.')}</p></section><section><h2>Equipamentos que domina</h2><div class="skills">${lines(u.equipment)}</div></section><section><h2>Experiência profissional</h2>${history.length?`<div class="timeline">${history.map(x=>`<div><i></i><p>${esc(x)}</p></div>`).join('')}</div>`:`<p>${esc(u.experience||'Não informada.')}</p>`}</section><section><h2>Portfólio</h2>${portfolio.length?`<div class="portfolio-grid">${portfolio.map((x,i)=>`<a href="${esc(safeLink(x))}" target="_blank" rel="noopener"><b>Projeto ${i+1}</b><small>${esc(x)}</small></a>`).join('')}</div>`:'<p>Nenhum link de portfólio cadastrado.</p>'}</section><section><h2>Galeria profissional</h2>${galleryMarkup(u.gallery||[])}</section><section><h2>Certificações</h2><p>${esc(u.certifications||'Não informadas.')}</p></section><section class="contacts"><h2>Contato profissional</h2>${u.instagram?`<p>Instagram: ${esc(u.instagram)}</p>`:''}${u.website?`<p>Site: <a href="${esc(safeLink(u.website))}" target="_blank">${esc(u.website)}</a></p>`:''}</section></article>`}catch(e){toast(e.message,true)}}
 function renderCommunities(){
@@ -383,7 +510,14 @@ async function sendChatMessage(e){e.preventDefault();let body=chatBody.value.tri
 async function refreshChatMessages(id){if(view!=='chat'||chatConversationId!==id)return;try{let msgs=await api(`/api/chat/conversations/${id}/messages`),box=$('#chatMessages');if(box){let near=box.scrollHeight-box.scrollTop-box.clientHeight<100;box.innerHTML=msgs.map(chatMessage).join('');hydrateIcons(box);if(near)box.scrollTop=box.scrollHeight}}catch{}}
 
 function render(){document.body.classList.toggle('chat-page',view==='chat');document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));if(view==='experts')return renderExperts();if(view==='companies')return renderCompanies();if(view==='jobs')return renderJobs();if(view==='marketplace')return renderMarketplace();if(view==='knowledge')return renderKnowledge();if(view==='audioai')return renderAudioAI();if(view==='chat')return renderChat();if(view==='communities')return renderCommunities();if(view==='profile')return renderProfile();if(view==='notifications')return renderNotifications();if(view==='hire')return renderHire();if(view==='opportunities')return renderOpportunities();if(view==='requests')return renderRequests();if(view==='admin')return renderAdmin();return renderFeed(view==='saved')}
-search.oninput=()=>{if(view==='feed'||view==='saved')render()};const toastEl=$('#toast');hydrateIcons();boot();
+search.oninput=scheduleGlobalSearch;
+search.onkeydown=e=>{
+  if(e.key==='Enter'){
+    e.preventDefault();
+    clearTimeout(globalSearchTimer);
+    performGlobalSearch(true);
+  }
+};const toastEl=$('#toast');hydrateIcons();boot();
 
 
 // V13 — Vagas e oportunidades

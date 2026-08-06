@@ -622,3 +622,29 @@ main,.main-content,#content{min-width:0;overflow-x:hidden}
     max-height:46px!important;
   }
 }
+
+
+/* Rede Sociaudio V20.5.2 — pesquisa global */
+.search-wrap input[type="search"]::-webkit-search-cancel-button{cursor:pointer}
+.search-page-title{display:flex;align-items:end;justify-content:space-between;gap:15px}
+.search-section{margin-bottom:24px}
+.search-section>h2{display:flex;align-items:center;gap:9px;font-size:19px;margin:0 0 12px}
+.search-section>h2 span{display:inline-grid;place-items:center;min-width:25px;height:25px;border-radius:999px;background:#eaf2ff;color:var(--blue);font-size:12px}
+.search-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+.search-result-card{display:flex;flex-direction:column;justify-content:space-between;gap:12px;padding:14px;border:1px solid var(--border);border-radius:14px;background:#fff;box-shadow:var(--shadow)}
+.search-result-main{display:grid;grid-template-columns:48px minmax(0,1fr);gap:11px;align-items:center;width:100%;padding:0;border:0;background:transparent;text-align:left}
+.search-result-main .avatar,.search-result-icon{width:48px;height:48px;min-width:48px;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:#eaf2ff;color:var(--blue);font-size:23px;font-weight:850}
+.search-result-main>span:last-child{display:block;min-width:0}
+.search-result-main b,.search-result-main small,.search-result-main em{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.search-result-main b{font-size:15px;color:var(--text)}
+.search-result-main small{margin-top:3px;color:#475467;font-size:12px}
+.search-result-main em{margin-top:3px;color:var(--muted);font-size:11px;font-style:normal}
+.search-result-actions{display:flex;gap:8px}
+.search-result-actions button{flex:1}
+.search-loading{padding:25px;text-align:center;color:var(--muted)}
+.search-empty{text-align:center;padding:34px}
+.search-empty h2{margin-top:0}
+@media(max-width:700px){
+  .search-page-title{align-items:stretch;flex-direction:column}
+  .search-results{grid-template-columns:1fr}
+}

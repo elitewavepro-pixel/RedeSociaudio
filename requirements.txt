@@ -1,1 +1,1 @@
-# A versão atual usa somente módulos da biblioteca padrão do Python.
+# Usa somente a biblioteca padrão do Python.
