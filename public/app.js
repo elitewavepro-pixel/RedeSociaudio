@@ -500,22 +500,36 @@ async function renderRequests(){
   <section class="quote-list">
   ${list.length?list.map(q=>`<article class="card quote-card ${quoteStatusClass(q.status)}">
     <div class="quote-card-head">
-      <div>${avatar({name:q.requester_name||q.requester_account||'C',avatar:q.requester_avatar||''})}<span><b>${esc(q.requester_name||q.requester_account||'Cliente')}</b><small>${esc(q.city||'Cidade não informada')}</small></span></div>
-      <span class="quote-status ${quoteStatusClass(q.status)}">${quoteStatusLabel(q.status)}</span>
+      <div class="quote-client">
+        ${avatar({name:q.requester_name||q.requester_account||'C',avatar:q.requester_avatar||''})}
+        <div class="quote-client-info">
+          <div class="quote-client-name-row">
+            <b>${esc(q.requester_name||q.requester_account||'Cliente')}</b>
+            <span class="quote-status ${quoteStatusClass(q.status)}">${quoteStatusLabel(q.status)}</span>
+          </div>
+          <small>${esc(q.city||'Cidade não informada')}</small>
+        </div>
+      </div>
+      <small class="quote-received">Recebido em ${new Date(q.created_at).toLocaleString('pt-BR')}</small>
     </div>
-    <div class="quote-details">
-      <p><b>Tipo de serviço:</b> ${esc(q.event_type||'Não informado')}</p>
-      <p><b>Data:</b> ${esc(q.event_date||'Não informada')}</p>
-      <p><b>Público:</b> ${esc(q.audience||'Não informado')}</p>
-      <p><b>Faixa de orçamento:</b> ${esc(q.budget||'Não informada')}</p>
-      ${q.closed_value?`<p><b>Valor fechado:</b> ${esc(q.closed_value)}</p>`:''}
-      <p class="wide"><b>Solicitação:</b> ${esc(q.message||'')}</p>
+
+    <div class="quote-info-grid">
+      <div><span>Tipo de serviço</span><b>${esc(q.event_type||'Não informado')}</b></div>
+      <div><span>Data</span><b>${esc(q.event_date||'Não informada')}</b></div>
+      <div><span>Público</span><b>${esc(q.audience||'Não informado')}</b></div>
+      <div><span>Faixa de orçamento</span><b>${esc(q.budget||'Não informada')}</b></div>
+      ${q.closed_value?`<div><span>Valor fechado</span><b>${esc(q.closed_value)}</b></div>`:''}
     </div>
-    <div class="quote-contact">
-      ${q.requester_phone?`<a class="secondary action-link" target="_blank" href="https://wa.me/${q.requester_phone.replace(/\D/g,'')}">Responder no WhatsApp</a>`:''}
-      <small>Recebido em ${new Date(q.created_at).toLocaleString('pt-BR')}</small>
+
+    <div class="quote-message-box">
+      <span>Solicitação</span>
+      <p>${esc(q.message||'')}</p>
     </div>
-    <div class="quote-actions">${quoteRequestActions(q)}</div>
+
+    <div class="quote-actions">
+      ${q.requester_phone?`<a class="secondary action-link quote-whatsapp" target="_blank" href="https://wa.me/${q.requester_phone.replace(/\D/g,'')}">Responder no WhatsApp</a>`:''}
+      ${quoteRequestActions(q)}
+    </div>
   </article>`).join(''):`<div class="card empty quote-empty"><h2>${quoteRequestFilter==='concluido'?'Nenhum orçamento concluído':'Nenhuma solicitação pendente'}</h2><p>Quando houver solicitações nesta etapa, elas aparecerão aqui.</p></div>`}
   </section>`;
 }

@@ -684,3 +684,199 @@ button.danger{background:#fff1f3;color:#b42318;border:1px solid #fecdd3}.quote-e
 .quote-attended-button:hover{background:#05603a!important}
 .quote-actions .danger{font-weight:800}
 @media(max-width:600px){.quote-stats{grid-template-columns:1fr!important}}
+
+
+/* Rede Sociaudio V20.6.2 — layout profissional de orçamentos */
+.quote-list{
+  display:grid;
+  gap:16px;
+}
+
+.quote-card{
+  display:block!important;
+  width:100%;
+  padding:20px!important;
+  box-sizing:border-box;
+  overflow:hidden;
+}
+
+.quote-card-head{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:16px!important;
+  margin-bottom:18px;
+}
+
+.quote-client{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+
+.quote-client .avatar{
+  width:52px!important;
+  height:52px!important;
+  min-width:52px!important;
+}
+
+.quote-client-info{
+  min-width:0;
+}
+
+.quote-client-name-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.quote-client-name-row b{
+  font-size:17px;
+  line-height:1.25;
+}
+
+.quote-client-info small{
+  display:block;
+  margin-top:4px;
+  color:var(--muted);
+}
+
+.quote-received{
+  color:var(--muted);
+  text-align:right;
+  line-height:1.35;
+  white-space:nowrap;
+}
+
+.quote-info-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:16px;
+}
+
+.quote-info-grid>div{
+  min-width:0;
+  padding:13px 14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:#f8fafc;
+}
+
+.quote-info-grid span{
+  display:block;
+  margin-bottom:6px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.quote-info-grid b{
+  display:block;
+  font-size:14px;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+}
+
+.quote-message-box{
+  padding:15px 16px;
+  margin-bottom:16px;
+  border-radius:12px;
+  background:#f8fafc;
+  border:1px solid var(--border);
+}
+
+.quote-message-box span{
+  display:block;
+  margin-bottom:7px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.quote-message-box p{
+  margin:0;
+  line-height:1.55;
+  overflow-wrap:anywhere;
+  white-space:pre-wrap;
+}
+
+.quote-actions{
+  display:flex!important;
+  align-items:center;
+  gap:10px!important;
+  flex-wrap:wrap;
+  padding-top:16px!important;
+  border-top:1px solid var(--border);
+}
+
+.quote-actions button,
+.quote-actions .action-link{
+  min-height:44px;
+  flex:1 1 190px!important;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  border-radius:10px;
+  font-weight:800;
+  text-decoration:none;
+  box-sizing:border-box;
+}
+
+.quote-whatsapp{
+  background:#eef2f6!important;
+  color:#344054!important;
+}
+
+.quote-attended-button{
+  background:#067647!important;
+  color:#fff!important;
+  border-color:#067647!important;
+}
+
+.quote-attended-button:hover{
+  background:#05603a!important;
+}
+
+@media(max-width:1050px){
+  .quote-info-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:700px){
+  .quote-card{
+    padding:16px!important;
+  }
+
+  .quote-card-head{
+    flex-direction:column;
+  }
+
+  .quote-received{
+    text-align:left;
+    white-space:normal;
+  }
+
+  .quote-info-grid{
+    grid-template-columns:1fr;
+  }
+
+  .quote-actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .quote-actions button,
+  .quote-actions .action-link{
+    width:100%;
+    flex:none!important;
+  }
+}
