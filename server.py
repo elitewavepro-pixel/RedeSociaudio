@@ -489,6 +489,26 @@ def init_db():
       FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+
+    CREATE TABLE IF NOT EXISTS profile_gallery(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      image_url TEXT NOT NULL,
+      caption TEXT DEFAULT '',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS post_media(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      post_id INTEGER NOT NULL,
+      media_url TEXT NOT NULL,
+      media_type TEXT NOT NULL DEFAULT 'image/jpeg',
+      media_name TEXT DEFAULT '',
+      media_size INTEGER DEFAULT 0,
+      position INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS audio_ai_sessions(
       id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
       title TEXT DEFAULT 'Nova conversa', mode TEXT DEFAULT 'Pergunta técnica',
@@ -563,7 +583,11 @@ def init_db():
         'response_time': "TEXT DEFAULT 'Responde em até 24 horas'", 'completed_projects': "TEXT DEFAULT ''",
         'portfolio_links': "TEXT DEFAULT ''", 'work_history': "TEXT DEFAULT ''",
         'status': "TEXT DEFAULT 'active'",
-        'plan': "TEXT DEFAULT 'free'", 'upload_used_bytes': "INTEGER DEFAULT 0"
+        'plan': "TEXT DEFAULT 'free'", 'upload_used_bytes': "INTEGER DEFAULT 0",
+        'professional_title': "TEXT DEFAULT ''", 'profile_type': "TEXT DEFAULT 'professional'",
+        'verified_badge': "TEXT DEFAULT ''", 'hire_enabled': "INTEGER DEFAULT 1",
+        'hourly_rate': "TEXT DEFAULT ''", 'languages': "TEXT DEFAULT ''",
+        'remote_service': "INTEGER DEFAULT 0"
     }
     for name, typ in additions.items():
         if name not in cols:
@@ -856,8 +880,51 @@ def execute_admin_action(admin, action):
 
     raise ValueError('Ação administrativa não permitida.')
 
+def user_gallery(c, user_id):
+    return [dict(x) for x in c.execute(
+        "SELECT id,image_url,caption,created_at FROM profile_gallery WHERE user_id=? ORDER BY id DESC",
+        (user_id,)
+    ).fetchall()]
+
+
+def post_media_items(c, post_id):
+    return [dict(x) for x in c.execute(
+        """SELECT id,media_url,media_type,media_name,media_size,position
+           FROM post_media WHERE post_id=? ORDER BY position,id""",
+        (post_id,)
+    ).fetchall()]
+
+
+def replace_post_gallery(c, post_id, items, user):
+    old = c.execute("SELECT media_url FROM post_media WHERE post_id=?", (post_id,)).fetchall()
+    c.execute("DELETE FROM post_media WHERE post_id=?", (post_id,))
+    for row in old:
+        remove_media_file(row["media_url"])
+    saved = []
+    for position, item in enumerate((items or [])[:6]):
+        if isinstance(item, str):
+            raw, name = item, ""
+        else:
+            raw = (item or {}).get("data") or (item or {}).get("media_url") or ""
+            name = (item or {}).get("name") or ""
+        if not raw:
+            continue
+        media_url, media_type, media_name = store_media_data(
+            raw, "image/jpeg", name, video_limit_for(user)
+        )
+        if not media_type.startswith("image/"):
+            continue
+        size = int((item or {}).get("size") or 0) if isinstance(item, dict) else 0
+        c.execute(
+            """INSERT INTO post_media(post_id,media_url,media_type,media_name,media_size,position,created_at)
+               VALUES(?,?,?,?,?,?,?)""",
+            (post_id, media_url, media_type, media_name, size, position, now())
+        )
+        saved.append(media_url)
+    return saved
+
 def public_user(row):
-    data={k: row[k] for k in ('id','name','email','role','city','bio','specialties','experience','equipment','avatar','cover','services','certifications','service_region','whatsapp','instagram','website','availability','headline','company','response_time','completed_projects','portfolio_links','work_history','plan','upload_used_bytes','is_admin','status','created_at') if k in row.keys()}
+    data={k: row[k] for k in ('id','name','email','role','city','bio','specialties','experience','equipment','avatar','cover','services','certifications','service_region','whatsapp','instagram','website','availability','headline','company','response_time','completed_projects','portfolio_links','work_history','plan','upload_used_bytes','professional_title','profile_type','verified_badge','hire_enabled','hourly_rate','languages','remote_service','is_admin','status','created_at') if k in row.keys()}
     plan=normalized_plan(data)
     data['plan']=plan
     data['plan_label']=PLAN_LABELS[plan]
@@ -1031,7 +1098,12 @@ class Handler(SimpleHTTPRequestHandler):
         if p == '/api/health': return self.send_json({'ok':True,'version':'20.2','database':'sqlite-wal','write_protection':True})
         if p == '/api/me':
             u = auth_user(self.headers)
-            return self.send_json({'user':u}, 200 if u else 401)
+            if not u:
+                return self.send_json({'user':None},401)
+            c=connect()
+            try:u['gallery']=user_gallery(c,u['id'])
+            finally:c.close()
+            return self.send_json({'user':u})
         if p == '/api/posts':
             u = self.require_user()
             if not u: return
@@ -1046,6 +1118,7 @@ class Handler(SimpleHTTPRequestHandler):
             for r in rows:
                 d=dict(r); d['answers']=[dict(x) for x in c.execute('''SELECT c.*,u.name,u.role,u.is_admin FROM comments c
                     JOIN users u ON u.id=c.user_id WHERE c.post_id=? ORDER BY c.is_solution DESC,c.id''',(r['id'],)).fetchall()]
+                d['media_items']=post_media_items(c,r['id'])
                 out.append(d)
             c.close(); return self.send_json(out)
         if p.startswith('/api/users/') and p.endswith('/profile'):
@@ -1061,6 +1134,7 @@ class Handler(SimpleHTTPRequestHandler):
             data['posts']=c.execute("SELECT COUNT(*) FROM posts WHERE user_id=? AND status='published'",(uid,)).fetchone()[0]
             data['answers']=c.execute('SELECT COUNT(*) FROM comments WHERE user_id=?',(uid,)).fetchone()[0]
             data['is_following']=bool(c.execute('SELECT 1 FROM follows WHERE follower_id=? AND followed_id=?',(u['id'],uid)).fetchone())
+            data['gallery']=user_gallery(c,uid)
             c.close(); return self.send_json(data)
         if p == '/api/users':
             if not self.require_user(): return
@@ -1449,7 +1523,13 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json({'error':str(exc)},400)
             legacy_image=media if media_type.startswith('image/') else ''
             c=connect(); c.execute('''INSERT INTO posts(user_id,type,category,title,body,is_featured,status,image_data,media_data,media_type,media_name,media_size,link_url,created_at)
-             VALUES(?,?,?,?,?,0,'published',?,?,?,?,?,?,?)''',(u['id'],d.get('type','Pergunta'),d.get('category','Geral'),title,body,legacy_image,media,media_type,media_name,media_size,valid_url(d.get('link_url','')),now())); c.commit(); c.close(); return self.send_json({'ok':True},201)
+             VALUES(?,?,?,?,?,0,'published',?,?,?,?,?,?,?)''',(u['id'],d.get('type','Pergunta'),d.get('category','Geral'),title,body,legacy_image,media,media_type,media_name,media_size,valid_url(d.get('link_url','')),now()))
+            pid=c.execute('SELECT last_insert_rowid()').fetchone()[0]
+            try:
+                replace_post_gallery(c,pid,d.get('gallery_images') or [],u)
+            except ValueError as exc:
+                c.rollback();c.close();return self.send_json({'error':str(exc)},400)
+            c.commit(); c.close(); return self.send_json({'ok':True,'id':pid},201)
         if p.startswith('/api/posts/') and p.endswith('/edit'):
             try: pid=int(p.split('/')[3])
             except: return self.send_json({'error':'Publicação inválida.'},400)
@@ -1480,6 +1560,10 @@ class Handler(SimpleHTTPRequestHandler):
                     (d.get('type','Pergunta'),d.get('category','Geral'),title,body,legacy_image,media,media_type,media_name,media_size,valid_url(d.get('link_url','')),now(),pid))
                 if old_media and old_media != media:
                     remove_media_file(old_media)
+            if 'gallery_images' in d:
+                try:replace_post_gallery(c,pid,d.get('gallery_images') or [],u)
+                except ValueError as exc:
+                    c.rollback();c.close();return self.send_json({'error':str(exc)},400)
             c.commit(); c.close(); return self.send_json({'ok':True})
         if p.startswith('/api/posts/') and p.endswith('/comments'):
             try:pid=int(p.split('/')[3])
@@ -1610,6 +1694,15 @@ class Handler(SimpleHTTPRequestHandler):
             if not row: c.close(); return self.send_json({'error':'Vaga não encontrada.'},404)
             if row['creator_id']!=u['id'] and not u['is_admin']: c.close(); return self.send_json({'error':'Acesso restrito.'},403)
             c.execute("UPDATE jobs SET status='encerrada',updated_at=? WHERE id=?",(now(),jid)); c.commit(); c.close(); return self.send_json({'ok':True})
+        if p.startswith('/api/admin/users/') and p.endswith('/badge'):
+            if not u.get('is_admin'):return self.send_json({'error':'Acesso restrito.'},403)
+            try:uid=int(p.split('/')[4])
+            except:return self.send_json({'error':'Usuário inválido.'},400)
+            d=self.read_json();badge=(d.get('badge') or '').strip()
+            if badge not in {'','professional','company','manufacturer','school','specialist'}:
+                return self.send_json({'error':'Selo inválido.'},400)
+            c=connect();c.execute('UPDATE users SET verified_badge=? WHERE id=?',(badge,uid));c.commit();c.close()
+            return self.send_json({'ok':True})
         if p.startswith('/api/admin/users/') and p.endswith('/plan'):
             if not u.get('is_admin'):
                 return self.send_json({'error':'Acesso restrito ao administrador.'},403)
@@ -1734,8 +1827,25 @@ class Handler(SimpleHTTPRequestHandler):
             except PermissionError:return self.send_json({'error':'Acesso restrito.'},403)
             return self.send_json({'id':mid},201)
         if p == '/api/profile':
-            c=connect(); c.execute('''UPDATE users SET name=?,role=?,city=?,bio=?,specialties=?,experience=?,equipment=?,avatar=?,cover=?,services=?,certifications=?,service_region=?,whatsapp=?,instagram=?,website=?,availability=?,headline=?,company=?,response_time=?,completed_projects=?,portfolio_links=?,work_history=? WHERE id=?''',
-              (d.get('name','').strip(),d.get('role','').strip(),d.get('city','').strip(),d.get('bio','').strip(),d.get('specialties','').strip(),d.get('experience','').strip(),d.get('equipment','').strip(),d.get('avatar','')[:1200000],d.get('cover','')[:1800000],d.get('services','').strip(),d.get('certifications','').strip(),d.get('service_region','').strip(),d.get('whatsapp','').strip(),d.get('instagram','').strip(),d.get('website','').strip(),d.get('availability','').strip(),d.get('headline','').strip(),d.get('company','').strip(),d.get('response_time','').strip(),d.get('completed_projects','').strip(),d.get('portfolio_links','').strip(),d.get('work_history','').strip(),u['id'])); c.commit(); c.close(); return self.send_json({'ok':True})
+            c=connect(); c.execute('''UPDATE users SET name=?,role=?,city=?,bio=?,specialties=?,experience=?,equipment=?,avatar=?,cover=?,services=?,certifications=?,service_region=?,whatsapp=?,instagram=?,website=?,availability=?,headline=?,company=?,response_time=?,completed_projects=?,portfolio_links=?,work_history=?,professional_title=?,profile_type=?,hire_enabled=?,hourly_rate=?,languages=?,remote_service=? WHERE id=?''',
+              (d.get('name','').strip(),d.get('role','').strip(),d.get('city','').strip(),d.get('bio','').strip(),d.get('specialties','').strip(),d.get('experience','').strip(),d.get('equipment','').strip(),d.get('avatar','')[:1200000],d.get('cover','')[:1800000],d.get('services','').strip(),d.get('certifications','').strip(),d.get('service_region','').strip(),d.get('whatsapp','').strip(),d.get('instagram','').strip(),d.get('website','').strip(),d.get('availability','').strip(),d.get('headline','').strip(),d.get('company','').strip(),d.get('response_time','').strip(),d.get('completed_projects','').strip(),d.get('portfolio_links','').strip(),d.get('work_history','').strip(),d.get('professional_title','').strip(),d.get('profile_type','professional').strip(),1 if d.get('hire_enabled',True) else 0,d.get('hourly_rate','').strip(),d.get('languages','').strip(),1 if d.get('remote_service') else 0,u['id']))
+            for item in (d.get('gallery_images') or [])[:12]:
+                raw=(item or {}).get('data') if isinstance(item,dict) else item
+                caption=((item or {}).get('caption') or '')[:200] if isinstance(item,dict) else ''
+                if not raw:continue
+                try:url,typ,name=store_media_data(raw,'image/jpeg','galeria.jpg',video_limit_for(u))
+                except ValueError as exc:
+                    c.rollback();c.close();return self.send_json({'error':str(exc)},400)
+                c.execute('INSERT INTO profile_gallery(user_id,image_url,caption,created_at) VALUES(?,?,?,?)',(u['id'],url,caption,now()))
+            c.commit(); c.close(); return self.send_json({'ok':True})
+        if p.startswith('/api/profile/gallery/') and p.endswith('/delete'):
+            try:gid=int(p.split('/')[4])
+            except:return self.send_json({'error':'Imagem inválida.'},400)
+            c=connect();row=c.execute('SELECT image_url FROM profile_gallery WHERE id=? AND user_id=?',(gid,u['id'])).fetchone()
+            if not row:c.close();return self.send_json({'error':'Imagem não encontrada.'},404)
+            c.execute('DELETE FROM profile_gallery WHERE id=? AND user_id=?',(gid,u['id']));c.commit();c.close()
+            remove_media_file(row['image_url'])
+            return self.send_json({'ok':True})
         if p.startswith('/api/users/') and p.endswith('/follow'):
             try:uid=int(p.split('/')[3])
             except:return self.send_json({'error':'Usuário inválido.'},400)
@@ -1765,8 +1875,10 @@ class Handler(SimpleHTTPRequestHandler):
             if post['user_id']!=u['id'] and not u['is_admin']:
                 c.close(); return self.send_json({'error':'Você só pode excluir suas próprias publicações.'},403)
             media=post['media_data'] or post['image_data'] or ''
+            gallery=[x['media_url'] for x in c.execute('SELECT media_url FROM post_media WHERE post_id=?',(pid,)).fetchall()]
             c.execute('DELETE FROM posts WHERE id=?',(pid,)); c.commit(); c.close()
             remove_media_file(media)
+            for item in gallery:remove_media_file(item)
             return self.send_json({'ok':True})
         if p.startswith('/api/admin/posts/'):
             if not u['is_admin']:return self.send_json({'error':'Acesso restrito.'},403)
