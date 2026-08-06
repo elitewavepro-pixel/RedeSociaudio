@@ -4,7 +4,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 
-APP_VERSION = 'Beta 2.1 — Perfil corrigido'
+APP_VERSION = 'Beta 2.2 — Portfólio e Agenda'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -612,6 +612,21 @@ def init_db():
     ''')
 
 
+
+    c.execute('''CREATE TABLE IF NOT EXISTS professional_availability(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      available_date TEXT NOT NULL,
+      start_time TEXT DEFAULT '',
+      end_time TEXT DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'available',
+      note TEXT DEFAULT '',
+      created_at TEXT NOT NULL,
+      UNIQUE(user_id,available_date,start_time,end_time),
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_professional_availability_user_date ON professional_availability(user_id,available_date)')
+
     c.execute('''CREATE TABLE IF NOT EXISTS profile_reviews(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       professional_id INTEGER NOT NULL,
@@ -1201,6 +1216,20 @@ class Handler(SimpleHTTPRequestHandler):
                 'database':db
             },status)
 
+        if p == '/api/profile/availability':
+            u=self.require_user()
+            if not u:return
+            c=connect()
+            rows=c.execute(
+                '''SELECT id,available_date,start_time,end_time,status,note
+                   FROM professional_availability
+                   WHERE user_id=?
+                   ORDER BY available_date,start_time''',
+                (u['id'],)
+            ).fetchall()
+            c.close()
+            return self.send_json([dict(x) for x in rows])
+
         if p == '/api/me':
             u = auth_user(self.headers)
             if not u:
@@ -1260,6 +1289,13 @@ class Handler(SimpleHTTPRequestHandler):
                 (x for x in data['reviews'] if int(x['reviewer_id'])==int(u['id'])),
                 None
             )
+            data['availability_dates']=[dict(x) for x in c.execute(
+                '''SELECT id,available_date,start_time,end_time,status,note
+                   FROM professional_availability
+                   WHERE user_id=? AND available_date>=date('now')
+                   ORDER BY available_date,start_time LIMIT 20''',
+                (uid,)
+            ).fetchall()]
             c.close(); return self.send_json(data)
         if p == '/api/users':
             if not self.require_user(): return
@@ -2164,6 +2200,41 @@ class Handler(SimpleHTTPRequestHandler):
             c.execute('DELETE FROM profile_gallery WHERE id=? AND user_id=?',(gid,u['id']));c.commit();c.close()
             remove_media_file(row['image_url'])
             return self.send_json({'ok':True})
+        if p == '/api/profile/availability':
+            date_value=(d.get('available_date') or '').strip()
+            start=(d.get('start_time') or '').strip()
+            end=(d.get('end_time') or '').strip()
+            status=(d.get('status') or 'available').strip()
+            note=(d.get('note') or '').strip()
+            if not re.match(r'^\d{4}-\d{2}-\d{2}$',date_value):
+                return self.send_json({'error':'Informe uma data válida.'},400)
+            if status not in ('available','busy','tentative'):
+                return self.send_json({'error':'Status inválido.'},400)
+            if len(note)>250:
+                return self.send_json({'error':'A observação deve ter até 250 caracteres.'},400)
+            c=connect()
+            c.execute(
+                '''INSERT INTO professional_availability(
+                     user_id,available_date,start_time,end_time,status,note,created_at
+                   ) VALUES(?,?,?,?,?,?,?)
+                   ON CONFLICT(user_id,available_date,start_time,end_time)
+                   DO UPDATE SET status=excluded.status,note=excluded.note''',
+                (u['id'],date_value,start,end,status,note,now())
+            )
+            c.commit();c.close()
+            return self.send_json({'ok':True})
+
+        if p.startswith('/api/profile/availability/') and p.endswith('/delete'):
+            try:aid=int(p.split('/')[4])
+            except:return self.send_json({'error':'Data inválida.'},400)
+            c=connect()
+            c.execute(
+                'DELETE FROM professional_availability WHERE id=? AND user_id=?',
+                (aid,u['id'])
+            )
+            c.commit();c.close()
+            return self.send_json({'ok':True})
+
         if p.startswith('/api/users/') and p.endswith('/review'):
             try:uid=int(p.split('/')[3])
             except:return self.send_json({'error':'Profissional inválido.'},400)

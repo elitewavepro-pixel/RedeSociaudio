@@ -578,6 +578,63 @@ function notificationCard(n){
 function renderFeed(saved=false){let list=posts.filter(p=>(!saved||p.bookmarked));content.innerHTML=`<section class="card composer"><div class="composer-main">${avatar(me)}<button onclick="openNewPost()">No que você está pensando, ${esc(me.name.split(' ')[0])}?</button></div><div class="composer-tools"><button onclick="openNewPost('video')">${icon('video')}<span>Vídeo</span></button><button onclick="openNewPost('photo')">${icon('photo')}<span>Foto</span></button><button onclick="openNewPost('audio')">${icon('audio')}<span>Áudio</span></button><button onclick="openNewPost('file')">${icon('file')}<span>Arquivo</span></button></div></section><section class="story-strip"><button class="story create-story" onclick="openNewPost()"><span class="story-plus">${icon('plus')}</span><b>Criar story</b></button><div class="story story-console"><span>${avatar(me)}</span><b>Seu conteúdo</b></div><div class="story story-stage"><span>${icon('audio')}</span><b>Dicas de áudio</b></div><div class="story story-mic"><span>${icon('professionals')}</span><b>Profissionais</b></div></section>${list.length?list.map(postCard).join(''):'<div class="empty">Nenhuma publicação encontrada.</div>'}`}
 function renderExperts(){content.innerHTML=`<div class="page-title"><h1>Profissionais</h1><p>Encontre especialistas, conheça seus serviços e faça contatos.</p></div><div class="people-grid">${users.map(u=>`<article class="card person"><div class="mini-cover" style="${u.cover?`background-image:url('${u.cover}')`:''}"></div>${avatar(u,'big')}<h3>${esc(u.name)}${u.is_admin?' ✓':''}</h3><b>${esc(u.role)}</b><p class="availability">● ${esc(u.availability||'Disponível para trabalhos')}</p><p class="meta">${icon('location')} ${esc(u.city||'Cidade não informada')}</p><div class="skills">${lines(u.specialties)}</div><div class="follow-stats"><span><b>${u.followers}</b> seguidores</span><span><b>${u.following}</b> seguindo</span></div><button class="secondary" onclick="openProfile(${u.id})">Ver perfil</button>${u.id!==me.id?`<button class="${u.is_following?'secondary':'primary'}" onclick="followUser(${u.id})">${u.is_following?'Deixar de seguir':'Seguir'}</button>`:''}</article>`).join('')}</div>`}
 
+
+function availabilityStatusLabel(status){
+  return ({available:'Disponível',busy:'Indisponível',tentative:'A confirmar'})[status]||'Disponível';
+}
+
+function availabilityCard(item,editable=false){
+  const date=new Date(`${item.available_date}T12:00:00`);
+  const period=[item.start_time,item.end_time].filter(Boolean).join(' às ');
+  return `<article class="availability-item ${esc(item.status)}">
+    <div class="availability-date">
+      <b>${date.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</b>
+      <small>${date.toLocaleDateString('pt-BR',{weekday:'short'})}</small>
+    </div>
+    <div class="availability-info">
+      <b>${availabilityStatusLabel(item.status)}</b>
+      ${period?`<span>${esc(period)}</span>`:''}
+      ${item.note?`<small>${esc(item.note)}</small>`:''}
+    </div>
+    ${editable?`<button class="availability-delete" onclick="deleteAvailability(${item.id})">×</button>`:''}
+  </article>`;
+}
+
+async function loadAvailabilityManager(){
+  const box=document.getElementById('availabilityManagerList');
+  if(!box)return;
+  try{
+    const items=await api('/api/profile/availability');
+    box.innerHTML=items.length?items.map(x=>availabilityCard(x,true)).join(''):'<p class="muted">Nenhuma data cadastrada.</p>';
+  }catch(e){
+    box.innerHTML='<p class="muted">Não foi possível carregar a agenda.</p>';
+  }
+}
+
+async function addAvailability(){
+  const date=document.getElementById('availabilityDate')?.value||'';
+  const start=document.getElementById('availabilityStart')?.value||'';
+  const end=document.getElementById('availabilityEnd')?.value||'';
+  const status=document.getElementById('availabilityStatus')?.value||'available';
+  const note=document.getElementById('availabilityNote')?.value||'';
+  try{
+    await api('/api/profile/availability',{
+      method:'POST',
+      body:JSON.stringify({available_date:date,start_time:start,end_time:end,status,note})
+    });
+    toast('Data adicionada à agenda.');
+    await loadAvailabilityManager();
+  }catch(e){toast(e.message,true)}
+}
+
+async function deleteAvailability(id){
+  if(!confirm('Remover esta data da agenda?'))return;
+  try{
+    await api(`/api/profile/availability/${id}/delete`,{method:'POST',body:'{}'});
+    await loadAvailabilityManager();
+  }catch(e){toast(e.message,true)}
+}
+
 function starRating(value){
   const rating=Math.max(0,Math.min(5,Number(value||0)));
   return `<span class="profile-stars" aria-label="${rating} de 5 estrelas">${[1,2,3,4,5].map(n=>`<span class="${n<=Math.round(rating)?'filled':''}">★</span>`).join('')}</span>`;
@@ -731,6 +788,15 @@ async function openProfile(id){
             <p>${esc(u.certifications||'Não informadas.')}</p>
           </section>
 
+          <section class="card professional-section">
+            <div class="section-title-row">
+              <div><h2>Agenda de disponibilidade</h2><p>Próximas datas informadas pelo profissional.</p></div>
+            </div>
+            <div class="availability-public-list">
+              ${(u.availability_dates||[]).length?(u.availability_dates||[]).map(x=>availabilityCard(x,false)).join(''):'<div class="empty-review"><p>Nenhuma disponibilidade futura cadastrada.</p></div>'}
+            </div>
+          </section>
+
           <section class="card professional-section profile-reviews-section">
             <div class="section-title-row">
               <div><h2>Avaliações</h2><p>${u.review_count||0} avaliação(ões) · média ${Number(u.rating_average||0).toFixed(1)}</p></div>
@@ -796,6 +862,18 @@ function renderProfile(){
     <label class="wide">Link do portfólio em PDF<input id="ppdf" value="${esc(me.portfolio_pdf||'')}" placeholder="Cole o link do Google Drive, site ou PDF"></label>
     <label class="wide">Link do vídeo de apresentação<input id="preel" value="${esc(me.video_reel||'')}" placeholder="YouTube, Vimeo ou outro link"></label>
     <label class="wide">Certificações<textarea id="pce">${esc(me.certifications||'')}</textarea></label>
+    <section class="profile-agenda-manager wide">
+      <div class="section-title-row"><div><h3>Agenda profissional</h3><p>Informe datas em que você está disponível ou ocupado.</p></div></div>
+      <div class="agenda-form-grid">
+        <label>Data<input id="availabilityDate" type="date"></label>
+        <label>Início<input id="availabilityStart" type="time"></label>
+        <label>Fim<input id="availabilityEnd" type="time"></label>
+        <label>Status<select id="availabilityStatus"><option value="available">Disponível</option><option value="tentative">A confirmar</option><option value="busy">Indisponível</option></select></label>
+        <label class="wide">Observação<input id="availabilityNote" maxlength="250" placeholder="Ex.: Disponível para cultos, eventos e montagem"></label>
+        <button type="button" class="secondary" onclick="addAvailability()">Adicionar data</button>
+      </div>
+      <div id="availabilityManagerList" class="availability-manager-list"></div>
+    </section>
     <label>WhatsApp profissional<input id="pwa" value="${esc(me.whatsapp||'')}"></label><label>Instagram<input id="pig" value="${esc(me.instagram||'')}"></label><label class="wide">Site<input id="pweb" value="${esc(me.website||'')}"></label><label class="wide">Biografia<textarea id="pbi">${esc(me.bio||'')}</textarea></label>
     <section class="wide profile-gallery-editor"><div><h2>Galeria profissional</h2><p>Adicione fotos de eventos, instalações, equipamentos e bastidores.</p></div><label class="file-label">Adicionar até 12 fotos<input id="pgallery" type="file" accept="image/*" multiple></label><div id="newGalleryPreview"></div>${galleryMarkup(me.gallery||[],true)}</section>
     <button class="primary">Salvar perfil profissional</button>
@@ -1065,7 +1143,8 @@ async function renderAdmin(){
 }
 let chatConversationId=null,chatPoll=null,chatTypingTimer=null,chatTypingLastSent=0;
 function chatAvatar(x){return x.other_avatar?`<img class="avatar" src="${x.other_avatar}">`:`<span class="avatar fallback">${esc((x.other_name||x.name||'?')[0])}</span>`}
-async function renderChat(){clearInterval(chatPoll);let convs=await api('/api/chat/conversations');content.innerHTML=`<section class="chat-shell card"><aside class="chat-list"><div class="chat-list-head"><div><span class="eyebrow">CHAT PROFISSIONAL</span><h1>Mensagens</h1></div><button class="primary icon-only" onclick="openNewChat()" title="Nova conversa">${icon('plus')}</button></div><input id="chatSearch" class="chat-search" placeholder="Buscar conversas..."><div id="chatConversationList">${convs.length?convs.map(chatConversationCard).join(''):'<div class="chat-empty-small">Nenhuma conversa. Clique em + para iniciar.</div>'}</div></aside><main id="chatMain" class="chat-main"><div class="chat-welcome">${icon('chat')}<h2>Converse com profissionais</h2><p>Envie mensagens, documentos, áudios e arquivos técnicos sem sair da Rede Sociaudio.</p><button class="primary" onclick="openNewChat()">Iniciar conversa</button></div></main></section>`;hydrateIcons(content);chatSearch.oninput=()=>{let q=chatSearch.value.toLowerCase();document.querySelectorAll('.chat-conversation').forEach(x=>x.hidden=!x.textContent.toLowerCase().includes(q))};if(chatConversationId)openConversation(chatConversationId,false)}
+async function renderChat(){clearInterval(chatPoll);let convs=await api('/api/chat/conversations');content.innerHTML=`<section class="chat-shell card"><aside class="chat-list"><div class="chat-list-head"><div><span class="eyebrow">CHAT PROFISSIONAL</span><h1>Mensagens</h1></div><button class="primary icon-only" onclick="openNewChat()" title="Nova conversa">${icon('plus')}</button></div><input id="chatSearch" class="chat-search" placeholder="Buscar conversas..."><div id="chatConversationList">${convs.length?convs.map(chatConversationCard).join(''):'<div class="chat-empty-small">Nenhuma conversa. Clique em + para iniciar.</div>'}</div></aside><main id="chatMain" class="chat-main"><div class="chat-welcome">${icon('chat')}<h2>Converse com profissionais</h2><p>Envie mensagens, documentos, áudios e arquivos técnicos sem sair da Rede Sociaudio.</p><button class="primary" onclick="openNewChat()">Iniciar conversa</button></div></main></section>`;hydrateIcons(content);
+  loadAvailabilityManager();chatSearch.oninput=()=>{let q=chatSearch.value.toLowerCase();document.querySelectorAll('.chat-conversation').forEach(x=>x.hidden=!x.textContent.toLowerCase().includes(q))};if(chatConversationId)openConversation(chatConversationId,false)}
 function chatConversationCard(c){
   const unread=Number(c.unread||0);
   return `<button class="chat-conversation ${chatConversationId===c.id?'active':''} ${unread?'has-unread':''}" onclick="openConversation(${c.id})">
