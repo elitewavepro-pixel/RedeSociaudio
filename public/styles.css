@@ -440,3 +440,49 @@ body.chat-page .chat-file-badge{
 #profileAvatarWrap{width:112px;height:112px;min-width:112px;border-radius:50%;overflow:hidden;display:grid;place-items:center}
 #profileAvatarWrap .avatar{width:112px;height:112px;min-width:112px;border-radius:50%;object-fit:cover}
 #profileAvatarWrap span.avatar{background:linear-gradient(135deg,var(--blue),#174ea6);color:#fff;font-size:34px;font-weight:900}
+
+
+/* Rede Sociaudio V20.4.3 — cartão lateral e comunidades */
+.sidebar{min-width:0;overflow-x:hidden}
+.sidebar-profile.sidebar-user-card{
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+  padding:11px 10px;
+  gap:9px;
+  overflow:hidden;
+}
+.sidebar-profile .sidebar-avatar-image,
+.sidebar-profile .sidebar-avatar-fallback{
+  width:46px;
+  height:46px;
+  min-width:46px;
+}
+.sidebar-user-info{min-width:0;overflow:hidden}
+.sidebar-user-name-row{min-width:0;max-width:100%}
+.sidebar-user-name-row b{font-size:14px;max-width:100%}
+#sidebarRole{font-size:11px;line-height:1.25;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-user-meta{gap:6px;flex-wrap:nowrap}
+.sidebar-plan{font-size:8px;padding:3px 5px}
+.sidebar-online{font-size:9px;white-space:nowrap}
+.layout{min-width:0}
+main,.main-content,#content{min-width:0}
+
+.community-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
+.community-card{display:grid;grid-template-columns:58px minmax(0,1fr);gap:14px;align-items:start;overflow:hidden}
+.community-icon{width:58px;height:58px;border-radius:14px;background:#eef4ff;display:grid;place-items:center;font-size:34px;overflow:hidden}
+.community-content{min-width:0}
+.community-content h2{margin:0 0 7px;font-size:20px;line-height:1.2;overflow-wrap:anywhere}
+.community-content p{line-height:1.45;overflow-wrap:anywhere}
+.community-category{display:inline-block;padding:5px 8px;border-radius:999px;background:#eef4ff;color:var(--blue);font-size:11px;font-weight:800}
+.community-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.community-actions button{flex:1 1 130px}
+@media(max-width:1100px){
+  .sidebar-profile.sidebar-user-card{padding:9px 7px}
+  .sidebar-profile .sidebar-avatar-image,.sidebar-profile .sidebar-avatar-fallback{width:40px;height:40px;min-width:40px}
+}
+@media(max-width:700px){
+  .community-grid{grid-template-columns:1fr}
+  .community-card{grid-template-columns:46px minmax(0,1fr)}
+  .community-icon{width:46px;height:46px;font-size:27px}
+}
