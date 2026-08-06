@@ -5,12 +5,19 @@ from urllib.parse import urlparse, parse_qs
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = os.path.join(ROOT, 'public')
-HOST, PORT = '127.0.0.1', 8000
+HOST = os.environ.get('HOST', '0.0.0.0')
+try:
+    PORT = int(os.environ.get('PORT', '8000'))
+except ValueError:
+    PORT = 8000
 WRITE_LOCK = threading.RLock()
 
 # A partir da V9, os dados ficam fora da pasta do programa.
 # Assim, substituir a versão do aplicativo não apaga perfis, posts ou imagens.
 def persistent_root():
+    configured = os.environ.get('SOCIAUDIO_DATA_ROOT', '').strip()
+    if configured:
+        return os.path.abspath(configured)
     base = os.environ.get('LOCALAPPDATA')
     if not base:
         base = os.path.join(os.path.expanduser('~'), '.local', 'share')

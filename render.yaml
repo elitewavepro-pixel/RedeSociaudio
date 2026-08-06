@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: redesociaudio
+    runtime: python
+    plan: free
+    buildCommand: echo "Nenhuma dependência externa"
+    startCommand: python server.py
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
