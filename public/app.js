@@ -45,6 +45,52 @@ async function applyPlatformSettings(){
 }
 
 function toast(t,b=false){toastEl.textContent=t;toastEl.className=b?'show bad':'show';setTimeout(()=>toastEl.className='',2800)}
+
+function sidebarPlanLabel(plan){
+  const labels={free:'FREE',pro:'PRO',company:'EMPRESA',admin:'ADMIN'};
+  return labels[String(plan||'free').toLowerCase()]||'FREE';
+}
+
+function setIdentityAvatar(container,user,header=false){
+  if(!container||!user)return;
+  const initial=String(user.name||'U').trim().slice(0,1).toUpperCase()||'U';
+  container.innerHTML='';
+  if(user.avatar){
+    container.className=header?'header-avatar-image':'sidebar-avatar sidebar-avatar-image';
+    const img=document.createElement('img');
+    img.src=user.avatar;
+    img.alt='Foto de '+(user.name||'usuário');
+    img.addEventListener('error',()=>{
+      container.className=header?'header-avatar-fallback':'sidebar-avatar sidebar-avatar-fallback';
+      container.textContent=initial;
+    },{once:true});
+    container.appendChild(img);
+  }else{
+    container.className=header?'header-avatar-fallback':'sidebar-avatar sidebar-avatar-fallback';
+    container.textContent=initial;
+  }
+}
+
+function renderSidebarIdentity(){
+  if(typeof me==='undefined'||!me)return;
+  const name=document.getElementById('sidebarName');
+  const role=document.getElementById('sidebarRole');
+  const verified=document.getElementById('sidebarVerified');
+  const plan=document.getElementById('sidebarPlan');
+
+  if(name)name.textContent=me.name||'Usuário';
+  if(role)role.textContent=me.professional_title||me.headline||me.role||'Ver perfil profissional';
+  if(verified)verified.innerHTML=(typeof verifiedBadge==='function')?verifiedBadge(me):'';
+  if(plan){
+    const planClass=String(me.plan||'free').toLowerCase();
+    plan.textContent=sidebarPlanLabel(planClass);
+    plan.className='sidebar-plan '+planClass;
+  }
+
+  setIdentityAvatar(document.getElementById('sidebarAvatar'),me,false);
+  setIdentityAvatar(document.getElementById('headerAvatar'),me,true);
+}
+
 async function api(path,opt={}){opt.headers={'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(opt.headers||{})};let r;try{r=await fetch(path,opt)}catch{throw Error('Não foi possível conectar ao servidor. Mantenha a janela preta aberta.')}let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Erro inesperado');return d}
 function fileToData(file,max=1500){return new Promise((res,rej)=>{if(!file)return res('');if(file.size>5*1024*1024)return rej(Error('A imagem deve ter no máximo 5 MB.'));let fr=new FileReader();fr.onload=()=>{let i=new Image();i.onload=()=>{let sc=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*sc);c.height=Math.round(i.height*sc);c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.82))};i.src=fr.result};fr.onerror=rej;fr.readAsDataURL(file)})}
 function currentVideoLimit(){return Number(me?.video_limit_bytes||250*1024*1024)}
@@ -106,8 +152,8 @@ async function uploadPendingFile(file){let r=await fetch('/api/media/file',{meth
 function avatar(u,cls=''){return u.avatar?`<img class="avatar ${cls}" src="${u.avatar}" alt="">`:`<div class="avatar ${cls}">${esc(u.name).charAt(0)}</div>`}
 function lines(v){return esc(v||'').split(/[,\n]/).filter(Boolean).map(x=>`<span class="skill">${x.trim()}</span>`).join('')}
 function tab(w){login.hidden=w!=='login';register.hidden=w!=='register';msg.textContent=''}
-async function boot(){await applyPlatformSettings();if(token){try{me=(await api('/api/me')).user;renderSidebarIdentity();renderSidebarIdentity();showApp();return}catch{localStorage.removeItem('sociaudio_token');token=''}}auth.hidden=false;auth.style.display='grid';app.hidden=true}
-function showApp(){auth.hidden=true;auth.style.display='none';app.hidden=false;app.style.display='block';headerName.textContent=me.name;renderSidebarIdentity();if(window.sidebarName)sidebarName.textContent=me.name;if(window.sidebarRole)sidebarRole.textContent=`${me.role} · ${me.plan_label||'Gratuito'}`;adminNav.hidden=!me.is_admin;hydrateIcons();loadAll()}
+async function boot(){await applyPlatformSettings();if(token){try{me=(await api('/api/me')).user;renderSidebarIdentity();showApp();return}catch{localStorage.removeItem('sociaudio_token');token=''}}auth.hidden=false;auth.style.display='grid';app.hidden=true}
+function showApp(){auth.hidden=true;auth.style.display='none';app.hidden=false;app.style.display='block';headerName.textContent=me.name;renderSidebarIdentity();if(window.sidebarRole)sidebarRole.textContent=`${me.role} · ${me.plan_label||'Gratuito'}`;adminNav.hidden=!me.is_admin;hydrateIcons();loadAll()}
 async function loadAll(){try{[posts,users,communities,notifications]=await Promise.all([api('/api/posts'),api('/api/users'),api('/api/communities'),api('/api/notifications')]);bellCount.textContent=notifications.unread||'';render()}catch(e){toast(e.message,true)}}
 loginTab.onclick=()=>{tab('login');loginTab.classList.add('active');registerTab.classList.remove('active')};registerTab.onclick=()=>{tab('register');registerTab.classList.add('active');loginTab.classList.remove('active')};
 login.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/login',{method:'POST',body:JSON.stringify({email:le.value,password:lp.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
@@ -162,7 +208,7 @@ async function saveProfile(e){
   e.preventDefault();
   try{
     await api('/api/profile',{method:'POST',body:JSON.stringify({name:pn.value,role:pr.value,professional_title:ppt.value,profile_type:ptype.value,hourly_rate:prate.value,languages:plang.value,remote_service:premote.checked,hire_enabled:phire.checked,headline:phl.value,company:pco.value,city:pcy.value,service_region:preg.value,experience:pex.value,completed_projects:ppj.value,response_time:prt.value,availability:pavl.value,specialties:psp.value,services:psv.value,equipment:peq.value,work_history:pwh.value,portfolio_links:ppl.value,certifications:pce.value,whatsapp:pwa.value,instagram:pig.value,website:pweb.value,bio:pbi.value,avatar:avatarImage,cover:coverImage,gallery_images:profileGalleryNew})});
-    me=(await api('/api/me')).user;renderSidebarIdentity();headerName.textContent=me.name;renderSidebarIdentity();if(window.sidebarName)sidebarName.textContent=me.name;toast('Perfil e galeria atualizados.');loadAll()
+    me=(await api('/api/me')).user;renderSidebarIdentity();headerName.textContent=me.name;if(window.sidebarName)sidebarName.textContent=me.name;toast('Perfil e galeria atualizados.');loadAll()
   }catch(e){toast(e.message,true)}
 }
 function openQuote(id,name){currentQuoteUser=id;quoteTitle.textContent=`Solicitar orçamento para ${name}`;quoteForm.reset();quoteName.value=me.name||'';quoteDlg.showModal()}
