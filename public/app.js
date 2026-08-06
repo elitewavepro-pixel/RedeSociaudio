@@ -154,12 +154,26 @@ function lines(v){return esc(v||'').split(/[,\n]/).filter(Boolean).map(x=>`<span
 function tab(w){login.hidden=w!=='login';register.hidden=w!=='register';msg.textContent=''}
 async function boot(){await applyPlatformSettings();if(token){try{me=(await api('/api/me')).user;renderSidebarIdentity();showApp();return}catch{localStorage.removeItem('sociaudio_token');token=''}}auth.hidden=false;auth.style.display='grid';app.hidden=true}
 function showApp(){auth.hidden=true;auth.style.display='none';app.hidden=false;app.style.display='block';headerName.textContent=me.name;renderSidebarIdentity();if(window.sidebarRole)sidebarRole.textContent=`${me.role} · ${me.plan_label||'Gratuito'}`;adminNav.hidden=!me.is_admin;hydrateIcons();loadAll()}
-async function loadAll(){try{[posts,users,communities,notifications]=await Promise.all([api('/api/posts'),api('/api/users'),api('/api/communities'),api('/api/notifications')]);bellCount.textContent=notifications.unread||'';render()}catch(e){toast(e.message,true)}}
+async function loadAll(){try{
+  [posts,users,communities,notifications]=await Promise.all([
+    api('/api/posts'),
+    api('/api/users'),
+    api('/api/communities'),
+    api('/api/notifications')
+  ]);
+  notificationItems=notifications.items||[];
+  notificationUnread=Number(notifications.unread||0);
+  updateNotificationBadge();
+  render();
+}catch(e){toast(e.message,true)}}
 loginTab.onclick=()=>{tab('login');loginTab.classList.add('active');registerTab.classList.remove('active')};registerTab.onclick=()=>{tab('register');registerTab.classList.add('active');loginTab.classList.remove('active')};
 login.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/login',{method:'POST',body:JSON.stringify({email:le.value,password:lp.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
 register.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/register',{method:'POST',body:JSON.stringify({name:rn.value,email:re.value,password:rp.value,role:rr.value,city:rc.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
 logoutBtn.onclick=async()=>{try{await api('/api/logout',{method:'POST'})}catch{}localStorage.removeItem('sociaudio_token');location.reload()};
-document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;render()});bellBtn.onclick=()=>{view='notifications';render()};
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;render()});bellBtn.onclick=async()=>{
+  view='notifications';
+  await loadNotifications(true);
+};
 newPostBtn.onclick=()=>openNewPost();closePost.onclick=()=>{postDlg.close();resetPostDialog()};
 pimg.onchange=async()=>{try{
   let selected=[...pimg.files];
@@ -323,6 +337,20 @@ function scheduleGlobalSearch(){
 }
 
 
+
+(function hideNotificationCountersInitially(){
+  const oldCounter=document.getElementById('bellCount');
+  if(oldCounter){
+    oldCounter.textContent='';
+    oldCounter.hidden=true;
+    oldCounter.style.display='none';
+  }
+  document.querySelectorAll('#notificationBadge,.notification-badge').forEach(b=>{
+    b.textContent='0';
+    b.style.display='none';
+  });
+})();
+
 let notificationPoll=null;
 let notificationItems=[];
 let notificationUnread=0;
@@ -363,11 +391,27 @@ async function loadNotifications(renderPage=false){
 }
 
 function updateNotificationBadge(){
-  const badges=document.querySelectorAll('#notificationBadge,.notification-badge');
-  badges.forEach(badge=>{
-    badge.textContent=notificationUnread>99?'99+':String(notificationUnread);
+  const text=notificationUnread>99?'99+':String(notificationUnread);
+
+  document.querySelectorAll('#notificationBadge,.notification-badge').forEach(badge=>{
+    badge.textContent=text;
     badge.style.display=notificationUnread>0?'grid':'none';
   });
+
+  const oldCounter=document.getElementById('bellCount');
+  if(oldCounter){
+    oldCounter.textContent=notificationUnread>0?text:'';
+    oldCounter.hidden=notificationUnread===0;
+    oldCounter.style.display=notificationUnread>0?'grid':'none';
+  }
+
+  const bell=document.getElementById('bellBtn');
+  if(bell){
+    bell.classList.toggle('has-unread',notificationUnread>0);
+    bell.setAttribute('aria-label',notificationUnread>0
+      ?`${notificationUnread} notificação(ões) não lida(s)`
+      :'Nenhuma notificação não lida');
+  }
 }
 
 async function markNotificationRead(id){
@@ -799,7 +843,7 @@ async function uploadChatFile(f){if(!allowedGenericFile(f)&&!f.type.startsWith('
 async function sendChatMessage(e){e.preventDefault();let body=chatBody.value.trim(),f=chatFile.files[0],att={};try{let btn=chatForm.querySelector('button');btn.disabled=true;btn.textContent=f?'Enviando...':'Enviar';if(f)att=await uploadChatFile(f);await api(`/api/chat/conversations/${chatConversationId}/messages`,{method:'POST',body:JSON.stringify({body,attachment_url:att.media_data||'',attachment_name:att.media_name||'',attachment_type:att.media_type||'',attachment_size:att.size||0})});chatBody.value='';chatFile.value='';await openConversation(chatConversationId)}catch(err){toast(err.message,true)}finally{let btn=chatForm?.querySelector('button');if(btn){btn.disabled=false;btn.textContent='Enviar'}}}
 async function refreshChatMessages(id){if(view!=='chat'||chatConversationId!==id)return;try{let msgs=await api(`/api/chat/conversations/${id}/messages`),box=$('#chatMessages');if(box){let near=box.scrollHeight-box.scrollTop-box.clientHeight<100;box.innerHTML=msgs.map(chatMessage).join('');hydrateIcons(box);if(near)box.scrollTop=box.scrollHeight}}catch{}}
 
-function render(){document.body.classList.toggle('chat-page',view==='chat');document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));if(view==='experts')return renderExperts();if(view==='companies')return renderCompanies();if(view==='jobs')return renderJobs();if(view==='marketplace')return renderMarketplace();if(view==='knowledge')return renderKnowledge();if(view==='audioai')return renderAudioAI();if(view==='chat')return renderChat();if(view==='communities')return renderCommunities();if(view==='profile')return renderProfile();if(view==='notifications')return renderNotifications();if(view==='hire')return renderHire();if(view==='opportunities')return renderOpportunities();if(view==='requests')return renderRequests();if(view==='admin')return renderAdmin();return renderFeed(view==='saved')}
+function render(){document.body.classList.toggle('chat-page',view==='chat');document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));if(view==='experts')return renderExperts();if(view==='companies')return renderCompanies();if(view==='jobs')return renderJobs();if(view==='marketplace')return renderMarketplace();if(view==='knowledge')return renderKnowledge();if(view==='audioai')return renderAudioAI();if(view==='chat')return renderChat();if(view==='communities')return renderCommunities();if(view==='profile')return renderProfile();if(view==='notifications')return loadNotifications(true);if(view==='hire')return renderHire();if(view==='opportunities')return renderOpportunities();if(view==='requests')return renderRequests();if(view==='admin')return renderAdmin();return renderFeed(view==='saved')}
 search.oninput=scheduleGlobalSearch;
 search.onkeydown=e=>{
   if(e.key==='Enter'){
@@ -860,7 +904,10 @@ async function loadAiSession(id,rerender=true){aiSessionId=id;if(rerender){rende
 
 
 document.querySelectorAll('[data-view="notifications"],#notificationBtn,.notification-button').forEach(el=>{
-  el.onclick=()=>{view='notifications';loadNotifications(true)};
+  el.onclick=async()=>{
+    view='notifications';
+    await loadNotifications(true);
+  };
 });
 loadNotifications();
 notificationPoll=setInterval(()=>loadNotifications(view==='notifications'),30000);

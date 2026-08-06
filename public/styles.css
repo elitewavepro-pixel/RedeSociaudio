@@ -946,3 +946,36 @@ button.danger{background:#fff1f3;color:#b42318;border:1px solid #fecdd3}.quote-e
   .notification-card{grid-template-columns:44px minmax(0,1fr) 30px;padding:12px}
   .notification-avatar-wrap,.notification-avatar{width:44px;height:44px}
 }
+
+
+/* Rede Sociaudio V20.7.2 — sino e contadores unificados */
+#bellBtn{
+  color:inherit!important;
+}
+#bellBtn:not(.has-unread){
+  color:inherit!important;
+  background:transparent;
+}
+#bellBtn.has-unread{
+  color:var(--blue)!important;
+}
+.header-notification-count{
+  position:absolute;
+  top:-7px;
+  right:-7px;
+  min-width:20px;
+  height:20px;
+  padding:0 5px;
+  border-radius:999px;
+  background:#f04438;
+  color:#fff;
+  border:2px solid #fff;
+  font-size:11px;
+  font-weight:900;
+  line-height:1;
+  place-items:center;
+  box-sizing:border-box;
+}
+.header-notification-count[hidden]{
+  display:none!important;
+}
