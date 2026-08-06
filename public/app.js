@@ -81,7 +81,7 @@ function galleryMarkup(items=[],editable=false){
 }
 async function deleteProfileGallery(id){
   if(!confirm('Remover esta foto da galeria?'))return;
-  try{await api(`/api/profile/gallery/${id}/delete`,{method:'POST'});me=(await api('/api/me')).user;renderProfile();toast('Foto removida.')}catch(e){toast(e.message,true)}
+  try{await api(`/api/profile/gallery/${id}/delete`,{method:'POST'});me=(await api('/api/me')).user;renderSidebarIdentity();renderProfile();toast('Foto removida.')}catch(e){toast(e.message,true)}
 }
 
 function showPostMediaPreview(){
@@ -106,12 +106,12 @@ async function uploadPendingFile(file){let r=await fetch('/api/media/file',{meth
 function avatar(u,cls=''){return u.avatar?`<img class="avatar ${cls}" src="${u.avatar}" alt="">`:`<div class="avatar ${cls}">${esc(u.name).charAt(0)}</div>`}
 function lines(v){return esc(v||'').split(/[,\n]/).filter(Boolean).map(x=>`<span class="skill">${x.trim()}</span>`).join('')}
 function tab(w){login.hidden=w!=='login';register.hidden=w!=='register';msg.textContent=''}
-async function boot(){await applyPlatformSettings();if(token){try{me=(await api('/api/me')).user;showApp();return}catch{localStorage.removeItem('sociaudio_token');token=''}}auth.hidden=false;auth.style.display='grid';app.hidden=true}
-function showApp(){auth.hidden=true;auth.style.display='none';app.hidden=false;app.style.display='block';headerName.textContent=me.name;if(window.sidebarName)sidebarName.textContent=me.name;if(window.sidebarRole)sidebarRole.textContent=`${me.role} · ${me.plan_label||'Gratuito'}`;adminNav.hidden=!me.is_admin;hydrateIcons();loadAll()}
+async function boot(){await applyPlatformSettings();if(token){try{me=(await api('/api/me')).user;renderSidebarIdentity();renderSidebarIdentity();showApp();return}catch{localStorage.removeItem('sociaudio_token');token=''}}auth.hidden=false;auth.style.display='grid';app.hidden=true}
+function showApp(){auth.hidden=true;auth.style.display='none';app.hidden=false;app.style.display='block';headerName.textContent=me.name;renderSidebarIdentity();if(window.sidebarName)sidebarName.textContent=me.name;if(window.sidebarRole)sidebarRole.textContent=`${me.role} · ${me.plan_label||'Gratuito'}`;adminNav.hidden=!me.is_admin;hydrateIcons();loadAll()}
 async function loadAll(){try{[posts,users,communities,notifications]=await Promise.all([api('/api/posts'),api('/api/users'),api('/api/communities'),api('/api/notifications')]);bellCount.textContent=notifications.unread||'';render()}catch(e){toast(e.message,true)}}
 loginTab.onclick=()=>{tab('login');loginTab.classList.add('active');registerTab.classList.remove('active')};registerTab.onclick=()=>{tab('register');registerTab.classList.add('active');loginTab.classList.remove('active')};
-login.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/login',{method:'POST',body:JSON.stringify({email:le.value,password:lp.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;showApp()}catch(e){msg.textContent=e.message}};
-register.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/register',{method:'POST',body:JSON.stringify({name:rn.value,email:re.value,password:rp.value,role:rr.value,city:rc.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;showApp()}catch(e){msg.textContent=e.message}};
+login.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/login',{method:'POST',body:JSON.stringify({email:le.value,password:lp.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
+register.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/register',{method:'POST',body:JSON.stringify({name:rn.value,email:re.value,password:rp.value,role:rr.value,city:rc.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
 logoutBtn.onclick=async()=>{try{await api('/api/logout',{method:'POST'})}catch{}localStorage.removeItem('sociaudio_token');location.reload()};
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;render()});bellBtn.onclick=()=>{view='notifications';render()};
 newPostBtn.onclick=()=>openNewPost();closePost.onclick=()=>{postDlg.close();resetPostDialog()};
@@ -162,7 +162,7 @@ async function saveProfile(e){
   e.preventDefault();
   try{
     await api('/api/profile',{method:'POST',body:JSON.stringify({name:pn.value,role:pr.value,professional_title:ppt.value,profile_type:ptype.value,hourly_rate:prate.value,languages:plang.value,remote_service:premote.checked,hire_enabled:phire.checked,headline:phl.value,company:pco.value,city:pcy.value,service_region:preg.value,experience:pex.value,completed_projects:ppj.value,response_time:prt.value,availability:pavl.value,specialties:psp.value,services:psv.value,equipment:peq.value,work_history:pwh.value,portfolio_links:ppl.value,certifications:pce.value,whatsapp:pwa.value,instagram:pig.value,website:pweb.value,bio:pbi.value,avatar:avatarImage,cover:coverImage,gallery_images:profileGalleryNew})});
-    me=(await api('/api/me')).user;headerName.textContent=me.name;if(window.sidebarName)sidebarName.textContent=me.name;toast('Perfil e galeria atualizados.');loadAll()
+    me=(await api('/api/me')).user;renderSidebarIdentity();headerName.textContent=me.name;renderSidebarIdentity();if(window.sidebarName)sidebarName.textContent=me.name;toast('Perfil e galeria atualizados.');loadAll()
   }catch(e){toast(e.message,true)}
 }
 function openQuote(id,name){currentQuoteUser=id;quoteTitle.textContent=`Solicitar orçamento para ${name}`;quoteForm.reset();quoteName.value=me.name||'';quoteDlg.showModal()}
