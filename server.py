@@ -1663,11 +1663,9 @@ class Handler(SimpleHTTPRequestHandler):
                 FROM service_request_matches m JOIN users u ON u.id=m.professional_id WHERE m.request_id=? ORDER BY m.score DESC''',(rid,)).fetchall()]
             c.close(); return self.send_json({'ok':True,'request_id':rid,'matches':matches},201)
         if p.startswith('/api/quote-requests/') and p.endswith('/status'):
-            u=self.require_user()
-            if not u:return
             try:qid=int(p.split('/')[3])
             except:return self.send_json({'error':'Solicitação inválida.'},400)
-            d=self.read_json();status=(d.get('status') or '').strip()
+            status=(d.get('status') or '').strip()
             if status not in {'novo','negociacao','concluido','arquivado'}:
                 return self.send_json({'error':'Status inválido.'},400)
             c=connect()
@@ -1687,8 +1685,6 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({'ok':True,'status':status})
 
         if p.startswith('/api/quote-requests/') and p.endswith('/delete'):
-            u=self.require_user()
-            if not u:return
             try:qid=int(p.split('/')[3])
             except:return self.send_json({'error':'Solicitação inválida.'},400)
             c=connect()

@@ -470,16 +470,25 @@ function quoteRequestActions(q){
 }
 
 async function markQuoteAsAttended(id){
+  const button=document.querySelector(`button[onclick="markQuoteAsAttended(${id})"]`);
   try{
+    if(button){
+      button.disabled=true;
+      button.textContent='Marcando...';
+    }
     await api(`/api/quote-requests/${id}/status`,{
       method:'POST',
       body:JSON.stringify({status:'concluido'})
     });
     quoteRequestFilter='concluido';
     toast('Solicitação marcada como atendida e movida para Orçamentos concluídos.');
-    renderRequests();
+    await renderRequests();
   }catch(e){
     toast(e.message,true);
+    if(button){
+      button.disabled=false;
+      button.textContent='Marcar como atendido';
+    }
   }
 }
 
