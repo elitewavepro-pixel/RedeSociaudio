@@ -378,37 +378,52 @@ async function loadNotifications(renderPage=false){
     notificationUnread=Number(data.unread||0);
 
     if(renderPage&&view==='notifications'&&notificationUnread>0){
-      await api('/api/notifications/read-all',{method:'POST',body:'{}'});
+      const result=await api('/api/notifications/read-all',{
+        method:'POST',
+        body:'{}'
+      });
       notificationItems.forEach(n=>n.is_read=1);
-      notificationUnread=0;
+      notificationUnread=Number(result.unread||0);
     }
 
     updateNotificationBadge();
-    if(renderPage&&view==='notifications')renderNotifications();
-  }catch(e){
-    console.error('Erro ao carregar notificações:',e);
+
+    if(renderPage&&view==='notifications'){
+      renderNotifications();
+    }
+  }catch(error){
+    console.error('Erro ao carregar notificações:',error);
+    notificationUnread=0;
+    updateNotificationBadge();
+    if(renderPage&&view==='notifications'){
+      notificationItems=[];
+      renderNotifications();
+    }
   }
 }
 
 function updateNotificationBadge(){
+  notificationUnread=Math.max(0,Number(notificationUnread||0));
   const text=notificationUnread>99?'99+':String(notificationUnread);
+  const visible=notificationUnread>0;
 
-  document.querySelectorAll('#notificationBadge,.notification-badge').forEach(badge=>{
+  document.querySelectorAll('.notification-badge').forEach(badge=>{
     badge.textContent=text;
-    badge.style.display=notificationUnread>0?'grid':'none';
+    badge.hidden=!visible;
+    badge.style.display=visible?'grid':'none';
   });
 
-  const oldCounter=document.getElementById('bellCount');
-  if(oldCounter){
-    oldCounter.textContent=notificationUnread>0?text:'';
-    oldCounter.hidden=notificationUnread===0;
-    oldCounter.style.display=notificationUnread>0?'grid':'none';
+  const headerCounter=document.getElementById('bellCount');
+  if(headerCounter){
+    headerCounter.textContent=visible?text:'';
+    headerCounter.hidden=!visible;
+    headerCounter.style.display=visible?'grid':'none';
   }
 
   const bell=document.getElementById('bellBtn');
   if(bell){
-    bell.classList.toggle('has-unread',notificationUnread>0);
-    bell.setAttribute('aria-label',notificationUnread>0
+    bell.classList.toggle('has-unread',visible);
+    bell.setAttribute('aria-label',visible
       ?`${notificationUnread} notificação(ões) não lida(s)`
       :'Nenhuma notificação não lida');
   }
