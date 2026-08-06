@@ -1,4 +1,4 @@
-import base64, hashlib, hmac, json, mimetypes, os, secrets, sqlite3, webbrowser, threading, time, zipfile, tempfile, shutil
+import base64, hashlib, hmac, json, mimetypes, os, secrets, sqlite3, webbrowser, threading, time, zipfile, tempfile, shutil, re
 from datetime import datetime, timedelta, timezone
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -515,6 +515,26 @@ def init_db():
       FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS admin_settings(
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_by INTEGER,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+    CREATE TABLE IF NOT EXISTS admin_assistant_logs(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id INTEGER NOT NULL,
+      prompt TEXT NOT NULL,
+      action_type TEXT DEFAULT '',
+      action_json TEXT DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'analyzed',
+      result TEXT DEFAULT '',
+      created_at TEXT NOT NULL,
+      executed_at TEXT DEFAULT '',
+      FOREIGN KEY(admin_id) REFERENCES users(id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS chat_messages(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       conversation_id INTEGER NOT NULL,
@@ -599,6 +619,242 @@ def init_db():
             c.execute('INSERT INTO company_services(company_id,title,description,icon) VALUES(?,?,?,?)',(cid,title,desc,icon))
     c.commit(); c.close()
 
+
+def get_admin_settings():
+    defaults = {
+        'primary_color': '#1769e0',
+        'platform_name': 'Rede Sociaudio',
+        'welcome_message': 'Conectando profissionais, empresas e oportunidades do áudio.'
+    }
+    c = connect()
+    try:
+        rows = c.execute('SELECT key,value FROM admin_settings').fetchall()
+        for row in rows:
+            defaults[row['key']] = row['value']
+    finally:
+        c.close()
+    return defaults
+
+
+def assistant_parse(prompt):
+    original = (prompt or '').strip()
+    low = original.lower().strip()
+    if not original:
+        return {'reply': 'Digite uma instrução administrativa.', 'action': None}
+
+    if any(term in low for term in ('estatísticas', 'estatisticas', 'resumo da plataforma', 'quantos usuários', 'quantos usuarios')):
+        c = connect()
+        try:
+            stats = {
+                'users': c.execute('SELECT COUNT(*) FROM users').fetchone()[0],
+                'posts': c.execute("SELECT COUNT(*) FROM posts WHERE status='published'").fetchone()[0],
+                'comments': c.execute('SELECT COUNT(*) FROM comments').fetchone()[0],
+                'companies': c.execute("SELECT COUNT(*) FROM companies WHERE status='active'").fetchone()[0],
+                'communities': c.execute('SELECT COUNT(*) FROM communities').fetchone()[0],
+                'messages': c.execute('SELECT COUNT(*) FROM chat_messages').fetchone()[0],
+            }
+        finally:
+            c.close()
+        return {
+            'reply': (
+                f"A plataforma possui {stats['users']} usuários, {stats['posts']} publicações, "
+                f"{stats['comments']} comentários, {stats['companies']} empresas, "
+                f"{stats['communities']} comunidades e {stats['messages']} mensagens."
+            ),
+            'action': None,
+            'stats': stats,
+        }
+
+    color_match = re.search(r'#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', original)
+    if color_match and any(term in low for term in ('cor principal', 'cor da plataforma', 'mude a cor', 'altere a cor')):
+        color = color_match.group(0)
+        return {
+            'reply': f'Posso alterar a cor principal da plataforma para {color}.',
+            'action': {'type': 'set_primary_color', 'label': f'Alterar a cor principal para {color}', 'color': color},
+        }
+
+    community_match = re.search(
+        r'(?:crie|criar|adicione|adicionar)\s+(?:uma\s+)?comunidade(?:\s+chamada|\s+com\s+o\s+nome)?\s+["“]?([^"”\n,.]+)',
+        original,
+        re.IGNORECASE,
+    )
+    if community_match:
+        name = community_match.group(1).strip(' "“”')
+        category_match = re.search(r'categoria\s+["“]?([^"”\n,.]+)', original, re.IGNORECASE)
+        category = category_match.group(1).strip(' "“”') if category_match else 'Geral'
+        description_match = re.search(r'descri(?:ção|cao)\s+["“](.+?)["”]', original, re.IGNORECASE)
+        description = description_match.group(1).strip() if description_match else f'Comunidade para troca de experiências sobre {name}.'
+        return {
+            'reply': f'Posso criar a comunidade “{name}” na categoria “{category}”.',
+            'action': {
+                'type': 'create_community',
+                'label': f'Criar comunidade: {name}',
+                'name': name[:100],
+                'category': category[:80],
+                'description': description[:500],
+            },
+        }
+
+    announcement_match = re.search(
+        r'(?:publique|publicar|crie|criar)\s+(?:um\s+)?(?:aviso|comunicado|anúncio|anuncio)(?:\s+com\s+o\s+título|\s+com\s+o\s+titulo|\s+chamado)?\s+["“]?([^"”\n]+)',
+        original,
+        re.IGNORECASE,
+    )
+    if announcement_match:
+        raw = announcement_match.group(1).strip(' "“”')
+        parts = re.split(r'\s+(?:texto|mensagem|conteúdo|conteudo)\s*:\s*', raw, maxsplit=1, flags=re.IGNORECASE)
+        title = parts[0].strip(' .')[:160]
+        body = parts[1].strip() if len(parts) > 1 else title
+        return {
+            'reply': f'Posso publicar o comunicado “{title}” no feed.',
+            'action': {
+                'type': 'create_announcement',
+                'label': f'Publicar comunicado: {title}',
+                'title': title,
+                'body': body[:4000],
+            },
+        }
+
+    plan_match = re.search(
+        r'(?:defina|alter[ea]|mude)\s+(?:o\s+)?plano\s+(?:do\s+usuário\s+|do\s+usuario\s+)?(.+?)\s+para\s+(gratuito|free|pro|profissional|empresa|company|administrador|admin)\b',
+        original,
+        re.IGNORECASE,
+    )
+    if plan_match:
+        identifier = plan_match.group(1).strip(' "“”')
+        raw_plan = plan_match.group(2).lower()
+        mapping = {
+            'gratuito': 'free', 'free': 'free',
+            'pro': 'pro', 'profissional': 'pro',
+            'empresa': 'company', 'company': 'company',
+            'administrador': 'admin', 'admin': 'admin',
+        }
+        plan = mapping[raw_plan]
+        labels = {'free': 'Gratuito', 'pro': 'Profissional PRO', 'company': 'Empresa', 'admin': 'Administrador'}
+        return {
+            'reply': f'Posso alterar o plano de “{identifier}” para “{labels[plan]}”.',
+            'action': {
+                'type': 'set_user_plan',
+                'label': f'Alterar plano de {identifier} para {labels[plan]}',
+                'identifier': identifier[:180],
+                'plan': plan,
+            },
+        }
+
+    if any(term in low for term in ('ajuda', 'o que você faz', 'o que voce faz', 'comandos')):
+        return {
+            'reply': (
+                'Posso mostrar estatísticas, criar comunidades, publicar comunicados, '
+                'alterar a cor principal e mudar o plano de usuários.'
+            ),
+            'action': None,
+        }
+
+    return {
+        'reply': (
+            'Ainda não reconheci essa instrução. Nesta versão posso mostrar estatísticas, '
+            'criar comunidades, publicar comunicados, alterar a cor principal e mudar planos de usuários.'
+        ),
+        'action': None,
+    }
+
+
+def execute_admin_action(admin, action):
+    action_type = (action or {}).get('type', '')
+
+    if action_type == 'set_primary_color':
+        color = (action.get('color') or '').strip()
+        if not re.fullmatch(r'#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})', color):
+            raise ValueError('Cor inválida.')
+        c = connect()
+        try:
+            c.execute(
+                """INSERT INTO admin_settings(key,value,updated_by,updated_at)
+                   VALUES('primary_color',?,?,?)
+                   ON CONFLICT(key) DO UPDATE SET
+                   value=excluded.value,updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+                (color, admin['id'], now()),
+            )
+            c.commit()
+        finally:
+            c.close()
+        return f'Cor principal alterada para {color}.', {'primary_color': color}
+
+    if action_type == 'create_community':
+        name = (action.get('name') or '').strip()
+        category = (action.get('category') or 'Geral').strip()
+        description = (action.get('description') or '').strip()
+        if len(name) < 3:
+            raise ValueError('O nome da comunidade é muito curto.')
+        c = connect()
+        try:
+            existing = c.execute('SELECT id FROM communities WHERE lower(name)=lower(?)', (name,)).fetchone()
+            if existing:
+                raise ValueError('Já existe uma comunidade com esse nome.')
+            c.execute(
+                'INSERT INTO communities(name,description,icon,category,created_by,created_at) VALUES(?,?,?,?,?,?)',
+                (name[:100], description[:500], '🎛️', category[:80], admin['id'], now()),
+            )
+            community_id = c.execute('SELECT last_insert_rowid()').fetchone()[0]
+            c.execute(
+                'INSERT OR IGNORE INTO community_members(community_id,user_id,joined_at) VALUES(?,?,?)',
+                (community_id, admin['id'], now()),
+            )
+            c.commit()
+        finally:
+            c.close()
+        return f'Comunidade “{name}” criada com sucesso.', {'community_id': community_id}
+
+    if action_type == 'create_announcement':
+        title = (action.get('title') or '').strip()
+        body = (action.get('body') or '').strip()
+        if len(title) < 3:
+            raise ValueError('O título do comunicado é muito curto.')
+        c = connect()
+        try:
+            c.execute(
+                """INSERT INTO posts(user_id,type,category,title,body,is_featured,status,created_at)
+                   VALUES(?,?,?,?,?,1,'published',?)""",
+                (admin['id'], 'Comunicado', 'Rede Sociaudio', title[:160], body[:4000] or title[:160], now()),
+            )
+            post_id = c.execute('SELECT last_insert_rowid()').fetchone()[0]
+            c.commit()
+        finally:
+            c.close()
+        return f'Comunicado “{title}” publicado no feed.', {'post_id': post_id}
+
+    if action_type == 'set_user_plan':
+        identifier = (action.get('identifier') or '').strip()
+        plan = (action.get('plan') or '').strip().lower()
+        if plan not in ('free', 'pro', 'company', 'admin'):
+            raise ValueError('Plano inválido.')
+        c = connect()
+        try:
+            user = c.execute(
+                """SELECT id,name,email FROM users
+                   WHERE lower(email)=lower(?) OR lower(name)=lower(?)
+                   ORDER BY CASE WHEN lower(email)=lower(?) THEN 0 ELSE 1 END LIMIT 1""",
+                (identifier, identifier, identifier),
+            ).fetchone()
+            if not user:
+                candidates = c.execute(
+                    'SELECT id,name,email FROM users WHERE lower(name) LIKE lower(?) OR lower(email) LIKE lower(?) LIMIT 2',
+                    (f'%{identifier}%', f'%{identifier}%'),
+                ).fetchall()
+                if len(candidates) == 1:
+                    user = candidates[0]
+                elif len(candidates) > 1:
+                    raise ValueError('Encontrei mais de um usuário. Informe o e-mail completo.')
+            if not user:
+                raise ValueError('Usuário não encontrado.')
+            c.execute('UPDATE users SET plan=? WHERE id=?', (plan, user['id']))
+            c.commit()
+        finally:
+            c.close()
+        labels = {'free': 'Gratuito', 'pro': 'Profissional PRO', 'company': 'Empresa', 'admin': 'Administrador'}
+        return f'Plano de {user["name"]} alterado para {labels[plan]}.', {'user_id': user['id'], 'plan': plan}
+
+    raise ValueError('Ação administrativa não permitida.')
 
 def public_user(row):
     data={k: row[k] for k in ('id','name','email','role','city','bio','specialties','experience','equipment','avatar','cover','services','certifications','service_region','whatsapp','instagram','website','availability','headline','company','response_time','completed_projects','portfolio_links','work_history','plan','upload_used_bytes','is_admin','status','created_at') if k in row.keys()}
@@ -770,6 +1026,8 @@ class Handler(SimpleHTTPRequestHandler):
             except (BrokenPipeError, ConnectionResetError):
                 pass
             return
+        if p == '/api/settings':
+            return self.send_json(get_admin_settings())
         if p == '/api/health': return self.send_json({'ok':True,'version':'20.2','database':'sqlite-wal','write_protection':True})
         if p == '/api/me':
             u = auth_user(self.headers)
@@ -1031,6 +1289,53 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         p=urlparse(self.path).path
+        if p == '/api/admin/assistant':
+            u=self.require_user()
+            if not u:return
+            if not u.get('is_admin'):return self.send_json({'error':'Acesso restrito ao administrador.'},403)
+            d=self.read_json()
+            prompt=(d.get('prompt') or '').strip()
+            result=assistant_parse(prompt)
+            action=result.get('action')
+            c=connect()
+            try:
+                c.execute(
+                    """INSERT INTO admin_assistant_logs(admin_id,prompt,action_type,action_json,status,created_at)
+                       VALUES(?,?,?,?,?,?)""",
+                    (u['id'],prompt,(action or {}).get('type',''),json.dumps(action or {},ensure_ascii=False),'pending' if action else 'answered',now())
+                )
+                log_id=c.execute('SELECT last_insert_rowid()').fetchone()[0]
+                c.commit()
+            finally:
+                c.close()
+            result['log_id']=log_id
+            result['requires_confirmation']=bool(action)
+            return self.send_json(result)
+
+        if p == '/api/admin/assistant/execute':
+            u=self.require_user()
+            if not u:return
+            if not u.get('is_admin'):return self.send_json({'error':'Acesso restrito ao administrador.'},403)
+            d=self.read_json()
+            action=d.get('action') or {}
+            try:
+                message,details=execute_admin_action(u,action)
+            except ValueError as exc:
+                return self.send_json({'error':str(exc)},400)
+            log_id=int(d.get('log_id') or 0)
+            if log_id:
+                c=connect()
+                try:
+                    c.execute(
+                        """UPDATE admin_assistant_logs
+                           SET status='executed',result=?,executed_at=?
+                           WHERE id=? AND admin_id=?""",
+                        (message,now(),log_id,u['id'])
+                    )
+                    c.commit()
+                finally:
+                    c.close()
+            return self.send_json({'ok':True,'message':message,'details':details})
         if p == '/api/media/audio':
             u=self.require_user()
             if not u:return

@@ -33,6 +33,17 @@ book:'<svg viewBox="0 0 24 24"><path d="M4 4.5h6.5A3.5 3.5 0 0 1 14 8v12a3.5 3.5
 function icon(name,cls=''){return `<span class="sa-icon ${cls}">${ICONS[name]||''}</span>`}
 function hydrateIcons(root=document){root.querySelectorAll('[data-icon]').forEach(el=>{el.innerHTML=ICONS[el.dataset.icon]||'';el.classList.add('sa-icon')})}
 
+
+async function applyPlatformSettings(){
+  try{
+    let settings=await api('/api/settings');
+    if(settings.primary_color){
+      document.documentElement.style.setProperty('--blue',settings.primary_color);
+      document.documentElement.style.setProperty('--blue-600',settings.primary_color);
+    }
+  }catch{}
+}
+
 function toast(t,b=false){toastEl.textContent=t;toastEl.className=b?'show bad':'show';setTimeout(()=>toastEl.className='',2800)}
 async function api(path,opt={}){opt.headers={'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(opt.headers||{})};let r;try{r=await fetch(path,opt)}catch{throw Error('Não foi possível conectar ao servidor. Mantenha a janela preta aberta.')}let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Erro inesperado');return d}
 function fileToData(file,max=1500){return new Promise((res,rej)=>{if(!file)return res('');if(file.size>5*1024*1024)return rej(Error('A imagem deve ter no máximo 5 MB.'));let fr=new FileReader();fr.onload=()=>{let i=new Image();i.onload=()=>{let sc=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*sc);c.height=Math.round(i.height*sc);c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.82))};i.src=fr.result};fr.onerror=rej;fr.readAsDataURL(file)})}
@@ -54,7 +65,7 @@ async function uploadPendingFile(file){let r=await fetch('/api/media/file',{meth
 function avatar(u,cls=''){return u.avatar?`<img class="avatar ${cls}" src="${u.avatar}" alt="">`:`<div class="avatar ${cls}">${esc(u.name).charAt(0)}</div>`}
 function lines(v){return esc(v||'').split(/[,\n]/).filter(Boolean).map(x=>`<span class="skill">${x.trim()}</span>`).join('')}
 function tab(w){login.hidden=w!=='login';register.hidden=w!=='register';msg.textContent=''}
-async function boot(){if(token){try{me=(await api('/api/me')).user;showApp();return}catch{localStorage.removeItem('sociaudio_token');token=''}}auth.hidden=false;auth.style.display='grid';app.hidden=true}
+async function boot(){await applyPlatformSettings();if(token){try{me=(await api('/api/me')).user;showApp();return}catch{localStorage.removeItem('sociaudio_token');token=''}}auth.hidden=false;auth.style.display='grid';app.hidden=true}
 function showApp(){auth.hidden=true;auth.style.display='none';app.hidden=false;app.style.display='block';headerName.textContent=me.name;if(window.sidebarName)sidebarName.textContent=me.name;if(window.sidebarRole)sidebarRole.textContent=`${me.role} · ${me.plan_label||'Gratuito'}`;adminNav.hidden=!me.is_admin;hydrateIcons();loadAll()}
 async function loadAll(){try{[posts,users,communities,notifications]=await Promise.all([api('/api/posts'),api('/api/users'),api('/api/communities'),api('/api/notifications')]);bellCount.textContent=notifications.unread||'';render()}catch(e){toast(e.message,true)}}
 loginTab.onclick=()=>{tab('login');loginTab.classList.add('active');registerTab.classList.remove('active')};registerTab.onclick=()=>{tab('register');registerTab.classList.add('active');loginTab.classList.remove('active')};
@@ -94,11 +105,104 @@ async function openCompany(id){let c=await api(`/api/companies/${id}`);view='com
 async function editMyCompany(id=null){let companies=await api('/api/companies');let mine=companies.find(x=>x.owner_id===me.id);let c=mine?await api(`/api/companies/${mine.id}`):{name:me.company||'',category:'Empresa de áudio',tagline:'',description:'',city:me.city||'',service_region:me.service_region||'',phone:'',whatsapp:me.whatsapp||'',email:me.email||'',instagram:me.instagram||'',website:me.website||'',logo:'',cover:'',services:[],team:[],projects:[]};let services=(c.services||[]).map(x=>`${x.icon||'🎚️'}|${x.title}|${x.description}`).join('\n'),team=(c.team||[]).map(x=>`${x.name}|${x.role}|${x.bio}`).join('\n'),projects=(c.projects||[]).map(x=>`${x.title}|${x.description}|${x.link_url||''}`).join('\n');content.innerHTML=`<div class="page-title"><div><h1>Página da empresa</h1><p>Crie uma apresentação profissional para sua marca.</p></div></div><form class="card profile-grid" onsubmit="saveCompany(event)"><label class="wide">Nome da empresa<input id="coName" required value="${esc(c.name||'')}"></label><label>Categoria<input id="coCategory" value="${esc(c.category||'')}"></label><label>Cidade<input id="coCity" value="${esc(c.city||'')}"></label><label class="wide">Frase de posicionamento<input id="coTagline" value="${esc(c.tagline||'')}"></label><label class="wide">Descrição<textarea id="coDescription">${esc(c.description||'')}</textarea></label><label>Região de atendimento<input id="coRegion" value="${esc(c.service_region||'')}"></label><label>Telefone<input id="coPhone" value="${esc(c.phone||'')}"></label><label>WhatsApp<input id="coWhatsapp" value="${esc(c.whatsapp||'')}"></label><label>E-mail<input id="coEmail" value="${esc(c.email||'')}"></label><label>Instagram<input id="coInstagram" value="${esc(c.instagram||'')}"></label><label>Site<input id="coWebsite" value="${esc(c.website||'')}"></label><label>Logo<input id="coLogoFile" type="file" accept="image/*"></label><label>Imagem de capa<input id="coCoverFile" type="file" accept="image/*"></label><label class="wide">Serviços <small>Formato: ícone|título|descrição, um por linha</small><textarea id="coServices">${esc(services)}</textarea></label><label class="wide">Equipe <small>Formato: nome|função|biografia, um por linha</small><textarea id="coTeam">${esc(team)}</textarea></label><label class="wide">Projetos <small>Formato: título|descrição|link, um por linha</small><textarea id="coProjects">${esc(projects)}</textarea></label><button class="primary">Salvar página empresarial</button></form>`;window.companyEditing=c;coLogoFile.onchange=async()=>{window.companyEditing.logo=await fileToData(coLogoFile.files[0],600);toast('Logo pronta para salvar.')};coCoverFile.onchange=async()=>{window.companyEditing.cover=await fileToData(coCoverFile.files[0],1800);toast('Capa pronta para salvar.')}}
 async function saveCompany(e){e.preventDefault();let parse=(text,kind)=>text.split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{let p=line.split('|').map(x=>x.trim());if(kind==='service')return{icon:p[0]||'🎚️',title:p[1]||p[0],description:p.slice(2).join('|')};if(kind==='team')return{name:p[0],role:p[1]||'',bio:p.slice(2).join('|')};return{title:p[0],description:p[1]||'',link_url:p[2]||''}});try{let r=await api('/api/companies',{method:'POST',body:JSON.stringify({name:coName.value,category:coCategory.value,tagline:coTagline.value,description:coDescription.value,city:coCity.value,service_region:coRegion.value,phone:coPhone.value,whatsapp:coWhatsapp.value,email:coEmail.value,instagram:coInstagram.value,website:coWebsite.value,logo:window.companyEditing.logo||'',cover:window.companyEditing.cover||'',services:parse(coServices.value,'service'),team:parse(coTeam.value,'team'),projects:parse(coProjects.value,'project')})});toast('Página empresarial atualizada.');openCompany(r.id)}catch(err){toast(err.message,true)}}
 async function renderNotifications(){content.innerHTML='<div class="page-title"><h1>Notificações</h1></div>'+((notifications.items||[]).length?notifications.items.map(n=>`<article class="card notification ${n.is_read?'':'unread'}"><span>${n.type==='comment'?icon('comment'):n.type==='like'?icon('like'):icon('profile')}</span><div><b>${esc(n.message)}</b><p class="meta">${new Date(n.created_at).toLocaleString('pt-BR')}</p></div></article>`).join(''):'<div class="empty">Você ainda não possui notificações.</div>');if(notifications.unread){await api('/api/notifications/read',{method:'POST'});notifications.unread=0;bellCount.textContent=''}}
+
+let adminAssistantPending=null;
+
+function adminAssistantMessage(role,text,action=null,logId=0){
+  let box=document.querySelector('#adminAssistantMessages');
+  if(!box)return;
+  let item=document.createElement('div');
+  item.className='admin-ai-message '+role;
+  item.innerHTML=`<span>${role==='user'?'Você':'Assistente'}</span><p>${esc(text)}</p>`;
+  if(action){
+    adminAssistantPending={action,log_id:logId};
+    let controls=document.createElement('div');
+    controls.className='admin-ai-confirm';
+    controls.innerHTML=`<b>${esc(action.label||'Confirmar alteração')}</b><button class="primary" onclick="confirmAdminAssistantAction()">Confirmar</button><button class="secondary" onclick="cancelAdminAssistantAction()">Cancelar</button>`;
+    item.appendChild(controls);
+  }
+  box.appendChild(item);
+  box.scrollTop=box.scrollHeight;
+}
+
+async function askAdminAssistant(){
+  let input=document.querySelector('#adminAssistantInput');
+  let button=document.querySelector('#adminAssistantSend');
+  let prompt=input?.value.trim();
+  if(!prompt)return;
+  adminAssistantMessage('user',prompt);
+  input.value='';
+  try{
+    button.disabled=true;
+    button.textContent='Analisando...';
+    let result=await api('/api/admin/assistant',{method:'POST',body:JSON.stringify({prompt})});
+    adminAssistantMessage('assistant',result.reply,result.action,result.log_id);
+  }catch(e){
+    adminAssistantMessage('assistant',e.message);
+  }finally{
+    button.disabled=false;
+    button.textContent='Enviar';
+  }
+}
+
+async function confirmAdminAssistantAction(){
+  if(!adminAssistantPending)return;
+  try{
+    let result=await api('/api/admin/assistant/execute',{
+      method:'POST',
+      body:JSON.stringify(adminAssistantPending)
+    });
+    adminAssistantPending=null;
+    adminAssistantMessage('assistant',result.message);
+    await applyPlatformSettings();
+    await loadAll();
+    setTimeout(()=>renderAdmin(),250);
+  }catch(e){
+    adminAssistantMessage('assistant',e.message);
+  }
+}
+
+function cancelAdminAssistantAction(){
+  adminAssistantPending=null;
+  adminAssistantMessage('assistant','A alteração foi cancelada.');
+}
+
+function adminAssistantKeydown(event){
+  if(event.key==='Enter'&&!event.shiftKey){
+    event.preventDefault();
+    askAdminAssistant();
+  }
+}
+
 async function setUserPlan(id,plan){try{await api(`/api/admin/users/${id}/plan`,{method:'POST',body:JSON.stringify({plan})});toast('Plano atualizado.');await loadAll();renderAdmin()}catch(e){toast(e.message,true)}}
 
 async function downloadAdminBackup(){if(!me?.is_admin)return toast('Acesso restrito ao administrador.',true);if(!confirm('Gerar e baixar agora um backup completo do banco, usuários, mensagens e uploads?'))return;let btn=document.querySelector('#adminBackupBtn');try{if(btn){btn.disabled=true;btn.textContent='Gerando backup...'}let r=await fetch('/api/admin/backup',{headers:{Authorization:'Bearer '+token}});if(!r.ok){let d=await r.json().catch(()=>({}));throw Error(d.error||'Não foi possível gerar o backup.')}let blob=await r.blob(),disposition=r.headers.get('Content-Disposition')||'',match=disposition.match(/filename="?([^";]+)"?/i),filename=match?.[1]||`redesociaudio-backup-${new Date().toISOString().slice(0,10)}.zip`,url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('Backup baixado. Guarde o arquivo em local seguro.')}catch(e){toast(e.message,true)}finally{if(btn){btn.disabled=false;btn.textContent='Baixar backup completo'}}}
-async function renderAdmin(){let s=await api('/api/admin/stats');content.innerHTML=`<div class="page-title"><h1>Painel administrativo</h1><p>Gerencie planos e limites de mídia e arquivos.</p></div><section class="card plan-admin"><h2>Backup administrativo</h2><p>Baixe uma cópia completa do banco de dados, contas, publicações, mensagens e arquivos enviados.</p><button id="adminBackupBtn" class="primary" onclick="downloadAdminBackup()">Baixar backup completo</button><small>O arquivo ZIP contém informações privadas. Guarde-o em local seguro.</small></section><div class="stats"><div><b>${s.users}</b><span>Usuários</span></div><div><b>${s.posts}</b><span>Publicações</span></div><div><b>${s.comments}</b><span>Respostas</span></div><div><b>${s.communities}</b><span>Comunidades</span></div></div><section class="card plan-admin"><h2>Planos dos usuários</h2>${users.map(x=>`<div class="plan-row"><span>${avatar(x)}<b>${esc(x.name)}</b><small>${esc(x.email||'')}</small></span><select onchange="setUserPlan(${x.id},this.value)"><option value="free" ${x.plan==='free'?'selected':''}>Gratuito · 250 MB</option><option value="pro" ${x.plan==='pro'?'selected':''}>PRO · 2 GB</option><option value="company" ${x.plan==='company'?'selected':''}>Empresa · 5 GB</option><option value="admin" ${x.plan==='admin'?'selected':''}>Administrador · 5 GB</option></select></div>`).join('')}</section>${posts.map(postCard).join('')}`}
-
+async function renderAdmin(){
+  let s=await api('/api/admin/stats');
+  content.innerHTML=`<div class="page-title"><h1>Painel administrativo</h1><p>Gerencie a plataforma com segurança e apoio do Assistente Administrativo.</p></div>
+  <section class="card admin-ai-card">
+    <div class="admin-ai-head">
+      <div><span class="admin-ai-badge">ASSISTENTE</span><h2>Assistente Administrativo</h2><p>Descreva o que deseja fazer. Nenhuma alteração é executada sem sua confirmação.</p></div>
+      <div class="admin-ai-status"><i></i> Online</div>
+    </div>
+    <div id="adminAssistantMessages" class="admin-ai-messages">
+      <div class="admin-ai-message assistant"><span>Assistente</span><p>Olá, Edson. Posso mostrar estatísticas, criar comunidades, publicar comunicados, alterar a cor principal e mudar planos de usuários.</p></div>
+    </div>
+    <div class="admin-ai-examples">
+      <button onclick="adminAssistantInput.value='Mostre as estatísticas da plataforma';askAdminAssistant()">Ver estatísticas</button>
+      <button onclick="adminAssistantInput.value='Crie uma comunidade chamada Técnicos de PA categoria Sistemas';askAdminAssistant()">Criar comunidade</button>
+      <button onclick="adminAssistantInput.value='Altere a cor principal para #1769e0';askAdminAssistant()">Alterar cor</button>
+    </div>
+    <div class="admin-ai-compose">
+      <textarea id="adminAssistantInput" rows="2" onkeydown="adminAssistantKeydown(event)" placeholder="Exemplo: Crie uma comunidade chamada Operadores de Igrejas categoria Áudio para Igrejas"></textarea>
+      <button id="adminAssistantSend" class="primary" onclick="askAdminAssistant()">Enviar</button>
+    </div>
+  </section>
+  <section class="card plan-admin"><h2>Backup administrativo</h2><p>Baixe uma cópia completa do banco de dados, contas, publicações, mensagens e arquivos enviados.</p><button id="adminBackupBtn" class="primary" onclick="downloadAdminBackup()">Baixar backup completo</button><small>O arquivo ZIP contém informações privadas. Guarde-o em local seguro.</small></section>
+  <div class="stats"><div><b>${s.users}</b><span>Usuários</span></div><div><b>${s.posts}</b><span>Publicações</span></div><div><b>${s.comments}</b><span>Respostas</span></div><div><b>${s.communities}</b><span>Comunidades</span></div></div>
+  <section class="card plan-admin"><h2>Planos dos usuários</h2>${users.map(x=>`<div class="plan-row"><span>${avatar(x)}<b>${esc(x.name)}</b><small>${esc(x.email||'')}</small></span><select onchange="setUserPlan(${x.id},this.value)"><option value="free" ${x.plan==='free'?'selected':''}>Gratuito · 250 MB</option><option value="pro" ${x.plan==='pro'?'selected':''}>PRO · 2 GB</option><option value="company" ${x.plan==='company'?'selected':''}>Empresa · 5 GB</option><option value="admin" ${x.plan==='admin'?'selected':''}>Administrador · 5 GB</option></select></div>`).join('')}</section>
+  ${posts.map(postCard).join('')}`;
+}
 let chatConversationId=null,chatPoll=null;
 function chatAvatar(x){return x.other_avatar?`<img class="avatar" src="${x.other_avatar}">`:`<span class="avatar fallback">${esc((x.other_name||x.name||'?')[0])}</span>`}
 async function renderChat(){clearInterval(chatPoll);let convs=await api('/api/chat/conversations');content.innerHTML=`<section class="chat-shell card"><aside class="chat-list"><div class="chat-list-head"><div><span class="eyebrow">CHAT PROFISSIONAL</span><h1>Mensagens</h1></div><button class="primary icon-only" onclick="openNewChat()" title="Nova conversa">${icon('plus')}</button></div><input id="chatSearch" class="chat-search" placeholder="Buscar conversas..."><div id="chatConversationList">${convs.length?convs.map(chatConversationCard).join(''):'<div class="chat-empty-small">Nenhuma conversa. Clique em + para iniciar.</div>'}</div></aside><main id="chatMain" class="chat-main"><div class="chat-welcome">${icon('chat')}<h2>Converse com profissionais</h2><p>Envie mensagens, documentos, áudios e arquivos técnicos sem sair da Rede Sociaudio.</p><button class="primary" onclick="openNewChat()">Iniciar conversa</button></div></main></section>`;hydrateIcons(content);chatSearch.oninput=()=>{let q=chatSearch.value.toLowerCase();document.querySelectorAll('.chat-conversation').forEach(x=>x.hidden=!x.textContent.toLowerCase().includes(q))};if(chatConversationId)openConversation(chatConversationId,false)}
