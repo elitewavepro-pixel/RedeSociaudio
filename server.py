@@ -174,6 +174,17 @@ def create_admin_backup():
 def now():
     return datetime.now(timezone.utc).isoformat()
 
+
+def create_notification(c,user_id,actor_id,ntype,title,message='',target_type='',target_id=0):
+    if not user_id or int(user_id)==int(actor_id or 0):
+        return
+    c.execute(
+        '''INSERT INTO notifications(user_id,actor_id,type,title,message,target_type,target_id,is_read,created_at)
+           VALUES(?,?,?,?,?,?,?,0,?)''',
+        (user_id,actor_id or 0,ntype,title,message,target_type,target_id or 0,now())
+    )
+
+
 def valid_url(value):
     value=(value or '').strip()
     if not value:
@@ -1622,6 +1633,11 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 c.execute('INSERT INTO community_members(community_id,user_id,joined_at) VALUES(?,?,?)',(cid,u['id'],now()))
                 joined=True
+                try:
+                    owner=c.execute('SELECT owner_id,name FROM communities WHERE id=?',(cid,)).fetchone()
+                    if owner:create_notification(c,owner['owner_id'],u['id'],'community','Novo membro na comunidade',f"{u['name']} entrou em {owner['name']}.",'community',cid)
+                except Exception:
+                    pass
             c.commit()
             members=c.execute('SELECT COUNT(*) FROM community_members WHERE community_id=?',(cid,)).fetchone()[0]
             c.close()
@@ -1662,6 +1678,28 @@ class Handler(SimpleHTTPRequestHandler):
             matches=[dict(x) for x in c.execute('''SELECT m.score,u.id,u.name,u.role,u.city,u.avatar,u.headline,u.company,u.specialties,u.equipment,u.availability,u.experience,u.completed_projects,u.response_time
                 FROM service_request_matches m JOIN users u ON u.id=m.professional_id WHERE m.request_id=? ORDER BY m.score DESC''',(rid,)).fetchall()]
             c.close(); return self.send_json({'ok':True,'request_id':rid,'matches':matches},201)
+        if p == '/api/notifications/read-all':
+            c=connect()
+            c.execute('UPDATE notifications SET is_read=1 WHERE user_id=?',(u['id'],))
+            c.commit();c.close()
+            return self.send_json({'ok':True})
+
+        if p.startswith('/api/notifications/') and p.endswith('/read'):
+            try:nid=int(p.split('/')[3])
+            except:return self.send_json({'error':'Notificação inválida.'},400)
+            c=connect()
+            c.execute('UPDATE notifications SET is_read=1 WHERE id=? AND user_id=?',(nid,u['id']))
+            c.commit();c.close()
+            return self.send_json({'ok':True})
+
+        if p.startswith('/api/notifications/') and p.endswith('/delete'):
+            try:nid=int(p.split('/')[3])
+            except:return self.send_json({'error':'Notificação inválida.'},400)
+            c=connect()
+            c.execute('DELETE FROM notifications WHERE id=? AND user_id=?',(nid,u['id']))
+            c.commit();c.close()
+            return self.send_json({'ok':True})
+
         if p.startswith('/api/quote-requests/') and p.endswith('/status'):
             try:qid=int(p.split('/')[3])
             except:return self.send_json({'error':'Solicitação inválida.'},400)
@@ -1704,6 +1742,7 @@ class Handler(SimpleHTTPRequestHandler):
             c=connect(); target=c.execute("SELECT id,name FROM users WHERE id=? AND status='active'",(uid,)).fetchone()
             if not target: c.close(); return self.send_json({'error':'Profissional não encontrado.'},404)
             c.execute('''INSERT INTO quote_requests(professional_id,requester_id,requester_name,requester_phone,city,event_date,event_type,audience,budget,message,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,'novo',?)''',(uid,u['id'],d.get('requester_name',u['name']).strip(),d.get('requester_phone','').strip(),d.get('city','').strip(),d.get('event_date','').strip(),d.get('event_type','').strip(),d.get('audience','').strip(),d.get('budget','').strip(),message,now()))
+            create_notification(c,uid,u['id'],'quote','Nova solicitação de orçamento',f"{u['name']} enviou uma solicitação de orçamento.",'quote',0)
             c.execute("INSERT INTO notifications(user_id,actor_id,type,message,is_read,created_at) VALUES(?,?,'quote',?,0,?)",(uid,u['id'],f"{u['name']} enviou uma solicitação de orçamento.",now()))
             c.commit(); c.close(); return self.send_json({'ok':True},201)
         if p == '/api/marketplace':
@@ -1927,7 +1966,7 @@ class Handler(SimpleHTTPRequestHandler):
             c=connect(); ex=c.execute('SELECT 1 FROM follows WHERE follower_id=? AND followed_id=?',(u['id'],uid)).fetchone()
             if ex: c.execute('DELETE FROM follows WHERE follower_id=? AND followed_id=?',(u['id'],uid))
             else:
-                c.execute('INSERT INTO follows(follower_id,followed_id,created_at) VALUES(?,?,?)',(u['id'],uid,now()))
+                c.execute('INSERT INTO follows(follower_id,followed_id,created_at) VALUES(?,?,?)',(u['id'],uid,now())); create_notification(c,uid,u['id'],'follow','Novo seguidor',f"{u['name']} começou a seguir você.",'profile',u['id'])
                 c.execute("INSERT INTO notifications(user_id,actor_id,type,message,is_read,created_at) VALUES(?,?,'follow',?,0,?)",(uid,u['id'],f"{u['name']} começou a seguir você.",now()))
             c.commit(); c.close(); return self.send_json({'following':not bool(ex)})
         if p == '/api/notifications/read':

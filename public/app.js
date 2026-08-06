@@ -322,6 +322,147 @@ function scheduleGlobalSearch(){
   globalSearchTimer=setTimeout(()=>performGlobalSearch(),300);
 }
 
+
+let notificationPoll=null;
+let notificationItems=[];
+let notificationUnread=0;
+
+function notificationIcon(type){
+  return ({follow:'👤',like:'❤️',comment:'💬',message:'✉️',community:'👥',quote:'💼',system:'🔔'})[type]||'🔔';
+}
+
+function relativeTime(value){
+  const d=new Date(value), diff=Math.max(0,Date.now()-d.getTime());
+  const m=Math.floor(diff/60000);
+  if(m<1)return 'agora';
+  if(m<60)return `há ${m} min`;
+  const h=Math.floor(m/60);
+  if(h<24)return `há ${h} h`;
+  const days=Math.floor(h/24);
+  if(days<7)return `há ${days} dia${days>1?'s':''}`;
+  return d.toLocaleDateString('pt-BR');
+}
+
+async function loadNotifications(renderPage=false){
+  try{
+    const data=await api('/api/notifications');
+    notificationItems=data.items||[];
+    notificationUnread=Number(data.unread||0);
+    updateNotificationBadge();
+    if(renderPage&&view==='notifications')renderNotifications();
+  }catch(e){}
+}
+
+function updateNotificationBadge(){
+  const badge=document.querySelector('#notificationBadge')||document.querySelector('.notification-badge');
+  if(!badge)return;
+  badge.textContent=notificationUnread>99?'99+':String(notificationUnread);
+  badge.style.display=notificationUnread?'grid':'none';
+}
+
+async function markNotificationRead(id){
+  await api(`/api/notifications/${id}/read`,{method:'POST',body:'{}'});
+  const item=notificationItems.find(n=>Number(n.id)===Number(id));
+  if(item&&!item.is_read){item.is_read=1;notificationUnread=Math.max(0,notificationUnread-1)}
+  updateNotificationBadge();
+}
+
+async function markAllNotificationsRead(){
+  try{
+    await api('/api/notifications/read-all',{method:'POST',body:'{}'});
+    notificationItems.forEach(n=>n.is_read=1);
+    notificationUnread=0;
+    updateNotificationBadge();
+    toast('Todas as notificações foram marcadas como lidas.');
+    renderNotifications();
+  }catch(e){toast(e.message,true)}
+}
+
+async function deleteNotification(id,event){
+  if(event)event.stopPropagation();
+  try{
+    await api(`/api/notifications/${id}/delete`,{method:'POST',body:'{}'});
+    notificationItems=notificationItems.filter(n=>Number(n.id)!==Number(id));
+    notificationUnread=notificationItems.filter(n=>!n.is_read).length;
+    updateNotificationBadge();
+    renderNotifications();
+  }catch(e){toast(e.message,true)}
+}
+
+async function openNotification(id){
+  const n=notificationItems.find(x=>Number(x.id)===Number(id));
+  if(!n)return;
+  if(!n.is_read)await markNotificationRead(id);
+
+  if(n.target_type==='profile'&&n.target_id)return openProfile(n.target_id);
+  if(n.target_type==='message'){
+    view='messages';render();
+    return;
+  }
+  if(n.target_type==='quote'){
+    view='requests';render();
+    return;
+  }
+  if(n.target_type==='community'){
+    view='communities';renderCommunities();
+    return;
+  }
+  if(n.target_type==='post'){
+    view='feed';renderFeed();
+    const card=document.querySelector(`[data-post-id="${n.target_id}"]`);
+    if(card)card.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+}
+
+function renderNotifications(){
+  const unread=notificationItems.filter(n=>!n.is_read).length;
+  content.innerHTML=`<div class="page-title notification-title">
+    <div><h1>Notificações</h1><p>Acompanhe as atividades da sua conta.</p></div>
+    ${notificationItems.length?`<button class="secondary" onclick="markAllNotificationsRead()" ${!unread?'disabled':''}>Marcar todas como lidas</button>`:''}
+  </div>
+  <div class="notification-filter-row">
+    <button class="active" onclick="renderNotifications()">Todas <span>${notificationItems.length}</span></button>
+    <button onclick="renderUnreadNotifications()">Não lidas <span>${unread}</span></button>
+  </div>
+  <section class="notification-list">
+    ${notificationItems.length?notificationItems.map(notificationCard).join(''):`<div class="card empty notification-empty"><div>🔔</div><h2>Nenhuma notificação</h2><p>As novas atividades aparecerão aqui.</p></div>`}
+  </section>`;
+}
+
+function renderUnreadNotifications(){
+  const list=notificationItems.filter(n=>!n.is_read);
+  content.innerHTML=`<div class="page-title notification-title">
+    <div><h1>Notificações não lidas</h1><p>${list.length} notificação(ões) pendente(s).</p></div>
+    <button class="secondary" onclick="markAllNotificationsRead()" ${!list.length?'disabled':''}>Marcar todas como lidas</button>
+  </div>
+  <div class="notification-filter-row">
+    <button onclick="renderNotifications()">Todas <span>${notificationItems.length}</span></button>
+    <button class="active" onclick="renderUnreadNotifications()">Não lidas <span>${list.length}</span></button>
+  </div>
+  <section class="notification-list">
+    ${list.length?list.map(notificationCard).join(''):`<div class="card empty notification-empty"><div>✅</div><h2>Tudo em dia</h2><p>Você não tem notificações não lidas.</p></div>`}
+  </section>`;
+}
+
+function notificationCard(n){
+  return `<article class="notification-card ${n.is_read?'read':'unread'}" onclick="openNotification(${n.id})">
+    <div class="notification-avatar-wrap">
+      ${n.actor_avatar?`<img class="notification-avatar" src="${esc(n.actor_avatar)}" alt="">`:`<span class="notification-avatar fallback">${esc((n.actor_name||'S').slice(0,1).toUpperCase())}</span>`}
+      <span class="notification-type-icon">${notificationIcon(n.type)}</span>
+    </div>
+    <div class="notification-content">
+      <div class="notification-card-head">
+        <b>${esc(n.title)}</b>
+        ${!n.is_read?'<span class="notification-dot"></span>':''}
+      </div>
+      <p>${esc(n.message||'')}</p>
+      <small>${relativeTime(n.created_at)}</small>
+    </div>
+    <button class="notification-delete" aria-label="Excluir notificação" onclick="deleteNotification(${n.id},event)">×</button>
+  </article>`;
+}
+
 function renderFeed(saved=false){let list=posts.filter(p=>(!saved||p.bookmarked));content.innerHTML=`<section class="card composer"><div class="composer-main">${avatar(me)}<button onclick="openNewPost()">No que você está pensando, ${esc(me.name.split(' ')[0])}?</button></div><div class="composer-tools"><button onclick="openNewPost('video')">${icon('video')}<span>Vídeo</span></button><button onclick="openNewPost('photo')">${icon('photo')}<span>Foto</span></button><button onclick="openNewPost('audio')">${icon('audio')}<span>Áudio</span></button><button onclick="openNewPost('file')">${icon('file')}<span>Arquivo</span></button></div></section><section class="story-strip"><button class="story create-story" onclick="openNewPost()"><span class="story-plus">${icon('plus')}</span><b>Criar story</b></button><div class="story story-console"><span>${avatar(me)}</span><b>Seu conteúdo</b></div><div class="story story-stage"><span>${icon('audio')}</span><b>Dicas de áudio</b></div><div class="story story-mic"><span>${icon('professionals')}</span><b>Profissionais</b></div></section>${list.length?list.map(postCard).join(''):'<div class="empty">Nenhuma publicação encontrada.</div>'}`}
 function renderExperts(){content.innerHTML=`<div class="page-title"><h1>Profissionais</h1><p>Encontre especialistas, conheça seus serviços e faça contatos.</p></div><div class="people-grid">${users.map(u=>`<article class="card person"><div class="mini-cover" style="${u.cover?`background-image:url('${u.cover}')`:''}"></div>${avatar(u,'big')}<h3>${esc(u.name)}${u.is_admin?' ✓':''}</h3><b>${esc(u.role)}</b><p class="availability">● ${esc(u.availability||'Disponível para trabalhos')}</p><p class="meta">${icon('location')} ${esc(u.city||'Cidade não informada')}</p><div class="skills">${lines(u.specialties)}</div><div class="follow-stats"><span><b>${u.followers}</b> seguidores</span><span><b>${u.following}</b> seguindo</span></div><button class="secondary" onclick="openProfile(${u.id})">Ver perfil</button>${u.id!==me.id?`<button class="${u.is_following?'secondary':'primary'}" onclick="followUser(${u.id})">${u.is_following?'Deixar de seguir':'Seguir'}</button>`:''}</article>`).join('')}</div>`}
 async function openProfile(id){try{let u=await api(`/api/users/${id}/profile`);let portfolio=(u.portfolio_links||'').split(/\n/).map(x=>x.trim()).filter(Boolean);let history=(u.work_history||'').split(/\n/).map(x=>x.trim()).filter(Boolean);content.innerHTML=`<article class="profile-public pro-v10 card"><div class="cover" style="${u.cover?`background-image:url('${u.cover}')`:''}"></div><div class="profile-head">${avatar(u,'huge')}<div class="profile-identity"><h1>${esc(u.name)}${u.is_admin?' <span class="verified">✓</span>':''}</h1><h2>${esc(u.headline||u.role)}</h2>${u.company?`<p class="company-line">${esc(u.company)}</p>`:''}<p class="availability">● ${esc(u.availability||'Disponível para trabalhos')}</p><p>${icon('location')} ${esc(u.city||'Cidade não informada')} ${u.service_region?`· Atende: ${esc(u.service_region)}`:''}</p></div></div><div class="profile-actions">${u.id!==me.id?`<button class="${u.is_following?'secondary':'primary'}" onclick="followUser(${u.id});openProfile(${u.id})">${u.is_following?'Deixar de seguir':'Seguir'}</button><button class="primary" onclick="openQuote(${u.id})">Solicitar orçamento</button>`:`<button class="primary" onclick="view='profile';render()">Editar meu perfil</button>`}${u.whatsapp?`<a class="secondary btn" target="_blank" href="https://wa.me/${u.whatsapp.replace(/\D/g,'')}">WhatsApp</a>`:''}</div><div class="pro-summary"><div><b>${esc(u.experience||'—')}</b><span>Experiência</span></div><div><b>${esc(u.completed_projects||'—')}</b><span>Projetos</span></div><div><b>${u.followers}</b><span>Seguidores</span></div><div><b>${esc(u.response_time||'Até 24h')}</b><span>Tempo de resposta</span></div></div><section><h2>Sobre</h2><p>${esc(u.bio||'Perfil em construção.')}</p></section><section><h2>Especialidades</h2><div class="skills">${lines(u.specialties)}</div></section><section><h2>Serviços oferecidos</h2><p>${esc(u.services||'Não informado.')}</p></section><section><h2>Equipamentos que domina</h2><div class="skills">${lines(u.equipment)}</div></section><section><h2>Experiência profissional</h2>${history.length?`<div class="timeline">${history.map(x=>`<div><i></i><p>${esc(x)}</p></div>`).join('')}</div>`:`<p>${esc(u.experience||'Não informada.')}</p>`}</section><section><h2>Portfólio</h2>${portfolio.length?`<div class="portfolio-grid">${portfolio.map((x,i)=>`<a href="${esc(safeLink(x))}" target="_blank" rel="noopener"><b>Projeto ${i+1}</b><small>${esc(x)}</small></a>`).join('')}</div>`:'<p>Nenhum link de portfólio cadastrado.</p>'}</section><section><h2>Galeria profissional</h2>${galleryMarkup(u.gallery||[])}</section><section><h2>Certificações</h2><p>${esc(u.certifications||'Não informadas.')}</p></section><section class="contacts"><h2>Contato profissional</h2>${u.instagram?`<p>Instagram: ${esc(u.instagram)}</p>`:''}${u.website?`<p>Site: <a href="${esc(safeLink(u.website))}" target="_blank">${esc(u.website)}</a></p>`:''}</section></article>`}catch(e){toast(e.message,true)}}
@@ -694,3 +835,10 @@ function newAiChat(){aiSessionId=null;renderAudioAI()}
 function useAiStarter(text){aiQuestion.value=text;aiQuestion.focus()}
 async function askAudioAI(e){e.preventDefault();let q=aiQuestion.value.trim(),sym=aiSymptom.value;if(!q&&!sym)return toast('Descreva a dúvida ou selecione um sintoma.',true);let btn=aiComposer.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Analisando...';let messages=aiMessages;if(messages.querySelector('.ai-welcome'))messages.innerHTML='';messages.insertAdjacentHTML('beforeend',`<div class="ai-message user"><div><b>Você</b><p>${esc(q||sym)}</p>${aiAttachment?`<small>📎 ${esc(aiAttachment.name)}</small>`:''}</div></div><div class="ai-thinking"><span></span><span></span><span></span> Analisando o cenário...</div>`);messages.scrollTop=messages.scrollHeight;try{let r=await api('/api/audio-ai/ask',{method:'POST',body:JSON.stringify({session_id:aiSessionId,question:q,mode:aiMode.value,symptom:sym,context:aiContext.value,attachment_name:aiAttachment?.name||'',attachment_type:aiAttachment?.type||'',attachment_size:aiAttachment?.size||0})});aiSessionId=r.session_id;messages.querySelector('.ai-thinking')?.remove();messages.insertAdjacentHTML('beforeend',`<div class="ai-message assistant">${aiAnswerHtml(r.answer)}</div>`);aiQuestion.value='';aiContext.value='';aiFile.value='';aiAttachment=null;aiAttachmentInfo.hidden=true;messages.scrollTop=messages.scrollHeight;toast('Análise concluída.')}catch(err){messages.querySelector('.ai-thinking')?.remove();toast(err.message,true)}finally{btn.disabled=false;btn.innerHTML='Analisar '+icon('share');hydrateIcons(btn)}}
 async function loadAiSession(id,rerender=true){aiSessionId=id;if(rerender){renderAudioAI();return}try{let d=await api(`/api/audio-ai/session/${id}`),box=aiMessages;box.innerHTML=d.messages.map(m=>{if(m.role==='user')return `<div class="ai-message user"><div><b>Você</b><p>${esc(m.body)}</p></div></div>`;let ans;try{ans=JSON.parse(m.body)}catch{ans={title:'Resposta',actions:[m.body],likely:[],checks:[]}}return `<div class="ai-message assistant">${aiAnswerHtml(ans)}</div>`}).join('')||aiWelcome();box.scrollTop=box.scrollHeight;hydrateIcons(box)}catch(e){toast(e.message,true)}}
+
+
+document.querySelectorAll('[data-view="notifications"],#notificationBtn,.notification-button').forEach(el=>{
+  el.onclick=()=>{view='notifications';loadNotifications(true)};
+});
+loadNotifications();
+notificationPoll=setInterval(()=>loadNotifications(view==='notifications'),30000);
