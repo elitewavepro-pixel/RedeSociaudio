@@ -1627,3 +1627,155 @@ main.content .professional-profile-columns,
   .agenda-form-grid{grid-template-columns:1fr}
   .availability-item{grid-template-columns:64px minmax(0,1fr) auto}
 }
+
+
+/* Rede Sociaudio Beta 3.0 — identidade e base */
+.beta-status-wrap{
+  flex-wrap:wrap;
+}
+.beta-platform-subtitle{
+  color:#475467;
+  font-size:10px;
+  font-weight:750;
+  letter-spacing:.01em;
+}
+.footer-link{
+  border:0;
+  background:transparent;
+  padding:0;
+  color:inherit;
+  font:inherit;
+  cursor:pointer;
+}
+.footer-link:hover{
+  color:#1769e0;
+}
+.about-page{
+  display:grid;
+  gap:16px;
+}
+.about-hero{
+  position:relative;
+  overflow:hidden;
+  padding:42px!important;
+  background:
+    radial-gradient(circle at 85% 15%,rgba(255,255,255,.18),transparent 28%),
+    linear-gradient(135deg,#103f89,#2878ef);
+  color:#fff;
+}
+.about-hero::after{
+  content:'';
+  position:absolute;
+  width:280px;
+  height:280px;
+  right:-90px;
+  bottom:-150px;
+  border-radius:50%;
+  border:50px solid rgba(255,255,255,.08);
+}
+.about-kicker{
+  display:inline-block;
+  padding:6px 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.2);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.1em;
+}
+.about-hero h1{
+  max-width:760px;
+  margin:18px 0 12px;
+  font-size:42px;
+  line-height:1.08;
+}
+.about-hero p{
+  max-width:720px;
+  margin:0;
+  color:rgba(255,255,255,.85);
+  font-size:17px;
+  line-height:1.55;
+}
+.about-actions{
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:23px;
+}
+.about-hero .primary{
+  background:#fff;
+  color:#175cd3;
+}
+.about-hero .secondary{
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  border-color:rgba(255,255,255,.28);
+}
+.about-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+}
+.about-feature{
+  padding:21px;
+}
+.about-feature>div{
+  font-size:30px;
+}
+.about-feature h2{
+  margin:12px 0 8px;
+  font-size:17px;
+}
+.about-feature p{
+  margin:0;
+  color:#667085;
+  line-height:1.55;
+  font-size:12px;
+}
+.about-roadmap{
+  padding:24px;
+}
+.about-roadmap h2{
+  margin-top:0;
+}
+.roadmap-list{
+  display:grid;
+  gap:10px;
+}
+.roadmap-list>div{
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  gap:12px;
+  align-items:center;
+  padding:13px;
+  border:1px solid #eaecf0;
+  border-radius:13px;
+}
+.roadmap-list b{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  background:#eef4ff;
+  color:#175cd3;
+}
+.roadmap-list span{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.roadmap-list small{
+  color:#667085;
+}
+@media(max-width:1000px){
+  .about-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:650px){
+  .about-hero{padding:28px 22px!important}
+  .about-hero h1{font-size:31px}
+  .about-grid{grid-template-columns:1fr}
+  .beta-platform-subtitle{display:none}
+}

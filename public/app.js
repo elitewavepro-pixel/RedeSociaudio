@@ -1,6 +1,6 @@
 let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
-const SOCIAUDIO_VERSION='Beta 1.0';
+const SOCIAUDIO_VERSION='Beta 3.0';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -573,6 +573,54 @@ function notificationCard(n){
     </div>
     <button class="notification-delete" aria-label="Excluir notificação" onclick="deleteNotification(${n.id},event)">×</button>
   </article>`;
+}
+
+
+function renderAbout(){
+  content.innerHTML=`<section class="about-page">
+    <article class="about-hero card">
+      <span class="about-kicker">REDE SOCIAUDIO · BETA 3.0</span>
+      <h1>O marketplace inteligente do mercado de áudio</h1>
+      <p>Uma plataforma criada para conectar técnicos, engenheiros, empresas, igrejas, produtores e profissionais do áudio em um só lugar.</p>
+      <div class="about-actions">
+        <button class="primary" onclick="view='professionals';render()">Encontrar profissionais</button>
+        <button class="secondary" onclick="view='profile';render()">Completar meu perfil</button>
+      </div>
+    </article>
+
+    <div class="about-grid">
+      <article class="card about-feature">
+        <div>🎚️</div>
+        <h2>Profissionais especializados</h2>
+        <p>Encontre técnicos por cidade, especialidade, experiência, equipamentos e disponibilidade.</p>
+      </article>
+      <article class="card about-feature">
+        <div>📅</div>
+        <h2>Agenda e contratação</h2>
+        <p>Consulte datas disponíveis, solicite orçamento e converse diretamente com o profissional.</p>
+      </article>
+      <article class="card about-feature">
+        <div>⭐</div>
+        <h2>Reputação e portfólio</h2>
+        <p>Veja avaliações, trabalhos realizados, certificações, equipamentos e vídeos de apresentação.</p>
+      </article>
+      <article class="card about-feature">
+        <div>🤖</div>
+        <h2>Inteligência para o áudio</h2>
+        <p>A Beta 3.0 prepara a plataforma para recomendações inteligentes e assistência técnica especializada.</p>
+      </article>
+    </div>
+
+    <article class="card about-roadmap">
+      <h2>O que vem na Beta 3.0</h2>
+      <div class="roadmap-list">
+        <div><b>1</b><span><strong>Cadastro técnico avançado</strong><small>Equipamentos, especialidades, valores e experiência.</small></span></div>
+        <div><b>2</b><span><strong>Busca inteligente</strong><small>Pesquisa por cidade, equipamento, especialidade e disponibilidade.</small></span></div>
+        <div><b>3</b><span><strong>Empresas</strong><small>Perfis de locadoras, igrejas, estúdios, integradores e assistências.</small></span></div>
+        <div><b>4</b><span><strong>IA Sociaudio</strong><small>Recomendação de profissionais e suporte técnico especializado.</small></span></div>
+      </div>
+    </article>
+  </section>`;
 }
 
 function renderFeed(saved=false){let list=posts.filter(p=>(!saved||p.bookmarked));content.innerHTML=`<section class="card composer"><div class="composer-main">${avatar(me)}<button onclick="openNewPost()">No que você está pensando, ${esc(me.name.split(' ')[0])}?</button></div><div class="composer-tools"><button onclick="openNewPost('video')">${icon('video')}<span>Vídeo</span></button><button onclick="openNewPost('photo')">${icon('photo')}<span>Foto</span></button><button onclick="openNewPost('audio')">${icon('audio')}<span>Áudio</span></button><button onclick="openNewPost('file')">${icon('file')}<span>Arquivo</span></button></div></section><section class="story-strip"><button class="story create-story" onclick="openNewPost()"><span class="story-plus">${icon('plus')}</span><b>Criar story</b></button><div class="story story-console"><span>${avatar(me)}</span><b>Seu conteúdo</b></div><div class="story story-stage"><span>${icon('audio')}</span><b>Dicas de áudio</b></div><div class="story story-mic"><span>${icon('professionals')}</span><b>Profissionais</b></div></section>${list.length?list.map(postCard).join(''):'<div class="empty">Nenhuma publicação encontrada.</div>'}`}
@@ -1281,7 +1329,8 @@ async function refreshChatMessages(id){
   }catch{}
 }
 
-function render(){document.body.classList.toggle('chat-page',view==='chat');document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));if(view==='experts')return renderExperts();if(view==='companies')return renderCompanies();if(view==='jobs')return renderJobs();if(view==='marketplace')return renderMarketplace();if(view==='knowledge')return renderKnowledge();if(view==='audioai')return renderAudioAI();if(view==='chat')return renderChat();if(view==='communities')return renderCommunities();if(view==='profile')return renderProfile();if(view==='notifications')return loadNotifications(true);if(view==='hire')return renderHire();if(view==='opportunities')return renderOpportunities();if(view==='requests')return renderRequests();if(view==='admin')return renderAdmin();return renderFeed(view==='saved')}
+function render(){document.body.classList.toggle('chat-page',view==='chat');document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));if(view==='experts')return renderExperts();if(view==='companies')return renderCompanies();if(view==='jobs')return renderJobs();if(view==='marketplace')return renderMarketplace();if(view==='knowledge')return renderKnowledge();if(view==='audioai')return renderAudioAI();if(view==='chat')return renderChat();if(view==='communities')return renderCommunities();if(view==='profile')return renderProfile();if(view==='notifications')return loadNotifications(true);
+  if(view==='about')return renderAbout();if(view==='hire')return renderHire();if(view==='opportunities')return renderOpportunities();if(view==='requests')return renderRequests();if(view==='admin')return renderAdmin();return renderFeed(view==='saved')}
 search.oninput=scheduleGlobalSearch;
 search.onkeydown=e=>{
   if(e.key==='Enter'){
@@ -1358,7 +1407,12 @@ function showBetaNotice(){
   if(sessionStorage.getItem('sociaudio_beta_notice'))return;
   sessionStorage.setItem('sociaudio_beta_notice','1');
   setTimeout(()=>{
-    toast('Rede Sociaudio Beta 1.0: ajude-nos testando e relatando problemas.');
+    toast('Rede Sociaudio Beta 3.0: marketplace inteligente de áudio.');
   },900);
 }
 showBetaNotice();
+
+
+document.querySelectorAll('[data-view="about"]').forEach(el=>{
+  el.onclick=()=>{view='about';render()};
+});
