@@ -348,34 +348,56 @@ async function loadNotifications(renderPage=false){
     const data=await api('/api/notifications');
     notificationItems=data.items||[];
     notificationUnread=Number(data.unread||0);
+
+    if(renderPage&&view==='notifications'&&notificationUnread>0){
+      await api('/api/notifications/read-all',{method:'POST',body:'{}'});
+      notificationItems.forEach(n=>n.is_read=1);
+      notificationUnread=0;
+    }
+
     updateNotificationBadge();
     if(renderPage&&view==='notifications')renderNotifications();
-  }catch(e){}
+  }catch(e){
+    console.error('Erro ao carregar notificações:',e);
+  }
 }
 
 function updateNotificationBadge(){
-  const badge=document.querySelector('#notificationBadge')||document.querySelector('.notification-badge');
-  if(!badge)return;
-  badge.textContent=notificationUnread>99?'99+':String(notificationUnread);
-  badge.style.display=notificationUnread?'grid':'none';
+  const badges=document.querySelectorAll('#notificationBadge,.notification-badge');
+  badges.forEach(badge=>{
+    badge.textContent=notificationUnread>99?'99+':String(notificationUnread);
+    badge.style.display=notificationUnread>0?'grid':'none';
+  });
 }
 
 async function markNotificationRead(id){
-  await api(`/api/notifications/${id}/read`,{method:'POST',body:'{}'});
+  const result=await api(`/api/notifications/${id}/read`,{method:'POST',body:'{}'});
   const item=notificationItems.find(n=>Number(n.id)===Number(id));
-  if(item&&!item.is_read){item.is_read=1;notificationUnread=Math.max(0,notificationUnread-1)}
+  if(item)item.is_read=1;
+  notificationUnread=Number(result.unread||0);
   updateNotificationBadge();
 }
 
 async function markAllNotificationsRead(){
+  const button=document.querySelector('.notification-title button');
   try{
-    await api('/api/notifications/read-all',{method:'POST',body:'{}'});
+    if(button){
+      button.disabled=true;
+      button.textContent='Marcando...';
+    }
+    const result=await api('/api/notifications/read-all',{method:'POST',body:'{}'});
     notificationItems.forEach(n=>n.is_read=1);
-    notificationUnread=0;
+    notificationUnread=Number(result.unread||0);
     updateNotificationBadge();
     toast('Todas as notificações foram marcadas como lidas.');
     renderNotifications();
-  }catch(e){toast(e.message,true)}
+  }catch(e){
+    toast(e.message,true);
+    if(button){
+      button.disabled=false;
+      button.textContent='Marcar todas como lidas';
+    }
+  }
 }
 
 async function deleteNotification(id,event){

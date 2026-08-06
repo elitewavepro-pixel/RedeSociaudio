@@ -613,6 +613,17 @@ def init_db():
         c.execute("ALTER TABLE quote_requests ADD COLUMN closed_value TEXT DEFAULT ''")
     if 'archived_at' not in qcols:
         c.execute("ALTER TABLE quote_requests ADD COLUMN archived_at TEXT DEFAULT ''")
+
+    ncols = {r['name'] for r in c.execute('PRAGMA table_info(notifications)')}
+    if 'title' not in ncols:
+        c.execute("ALTER TABLE notifications ADD COLUMN title TEXT DEFAULT 'Notificação'")
+    if 'target_type' not in ncols:
+        c.execute("ALTER TABLE notifications ADD COLUMN target_type TEXT DEFAULT ''")
+    if 'target_id' not in ncols:
+        c.execute("ALTER TABLE notifications ADD COLUMN target_id INTEGER DEFAULT 0")
+    if 'is_read' not in ncols:
+        c.execute("ALTER TABLE notifications ADD COLUMN is_read INTEGER DEFAULT 0")
+    c.execute("UPDATE notifications SET title=CASE WHEN title IS NULL OR title='' THEN 'Notificação' ELSE title END")
     pcols = {r['name'] for r in c.execute('PRAGMA table_info(posts)')}
     for name, typ in [('is_featured', 'INTEGER DEFAULT 0'), ('status', "TEXT DEFAULT 'published'"), ('image_data', "TEXT DEFAULT ''"), ('updated_at', "TEXT DEFAULT ''"), ('media_data', "TEXT DEFAULT ''"), ('media_type', "TEXT DEFAULT ''"), ('media_name', "TEXT DEFAULT ''"), ('media_size', 'INTEGER DEFAULT 0')]:
         if name not in pcols: c.execute(f'ALTER TABLE posts ADD COLUMN {name} {typ}')
@@ -1681,16 +1692,20 @@ class Handler(SimpleHTTPRequestHandler):
         if p == '/api/notifications/read-all':
             c=connect()
             c.execute('UPDATE notifications SET is_read=1 WHERE user_id=?',(u['id'],))
-            c.commit();c.close()
-            return self.send_json({'ok':True})
+            c.commit()
+            unread=c.execute('SELECT COUNT(*) FROM notifications WHERE user_id=? AND COALESCE(is_read,0)=0',(u['id'],)).fetchone()[0]
+            c.close()
+            return self.send_json({'ok':True,'unread':unread})
 
         if p.startswith('/api/notifications/') and p.endswith('/read'):
             try:nid=int(p.split('/')[3])
             except:return self.send_json({'error':'Notificação inválida.'},400)
             c=connect()
             c.execute('UPDATE notifications SET is_read=1 WHERE id=? AND user_id=?',(nid,u['id']))
-            c.commit();c.close()
-            return self.send_json({'ok':True})
+            c.commit()
+            unread=c.execute('SELECT COUNT(*) FROM notifications WHERE user_id=? AND COALESCE(is_read,0)=0',(u['id'],)).fetchone()[0]
+            c.close()
+            return self.send_json({'ok':True,'unread':unread})
 
         if p.startswith('/api/notifications/') and p.endswith('/delete'):
             try:nid=int(p.split('/')[3])
