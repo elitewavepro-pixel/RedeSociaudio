@@ -1149,18 +1149,10 @@ class Handler(SimpleHTTPRequestHandler):
         if p == '/api/communities':
             u=self.require_user()
             if not u:return
-            c=connect()
-            rows=c.execute(
-                '''SELECT cm.*,
-                   (SELECT COUNT(*) FROM community_members m WHERE m.community_id=cm.id) AS members,
-                   EXISTS(SELECT 1 FROM community_members m2 WHERE m2.community_id=cm.id AND m2.user_id=?) AS is_member
-                   FROM communities cm ORDER BY cm.id DESC''',
-                (u['id'],)
-            ).fetchall()
-            out=[dict(x) for x in rows]
-            c.close()
-            return self.send_json(out)
-
+            c=connect(); rows=[dict(x) for x in c.execute('''SELECT c.*,
+             (SELECT COUNT(*) FROM community_members m WHERE m.community_id=c.id) members,
+             EXISTS(SELECT 1 FROM community_members m WHERE m.community_id=c.id AND m.user_id=?) joined
+             FROM communities c ORDER BY members DESC,c.name''',(u['id'],)).fetchall()]; c.close(); return self.send_json(rows)
         if p == '/api/notifications':
             u=self.require_user()
             if not u:return
@@ -1592,38 +1584,23 @@ class Handler(SimpleHTTPRequestHandler):
             pid=int(p.split('/')[3]); c=connect(); ex=c.execute('SELECT 1 FROM bookmarks WHERE user_id=? AND post_id=?',(u['id'],pid)).fetchone()
             c.execute('DELETE FROM bookmarks WHERE user_id=? AND post_id=?' if ex else 'INSERT INTO bookmarks(user_id,post_id) VALUES(?,?)',(u['id'],pid)); c.commit(); c.close(); return self.send_json({'bookmarked':not bool(ex)})
         if p.startswith('/api/communities/') and p.endswith('/join'):
-            u=self.require_user()
-            if not u:return
             try:cid=int(p.split('/')[3])
             except:return self.send_json({'error':'Comunidade inválida.'},400)
             c=connect()
             community=c.execute('SELECT id FROM communities WHERE id=?',(cid,)).fetchone()
             if not community:
                 c.close();return self.send_json({'error':'Comunidade não encontrada.'},404)
-            exists=c.execute(
-                'SELECT 1 FROM community_members WHERE community_id=? AND user_id=?',
-                (cid,u['id'])
-            ).fetchone()
-            if exists:
-                c.execute(
-                    'DELETE FROM community_members WHERE community_id=? AND user_id=?',
-                    (cid,u['id'])
-                )
+            ex=c.execute('SELECT 1 FROM community_members WHERE community_id=? AND user_id=?',(cid,u['id'])).fetchone()
+            if ex:
+                c.execute('DELETE FROM community_members WHERE community_id=? AND user_id=?',(cid,u['id']))
                 joined=False
             else:
-                c.execute(
-                    'INSERT INTO community_members(community_id,user_id,joined_at) VALUES(?,?,?)',
-                    (cid,u['id'],now())
-                )
+                c.execute('INSERT INTO community_members(community_id,user_id,joined_at) VALUES(?,?,?)',(cid,u['id'],now()))
                 joined=True
             c.commit()
-            members=c.execute(
-                'SELECT COUNT(*) FROM community_members WHERE community_id=?',
-                (cid,)
-            ).fetchone()[0]
+            members=c.execute('SELECT COUNT(*) FROM community_members WHERE community_id=?',(cid,)).fetchone()[0]
             c.close()
-            return self.send_json({'ok':True,'joined':joined,'is_member':joined,'members':members})
-
+            return self.send_json({'ok':True,'joined':joined,'members':members})
         if p == '/api/hire-requests':
             message=d.get('message','').strip(); city=d.get('city','').strip(); event_type=d.get('event_type','').strip()
             if len(message)<10:return self.send_json({'error':'Descreva melhor o serviço que você precisa.'},400)
