@@ -577,9 +577,194 @@ function notificationCard(n){
 
 function renderFeed(saved=false){let list=posts.filter(p=>(!saved||p.bookmarked));content.innerHTML=`<section class="card composer"><div class="composer-main">${avatar(me)}<button onclick="openNewPost()">No que você está pensando, ${esc(me.name.split(' ')[0])}?</button></div><div class="composer-tools"><button onclick="openNewPost('video')">${icon('video')}<span>Vídeo</span></button><button onclick="openNewPost('photo')">${icon('photo')}<span>Foto</span></button><button onclick="openNewPost('audio')">${icon('audio')}<span>Áudio</span></button><button onclick="openNewPost('file')">${icon('file')}<span>Arquivo</span></button></div></section><section class="story-strip"><button class="story create-story" onclick="openNewPost()"><span class="story-plus">${icon('plus')}</span><b>Criar story</b></button><div class="story story-console"><span>${avatar(me)}</span><b>Seu conteúdo</b></div><div class="story story-stage"><span>${icon('audio')}</span><b>Dicas de áudio</b></div><div class="story story-mic"><span>${icon('professionals')}</span><b>Profissionais</b></div></section>${list.length?list.map(postCard).join(''):'<div class="empty">Nenhuma publicação encontrada.</div>'}`}
 function renderExperts(){content.innerHTML=`<div class="page-title"><h1>Profissionais</h1><p>Encontre especialistas, conheça seus serviços e faça contatos.</p></div><div class="people-grid">${users.map(u=>`<article class="card person"><div class="mini-cover" style="${u.cover?`background-image:url('${u.cover}')`:''}"></div>${avatar(u,'big')}<h3>${esc(u.name)}${u.is_admin?' ✓':''}</h3><b>${esc(u.role)}</b><p class="availability">● ${esc(u.availability||'Disponível para trabalhos')}</p><p class="meta">${icon('location')} ${esc(u.city||'Cidade não informada')}</p><div class="skills">${lines(u.specialties)}</div><div class="follow-stats"><span><b>${u.followers}</b> seguidores</span><span><b>${u.following}</b> seguindo</span></div><button class="secondary" onclick="openProfile(${u.id})">Ver perfil</button>${u.id!==me.id?`<button class="${u.is_following?'secondary':'primary'}" onclick="followUser(${u.id})">${u.is_following?'Deixar de seguir':'Seguir'}</button>`:''}</article>`).join('')}</div>`}
-async function openProfile(id){try{let u=await api(`/api/users/${id}/profile`);let portfolio=(u.portfolio_links||'').split(/\n/).map(x=>x.trim()).filter(Boolean);let history=(u.work_history||'').split(/\n/).map(x=>x.trim()).filter(Boolean);content.innerHTML=`<article class="profile-public pro-v10 card"><div class="cover" style="${u.cover?`background-image:url('${u.cover}')`:''}"></div><div class="profile-head">${avatar(u,'huge')}<div class="profile-identity"><h1>${esc(u.name)}${u.is_admin?' <span class="verified">✓</span>':''}</h1><h2>${esc(u.headline||u.role)}</h2>${u.company?`<p class="company-line">${esc(u.company)}</p>`:''}<p class="availability">● ${esc(u.availability||'Disponível para trabalhos')}</p><p>${icon('location')} ${esc(u.city||'Cidade não informada')} ${u.service_region?`· Atende: ${esc(u.service_region)}`:''}</p></div></div><div class="profile-actions">${u.id!==me.id?`<button class="${u.is_following?'secondary':'primary'}" onclick="followUser(${u.id});openProfile(${u.id})">${u.is_following?'Deixar de seguir':'Seguir'}</button><button class="primary" onclick="openQuote(${u.id})">Solicitar orçamento</button>`:`<button class="primary" onclick="view='profile';render()">Editar meu perfil</button>`}${u.whatsapp?`<a class="secondary btn" target="_blank" href="https://wa.me/${u.whatsapp.replace(/\D/g,'')}">WhatsApp</a>`:''}</div><div class="pro-summary"><div><b>${esc(u.experience||'—')}</b><span>Experiência</span></div><div><b>${esc(u.completed_projects||'—')}</b><span>Projetos</span></div><div><b>${u.followers}</b><span>Seguidores</span></div><div><b>${esc(u.response_time||'Até 24h')}</b><span>Tempo de resposta</span></div></div><section><h2>Sobre</h2><p>${esc(u.bio||'Perfil em construção.')}</p></section><section><h2>Especialidades</h2><div class="skills">${lines(u.specialties)}</div></section><section><h2>Serviços oferecidos</h2><p>${esc(u.services||'Não informado.')}</p></section><section><h2>Equipamentos que domina</h2><div class="skills">${lines(u.equipment)}</div></section><section><h2>Experiência profissional</h2>${history.length?`<div class="timeline">${history.map(x=>`<div><i></i><p>${esc(x)}</p></div>`).join('')}</div>`:`<p>${esc(u.experience||'Não informada.')}</p>`}</section><section><h2>Portfólio</h2>${portfolio.length?`<div class="portfolio-grid">${portfolio.map((x,i)=>`<a href="${esc(safeLink(x))}" target="_blank" rel="noopener"><b>Projeto ${i+1}</b><small>${esc(x)}</small></a>`).join('')}</div>`:'<p>Nenhum link de portfólio cadastrado.</p>'}</section><section><h2>Galeria profissional</h2>${galleryMarkup(u.gallery||[])}</section><section><h2>Certificações</h2><p>${esc(u.certifications||'Não informadas.')}</p></section><section class="contacts"><h2>Contato profissional</h2>${u.instagram?`<p>Instagram: ${esc(u.instagram)}</p>`:''}${u.website?`<p>Site: <a href="${esc(safeLink(u.website))}" target="_blank">${esc(u.website)}</a></p>`:''}</section></article>`}catch(e){toast(e.message,true)}}
-function renderCommunities(){
-  content.innerHTML='<div class="page-title"><h1>Comunidades</h1><p>Participe de grupos especializados em equipamentos e áreas do áudio.</p></div><div class="community-grid">'+communities.map(c=>`<article class="card community"><div class="community-icon">${c.icon||'🎚️'}</div><div class="community-body"><h3>${esc(c.name)}</h3><span class="tag">${esc(c.category)}</span><p>${esc(c.description)}</p><small><b>${Number(c.members||0)}</b> membro(s)</small><button id="joinCommunity-${c.id}" class="${c.joined?'secondary':'primary'}" onclick="joinCommunity(${c.id})">${c.joined?'Sair da comunidade':'Participar'}</button>${c.joined?'<div class="community-member-note">Você participa desta comunidade.</div>':''}</div></article>`).join('')+'</div>'
+
+function starRating(value){
+  const rating=Math.max(0,Math.min(5,Number(value||0)));
+  return `<span class="profile-stars" aria-label="${rating} de 5 estrelas">${[1,2,3,4,5].map(n=>`<span class="${n<=Math.round(rating)?'filled':''}">★</span>`).join('')}</span>`;
+}
+
+function profileCompleteness(u){
+  const fields=[
+    u.avatar,u.cover,u.professional_title,u.headline,u.city,u.state,u.bio,
+    u.specialties,u.services,u.equipment,u.experience,u.certifications,
+    u.whatsapp,u.portfolio_links,u.portfolio_pdf
+  ];
+  return Math.round(fields.filter(Boolean).length/fields.length*100);
+}
+
+function shareProfessionalProfile(id,name){
+  const url=`${location.origin}${location.pathname}#profile-${id}`;
+  const data={title:`Perfil de ${name} na Rede Sociaudio`,text:`Conheça o perfil profissional de ${name} na Rede Sociaudio.`,url};
+  if(navigator.share){
+    navigator.share(data).catch(()=>{});
+  }else{
+    navigator.clipboard?.writeText(url);
+    toast('Link do perfil copiado.');
+  }
+}
+
+function profileReviewCard(r){
+  return `<article class="profile-review-card">
+    <div class="profile-review-author">
+      ${r.reviewer_avatar?`<img src="${esc(r.reviewer_avatar)}" alt="">`:`<span>${esc((r.reviewer_name||'U').slice(0,1).toUpperCase())}</span>`}
+      <div><b>${esc(r.reviewer_name)}</b>${starRating(r.rating)}</div>
+      <small>${new Date(r.updated_at||r.created_at).toLocaleDateString('pt-BR')}</small>
+    </div>
+    ${r.comment?`<p>${esc(r.comment)}</p>`:''}
+  </article>`;
+}
+
+function reviewProfessional(id,current){
+  const rating=Number(document.querySelector('input[name="profileRating"]:checked')?.value||0);
+  const comment=document.getElementById('profileReviewComment')?.value||'';
+  api(`/api/users/${id}/review`,{
+    method:'POST',
+    body:JSON.stringify({rating,comment})
+  }).then(()=>{
+    toast(current?'Avaliação atualizada.':'Avaliação publicada.');
+    openProfile(id);
+  }).catch(e=>toast(e.message,true));
+}
+
+async function openProfile(id){
+  try{
+    let u=await api(`/api/users/${id}/profile`);
+    let portfolio=(u.portfolio_links||'').split(/\n/).map(x=>x.trim()).filter(Boolean);
+    let history=(u.work_history||'').split(/\n/).map(x=>x.trim()).filter(Boolean);
+    let specialties=(u.specialties||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
+    let equipment=(u.equipment||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
+    const completion=profileCompleteness(u);
+    const verified=u.verified_badge||u.verification_status==='verified'||u.is_admin;
+    const location=[u.city,u.state].filter(Boolean).join(' - ')||'Localização não informada';
+
+    content.innerHTML=`<article class="professional-profile-v2">
+      <section class="professional-hero card">
+        <div class="professional-cover" style="${u.cover?`background-image:url('${esc(u.cover)}')`:''}">
+          <div class="professional-cover-overlay"></div>
+        </div>
+        <div class="professional-hero-body">
+          <div class="professional-avatar-wrap">${avatar(u,'huge')}${verified?'<span class="professional-verified" title="Perfil verificado">✓</span>':''}</div>
+          <div class="professional-main-info">
+            <div class="professional-name-row">
+              <h1>${esc(u.name)}</h1>
+              ${verified?'<span class="verified-label">Verificado</span>':''}
+            </div>
+            <h2>${esc(u.professional_title||u.headline||u.role)}</h2>
+            ${u.company?`<p class="professional-company">${esc(u.company)}</p>`:''}
+            <p class="professional-location">${icon('location')} ${esc(location)}${Number(u.service_radius_km)>0?` · Atende em um raio de ${Number(u.service_radius_km)} km`:u.service_region?` · ${esc(u.service_region)}`:''}</p>
+            <div class="professional-rating-line">${starRating(u.rating_average)} <b>${Number(u.rating_average||0).toFixed(1)}</b><span>${u.review_count||0} avaliação(ões)</span></div>
+            <p class="professional-availability">● ${esc(u.availability||'Disponível para trabalhos')}</p>
+          </div>
+          <div class="professional-actions">
+            ${u.id!==me.id?`
+              <button class="${u.is_following?'secondary':'primary'}" onclick="followUser(${u.id});openProfile(${u.id})">${u.is_following?'Deixar de seguir':'Seguir'}</button>
+              ${Number(u.hire_enabled)!==0?`<button class="primary" onclick="openQuote(${u.id})">Solicitar orçamento</button>`:''}
+            `:`<button class="primary" onclick="view='profile';render()">Editar meu perfil</button>`}
+            ${u.whatsapp?`<a class="secondary btn" target="_blank" href="https://wa.me/${u.whatsapp.replace(/\D/g,'')}">WhatsApp</a>`:''}
+            <button class="secondary" onclick="shareProfessionalProfile(${u.id},'${esc(u.name).replace(/'/g,"\\'")}')">Compartilhar</button>
+          </div>
+        </div>
+      </section>
+
+      ${u.id===me.id?`<section class="profile-completeness card">
+        <div><b>Perfil ${completion}% completo</b><span>Perfis completos têm mais chances de receber orçamentos.</span></div>
+        <div class="profile-progress"><i style="width:${completion}%"></i></div>
+      </section>`:''}
+
+      <section class="professional-stats card">
+        <div><b>${u.followers||0}</b><span>Seguidores</span></div>
+        <div><b>${u.following||0}</b><span>Seguindo</span></div>
+        <div><b>${u.posts||0}</b><span>Publicações</span></div>
+        <div><b>${esc(u.completed_projects||'0')}</b><span>Serviços realizados</span></div>
+        <div><b>${u.review_count||0}</b><span>Avaliações</span></div>
+      </section>
+
+      <div class="professional-profile-columns">
+        <main>
+          <section class="card professional-section">
+            <h2>Sobre o profissional</h2>
+            <p>${esc(u.bio||'Este profissional ainda não adicionou uma apresentação.')}</p>
+            <div class="professional-detail-grid">
+              <div><span>Experiência</span><b>${esc(u.experience||'Não informada')}</b></div>
+              <div><span>Tempo de resposta</span><b>${esc(u.response_time||'Até 24 horas')}</b></div>
+              <div><span>Valor de referência</span><b>${esc(u.hourly_rate||'Sob consulta')}</b></div>
+              <div><span>Idiomas</span><b>${esc(u.languages||'Não informado')}</b></div>
+            </div>
+          </section>
+
+          <section class="card professional-section">
+            <h2>Especialidades</h2>
+            <div class="professional-tags">${specialties.length?specialties.map(x=>`<span>${esc(x)}</span>`).join(''):'<p>Nenhuma especialidade cadastrada.</p>'}</div>
+          </section>
+
+          <section class="card professional-section">
+            <h2>Serviços oferecidos</h2>
+            <p>${esc(u.services||'Não informado.')}</p>
+          </section>
+
+          <section class="card professional-section">
+            <h2>Equipamentos e tecnologias</h2>
+            <div class="professional-tags equipment-tags">${equipment.length?equipment.map(x=>`<span>${esc(x)}</span>`).join(''):'<p>Nenhum equipamento cadastrado.</p>'}</div>
+          </section>
+
+          <section class="card professional-section">
+            <h2>Experiência profissional</h2>
+            ${history.length?`<div class="timeline">${history.map(x=>`<div><i></i><p>${esc(x)}</p></div>`).join('')}</div>`:`<p>${esc(u.experience||'Não informada.')}</p>`}
+          </section>
+
+          <section class="card professional-section">
+            <div class="section-title-row"><h2>Portfólio profissional</h2></div>
+            ${(u.portfolio_pdf||u.video_reel)?`<div class="portfolio-featured-links">
+              ${u.portfolio_pdf?`<a class="portfolio-featured-card" href="${esc(safeLink(u.portfolio_pdf))}" target="_blank"><b>📄 Portfólio em PDF</b><span>Abrir apresentação profissional</span></a>`:''}
+              ${u.video_reel?`<a class="portfolio-featured-card" href="${esc(safeLink(u.video_reel))}" target="_blank"><b>▶ Vídeo de apresentação</b><span>Assistir demonstração</span></a>`:''}
+            </div>`:''}
+            ${portfolio.length?`<div class="portfolio-grid">${portfolio.map((x,i)=>`<a href="${esc(safeLink(x))}" target="_blank" rel="noopener"><b>Projeto ${i+1}</b><small>${esc(x)}</small></a>`).join('')}</div>`:'<p>Nenhum link de portfólio cadastrado.</p>'}
+          </section>
+
+          <section class="card professional-section">
+            <h2>Galeria de trabalhos</h2>
+            ${galleryMarkup(u.gallery||[])}
+          </section>
+
+          <section class="card professional-section">
+            <h2>Certificações e formação</h2>
+            <p>${esc(u.certifications||'Não informadas.')}</p>
+          </section>
+
+          <section class="card professional-section profile-reviews-section">
+            <div class="section-title-row">
+              <div><h2>Avaliações</h2><p>${u.review_count||0} avaliação(ões) · média ${Number(u.rating_average||0).toFixed(1)}</p></div>
+              <div class="rating-summary">${starRating(u.rating_average)}</div>
+            </div>
+
+            ${u.id!==me.id?`<form class="profile-review-form" onsubmit="event.preventDefault();reviewProfessional(${u.id},${u.my_review?'true':'false'})">
+              <h3>${u.my_review?'Atualize sua avaliação':'Avalie este profissional'}</h3>
+              <div class="interactive-stars">
+                ${[5,4,3,2,1].map(n=>`<input type="radio" id="rating${n}" name="profileRating" value="${n}" ${Number(u.my_review?.rating)===n?'checked':''}><label for="rating${n}">★</label>`).join('')}
+              </div>
+              <textarea id="profileReviewComment" maxlength="700" placeholder="Conte como foi sua experiência com este profissional.">${esc(u.my_review?.comment||'')}</textarea>
+              <button class="primary">${u.my_review?'Atualizar avaliação':'Publicar avaliação'}</button>
+            </form>`:''}
+
+            <div class="profile-reviews-list">
+              ${(u.reviews||[]).length?(u.reviews||[]).map(profileReviewCard).join(''):'<div class="empty-review"><p>Este profissional ainda não recebeu avaliações.</p></div>'}
+            </div>
+          </section>
+        </main>
+
+        <aside>
+          <section class="card professional-contact-card">
+            <h2>Contato profissional</h2>
+            ${u.whatsapp?`<a target="_blank" href="https://wa.me/${u.whatsapp.replace(/\D/g,'')}"><b>WhatsApp</b><span>${esc(u.whatsapp)}</span></a>`:''}
+            ${u.instagram?`<a target="_blank" href="${esc(safeLink(u.instagram.startsWith('http')?u.instagram:'https://instagram.com/'+u.instagram.replace('@','')))}"><b>Instagram</b><span>${esc(u.instagram)}</span></a>`:''}
+            ${u.website?`<a target="_blank" href="${esc(safeLink(u.website))}"><b>Site</b><span>${esc(u.website)}</span></a>`:''}
+            ${Number(u.remote_service)?'<div class="remote-service-badge">✓ Atendimento remoto disponível</div>':''}
+          </section>
+        </aside>
+      </div>
+    </article>`;
+    hydrateIcons(content);
+  }catch(e){toast(e.message,true)}
 }
 
 function removeProfileAvatarPreview(){
@@ -602,11 +787,15 @@ function renderProfile(){
     <div class="wide avatar-editor"><div id="profileAvatarWrap">${me.avatar?`<img id="profileAvatarPreview" class="avatar huge" src="${esc(me.avatar)}" alt="Foto do perfil">`:`<span id="profileAvatarPreview" class="avatar huge">${esc((me.name||'U').slice(0,1).toUpperCase())}</span>`}</div><div><label>Alterar foto<input id="pav" type="file" accept="image/*"></label><button type="button" class="text-button" onclick="removeProfileAvatarPreview()">Remover foto</button></div></div>
     <label>Nome<input id="pn" value="${esc(me.name)}" required></label><label>Profissão<input id="pr" value="${esc(me.role)}" required></label>
     <label class="wide">Título profissional<input id="ppt" value="${esc(me.professional_title||'')}" placeholder="Ex.: Engenheiro de Áudio e Especialista em Sistemas"></label><label class="wide">Frase de apresentação<input id="phl" value="${esc(me.headline||'')}"></label><label>Tipo de perfil<select id="ptype"><option value="professional" ${me.profile_type==='professional'?'selected':''}>Profissional</option><option value="company" ${me.profile_type==='company'?'selected':''}>Empresa</option><option value="church" ${me.profile_type==='church'?'selected':''}>Igreja</option><option value="musician" ${me.profile_type==='musician'?'selected':''}>Músico</option><option value="manufacturer" ${me.profile_type==='manufacturer'?'selected':''}>Fabricante</option></select></label><label>Valor de referência<input id="prate" value="${esc(me.hourly_rate||'')}" placeholder="Ex.: R$ 150/h ou Sob consulta"></label><label>Idiomas<input id="plang" value="${esc(me.languages||'')}"></label><label class="check-label"><input id="premote" type="checkbox" ${Number(me.remote_service)?'checked':''}> Atendimento remoto</label><label class="check-label"><input id="phire" type="checkbox" ${Number(me.hire_enabled)!==0?'checked':''}> Exibir botão Contratar</label><label>Empresa<input id="pco" value="${esc(me.company||'')}"></label><label>Cidade<input id="pcy" value="${esc(me.city||'')}"></label>
-    <label>Região de atendimento<input id="preg" value="${esc(me.service_region||'')}"></label><label>Tempo de experiência<input id="pex" value="${esc(me.experience||'')}"></label><label>Projetos concluídos<input id="ppj" value="${esc(me.completed_projects||'')}"></label>
+    <label>Estado<input id="pstate" value="${esc(me.state||'')}" placeholder="Ex.: SC"></label><label>Raio de atendimento (km)<input id="pradius" type="number" min="0" max="2000" value="${Number(me.service_radius_km||0)}"></label>
+    <label class="wide">Região de atendimento<input id="preg" value="${esc(me.service_region||'')}"></label><label>Tempo de experiência<input id="pex" value="${esc(me.experience||'')}"></label><label>Projetos concluídos<input id="ppj" value="${esc(me.completed_projects||'')}"></label>
     <label>Tempo de resposta<input id="prt" value="${esc(me.response_time||'')}"></label><label>Disponibilidade<select id="pavl"><option ${me.availability==='Disponível para trabalhos'?'selected':''}>Disponível para trabalhos</option><option ${me.availability==='Disponível apenas para consultorias'?'selected':''}>Disponível apenas para consultorias</option><option ${me.availability==='Indisponível no momento'?'selected':''}>Indisponível no momento</option></select></label>
     <label class="wide">Especialidades<input id="psp" value="${esc(me.specialties||'')}"></label><label class="wide">Serviços oferecidos<textarea id="psv">${esc(me.services||'')}</textarea></label>
     <label class="wide">Equipamentos que domina<input id="peq" value="${esc(me.equipment||'')}"></label><label class="wide">Histórico profissional<textarea id="pwh">${esc(me.work_history||'')}</textarea></label>
-    <label class="wide">Links do portfólio<textarea id="ppl">${esc(me.portfolio_links||'')}</textarea></label><label class="wide">Certificações<textarea id="pce">${esc(me.certifications||'')}</textarea></label>
+    <label class="wide">Links do portfólio<textarea id="ppl">${esc(me.portfolio_links||'')}</textarea></label>
+    <label class="wide">Link do portfólio em PDF<input id="ppdf" value="${esc(me.portfolio_pdf||'')}" placeholder="Cole o link do Google Drive, site ou PDF"></label>
+    <label class="wide">Link do vídeo de apresentação<input id="preel" value="${esc(me.video_reel||'')}" placeholder="YouTube, Vimeo ou outro link"></label>
+    <label class="wide">Certificações<textarea id="pce">${esc(me.certifications||'')}</textarea></label>
     <label>WhatsApp profissional<input id="pwa" value="${esc(me.whatsapp||'')}"></label><label>Instagram<input id="pig" value="${esc(me.instagram||'')}"></label><label class="wide">Site<input id="pweb" value="${esc(me.website||'')}"></label><label class="wide">Biografia<textarea id="pbi">${esc(me.bio||'')}</textarea></label>
     <section class="wide profile-gallery-editor"><div><h2>Galeria profissional</h2><p>Adicione fotos de eventos, instalações, equipamentos e bastidores.</p></div><label class="file-label">Adicionar até 12 fotos<input id="pgallery" type="file" accept="image/*" multiple></label><div id="newGalleryPreview"></div>${galleryMarkup(me.gallery||[],true)}</section>
     <button class="primary">Salvar perfil profissional</button>
@@ -630,7 +819,7 @@ function renderProfile(){
 async function saveProfile(e){
   e.preventDefault();
   try{
-    await api('/api/profile',{method:'POST',body:JSON.stringify({name:pn.value,role:pr.value,professional_title:ppt.value,profile_type:ptype.value,hourly_rate:prate.value,languages:plang.value,remote_service:premote.checked,hire_enabled:phire.checked,headline:phl.value,company:pco.value,city:pcy.value,service_region:preg.value,experience:pex.value,completed_projects:ppj.value,response_time:prt.value,availability:pavl.value,specialties:psp.value,services:psv.value,equipment:peq.value,work_history:pwh.value,portfolio_links:ppl.value,certifications:pce.value,whatsapp:pwa.value,instagram:pig.value,website:pweb.value,bio:pbi.value,avatar:avatarImage,cover:coverImage,gallery_images:profileGalleryNew})});
+    await api('/api/profile',{method:'POST',body:JSON.stringify({name:pn.value,role:pr.value,professional_title:ppt.value,profile_type:ptype.value,hourly_rate:prate.value,languages:plang.value,remote_service:premote.checked,hire_enabled:phire.checked,headline:phl.value,company:pco.value,city:pcy.value,state:pstate.value,service_radius_km:pradius.value,service_region:preg.value,experience:pex.value,completed_projects:ppj.value,response_time:prt.value,availability:pavl.value,specialties:psp.value,services:psv.value,equipment:peq.value,work_history:pwh.value,portfolio_links:ppl.value,portfolio_pdf:ppdf.value,video_reel:preel.value,certifications:pce.value,whatsapp:pwa.value,instagram:pig.value,website:pweb.value,bio:pbi.value,avatar:avatarImage,cover:coverImage,gallery_images:profileGalleryNew})});
     me=(await api('/api/me')).user;renderSidebarIdentity();headerName.textContent=me.name;if(window.sidebarName)sidebarName.textContent=me.name;toast('Perfil e galeria atualizados.');loadAll()
   }catch(e){toast(e.message,true)}
 }

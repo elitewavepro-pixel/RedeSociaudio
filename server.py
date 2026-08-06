@@ -4,7 +4,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 
-APP_VERSION = 'Beta 1.0.1'
+APP_VERSION = 'Beta 2 — Módulo 1'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -611,6 +611,21 @@ def init_db():
     );
     ''')
 
+
+    c.execute('''CREATE TABLE IF NOT EXISTS profile_reviews(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      professional_id INTEGER NOT NULL,
+      reviewer_id INTEGER NOT NULL,
+      rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+      comment TEXT DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT DEFAULT '',
+      UNIQUE(professional_id,reviewer_id),
+      FOREIGN KEY(professional_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY(reviewer_id) REFERENCES users(id) ON DELETE CASCADE
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_profile_reviews_professional ON profile_reviews(professional_id,id DESC)')
+
     c.execute('''CREATE TABLE IF NOT EXISTS conversation_typing(
       conversation_id INTEGER NOT NULL,
       user_id INTEGER NOT NULL,
@@ -637,7 +652,12 @@ def init_db():
         'professional_title': "TEXT DEFAULT ''", 'profile_type': "TEXT DEFAULT 'professional'",
         'verified_badge': "TEXT DEFAULT ''", 'hire_enabled': "INTEGER DEFAULT 1",
         'hourly_rate': "TEXT DEFAULT ''", 'languages': "TEXT DEFAULT ''",
-        'remote_service': "INTEGER DEFAULT 0"
+        'remote_service': "INTEGER DEFAULT 0",
+        'state': "TEXT DEFAULT ''",
+        'service_radius_km': "INTEGER DEFAULT 0",
+        'portfolio_pdf': "TEXT DEFAULT ''",
+        'video_reel': "TEXT DEFAULT ''",
+        'verification_status': "TEXT DEFAULT 'not_requested'"
     }
     for name, typ in additions.items():
         if name not in cols:
@@ -995,7 +1015,7 @@ def replace_post_gallery(c, post_id, items, user):
     return saved
 
 def public_user(row):
-    data={k: row[k] for k in ('id','name','email','role','city','bio','specialties','experience','equipment','avatar','cover','services','certifications','service_region','whatsapp','instagram','website','availability','headline','company','response_time','completed_projects','portfolio_links','work_history','plan','upload_used_bytes','professional_title','profile_type','verified_badge','hire_enabled','hourly_rate','languages','remote_service','is_admin','status','created_at') if k in row.keys()}
+    data={k: row[k] for k in ('id','name','email','role','city','bio','specialties','experience','equipment','avatar','cover','services','certifications','service_region','whatsapp','instagram','website','availability','headline','company','response_time','completed_projects','portfolio_links','work_history','plan','upload_used_bytes','professional_title','profile_type','verified_badge','hire_enabled','hourly_rate','languages','remote_service','state','service_radius_km','portfolio_pdf','video_reel','verification_status','is_admin','status','created_at') if k in row.keys()}
     plan=normalized_plan(data)
     data['plan']=plan
     data['plan_label']=PLAN_LABELS[plan]
@@ -1220,6 +1240,26 @@ class Handler(SimpleHTTPRequestHandler):
             data['answers']=c.execute('SELECT COUNT(*) FROM comments WHERE user_id=?',(uid,)).fetchone()[0]
             data['is_following']=bool(c.execute('SELECT 1 FROM follows WHERE follower_id=? AND followed_id=?',(u['id'],uid)).fetchone())
             data['gallery']=user_gallery(c,uid)
+            review_stats=c.execute(
+                '''SELECT COUNT(*) total,COALESCE(ROUND(AVG(rating),1),0) average
+                   FROM profile_reviews WHERE professional_id=?''',
+                (uid,)
+            ).fetchone()
+            data['review_count']=int(review_stats['total'] or 0)
+            data['rating_average']=float(review_stats['average'] or 0)
+            data['reviews']=[dict(x) for x in c.execute(
+                '''SELECT r.id,r.rating,r.comment,r.created_at,r.updated_at,
+                          u.id reviewer_id,u.name reviewer_name,u.avatar reviewer_avatar
+                   FROM profile_reviews r
+                   JOIN users u ON u.id=r.reviewer_id
+                   WHERE r.professional_id=?
+                   ORDER BY r.id DESC LIMIT 30''',
+                (uid,)
+            ).fetchall()]
+            data['my_review']=next(
+                (x for x in data['reviews'] if int(x['reviewer_id'])==int(u['id'])),
+                None
+            )
             c.close(); return self.send_json(data)
         if p == '/api/users':
             if not self.require_user(): return
@@ -2105,8 +2145,8 @@ class Handler(SimpleHTTPRequestHandler):
             except PermissionError:return self.send_json({'error':'Acesso restrito.'},403)
             return self.send_json({'id':mid},201)
         if p == '/api/profile':
-            c=connect(); c.execute('''UPDATE users SET name=?,role=?,city=?,bio=?,specialties=?,experience=?,equipment=?,avatar=?,cover=?,services=?,certifications=?,service_region=?,whatsapp=?,instagram=?,website=?,availability=?,headline=?,company=?,response_time=?,completed_projects=?,portfolio_links=?,work_history=?,professional_title=?,profile_type=?,hire_enabled=?,hourly_rate=?,languages=?,remote_service=? WHERE id=?''',
-              (d.get('name','').strip(),d.get('role','').strip(),d.get('city','').strip(),d.get('bio','').strip(),d.get('specialties','').strip(),d.get('experience','').strip(),d.get('equipment','').strip(),d.get('avatar','')[:1200000],d.get('cover','')[:1800000],d.get('services','').strip(),d.get('certifications','').strip(),d.get('service_region','').strip(),d.get('whatsapp','').strip(),d.get('instagram','').strip(),d.get('website','').strip(),d.get('availability','').strip(),d.get('headline','').strip(),d.get('company','').strip(),d.get('response_time','').strip(),d.get('completed_projects','').strip(),d.get('portfolio_links','').strip(),d.get('work_history','').strip(),d.get('professional_title','').strip(),d.get('profile_type','professional').strip(),1 if d.get('hire_enabled',True) else 0,d.get('hourly_rate','').strip(),d.get('languages','').strip(),1 if d.get('remote_service') else 0,u['id']))
+            c=connect(); c.execute('''UPDATE users SET name=?,role=?,city=?,bio=?,specialties=?,experience=?,equipment=?,avatar=?,cover=?,services=?,certifications=?,service_region=?,whatsapp=?,instagram=?,website=?,availability=?,headline=?,company=?,response_time=?,completed_projects=?,portfolio_links=?,work_history=?,professional_title=?,profile_type=?,hire_enabled=?,hourly_rate=?,languages=?,remote_service=?,state=?,service_radius_km=?,portfolio_pdf=?,video_reel=? WHERE id=?''',
+              (d.get('name','').strip(),d.get('role','').strip(),d.get('city','').strip(),d.get('bio','').strip(),d.get('specialties','').strip(),d.get('experience','').strip(),d.get('equipment','').strip(),d.get('avatar','')[:1200000],d.get('cover','')[:1800000],d.get('services','').strip(),d.get('certifications','').strip(),d.get('service_region','').strip(),d.get('whatsapp','').strip(),d.get('instagram','').strip(),d.get('website','').strip(),d.get('availability','').strip(),d.get('headline','').strip(),d.get('company','').strip(),d.get('response_time','').strip(),d.get('completed_projects','').strip(),d.get('portfolio_links','').strip(),d.get('work_history','').strip(),d.get('professional_title','').strip(),d.get('profile_type','professional').strip(),1 if d.get('hire_enabled',True) else 0,d.get('hourly_rate','').strip(),d.get('languages','').strip(),1 if d.get('remote_service') else 0,d.get('state','').strip(),max(0,min(2000,int(d.get('service_radius_km') or 0))),d.get('portfolio_pdf','').strip(),d.get('video_reel','').strip(),u['id']))
             for item in (d.get('gallery_images') or [])[:12]:
                 raw=(item or {}).get('data') if isinstance(item,dict) else item
                 caption=((item or {}).get('caption') or '')[:200] if isinstance(item,dict) else ''
@@ -2124,6 +2164,42 @@ class Handler(SimpleHTTPRequestHandler):
             c.execute('DELETE FROM profile_gallery WHERE id=? AND user_id=?',(gid,u['id']));c.commit();c.close()
             remove_media_file(row['image_url'])
             return self.send_json({'ok':True})
+        if p.startswith('/api/users/') and p.endswith('/review'):
+            try:uid=int(p.split('/')[3])
+            except:return self.send_json({'error':'Profissional inválido.'},400)
+            if uid==u['id']:
+                return self.send_json({'error':'Você não pode avaliar o próprio perfil.'},400)
+            try:rating=int(d.get('rating') or 0)
+            except:rating=0
+            comment=(d.get('comment') or '').strip()
+            if rating<1 or rating>5:
+                return self.send_json({'error':'Selecione uma nota de 1 a 5 estrelas.'},400)
+            if len(comment)>700:
+                return self.send_json({'error':'O comentário deve ter até 700 caracteres.'},400)
+            c=connect()
+            professional=c.execute(
+                "SELECT id,name FROM users WHERE id=? AND status='active'",
+                (uid,)
+            ).fetchone()
+            if not professional:
+                c.close();return self.send_json({'error':'Profissional não encontrado.'},404)
+            c.execute(
+                '''INSERT INTO profile_reviews(
+                     professional_id,reviewer_id,rating,comment,created_at,updated_at
+                   ) VALUES(?,?,?,?,?,?)
+                   ON CONFLICT(professional_id,reviewer_id)
+                   DO UPDATE SET rating=excluded.rating,comment=excluded.comment,
+                                 updated_at=excluded.updated_at''',
+                (uid,u['id'],rating,comment,now(),now())
+            )
+            create_notification(
+                c,uid,u['id'],'review','Nova avaliação',
+                f"{u['name']} avaliou seu perfil com {rating} estrela(s).",
+                'profile',uid
+            )
+            c.commit();c.close()
+            return self.send_json({'ok':True})
+
         if p.startswith('/api/users/') and p.endswith('/follow'):
             try:uid=int(p.split('/')[3])
             except:return self.send_json({'error':'Usuário inválido.'},400)

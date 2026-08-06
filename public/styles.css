@@ -1188,3 +1188,92 @@ img{
 @media(max-width:900px){
   .beta-health{display:none}
 }
+
+
+/* Rede Sociaudio Beta 2 — Módulo 1 Perfil Profissional */
+.professional-profile-v2{display:grid;gap:16px}
+.professional-hero{padding:0!important;overflow:hidden}
+.professional-cover{height:245px;background:linear-gradient(135deg,#123f87,#2673e8);background-size:cover;background-position:center;position:relative}
+.professional-cover-overlay{position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,rgba(10,25,50,.42))}
+.professional-hero-body{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px;align-items:end;padding:0 24px 24px;margin-top:-58px}
+.professional-avatar-wrap{position:relative}
+.professional-avatar-wrap .avatar.huge{width:132px!important;height:132px!important;border:5px solid #fff;box-shadow:0 10px 30px rgba(16,24,40,.22)}
+.professional-verified{position:absolute;right:6px;bottom:8px;width:31px;height:31px;display:grid;place-items:center;border-radius:50%;background:#1769e0;color:#fff;border:4px solid #fff;font-weight:900}
+.professional-main-info{padding-top:62px;min-width:0}
+.professional-name-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.professional-name-row h1{margin:0;font-size:30px}
+.verified-label{padding:5px 8px;border-radius:999px;background:#eaf3ff;color:#175cd3;font-size:10px;font-weight:900}
+.professional-main-info h2{margin:5px 0 4px;font-size:17px;color:#344054}
+.professional-company,.professional-location,.professional-availability{margin:5px 0;color:#667085}
+.professional-availability{color:#067647;font-weight:750}
+.professional-rating-line{display:flex;align-items:center;gap:7px;margin-top:8px}
+.professional-rating-line span:last-child{color:#667085;font-size:12px}
+.profile-stars{display:inline-flex;gap:1px}
+.profile-stars>span{color:#d0d5dd;font-size:17px}
+.profile-stars>span.filled{color:#f79009}
+.professional-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;padding-top:62px}
+.profile-completeness{padding:16px 19px}
+.profile-completeness>div:first-child{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}
+.profile-completeness span{color:#667085;font-size:12px}
+.profile-progress{height:9px;border-radius:999px;background:#eaecf0;overflow:hidden}
+.profile-progress i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#1769e0,#12b76a)}
+.professional-stats{display:grid;grid-template-columns:repeat(5,1fr);padding:0!important;overflow:hidden}
+.professional-stats>div{text-align:center;padding:18px;border-right:1px solid var(--border)}
+.professional-stats>div:last-child{border-right:0}
+.professional-stats b{display:block;font-size:21px}
+.professional-stats span{color:#667085;font-size:11px}
+.professional-profile-columns{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+.professional-profile-columns main{display:grid;gap:16px}
+.professional-profile-columns aside{position:sticky;top:86px}
+.professional-section{padding:21px}
+.professional-section h2{margin:0 0 13px}
+.professional-section p{line-height:1.62;color:#475467;white-space:pre-wrap}
+.professional-detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:17px}
+.professional-detail-grid>div{padding:13px;border-radius:12px;background:#f8fafc;border:1px solid #eaecf0}
+.professional-detail-grid span{display:block;color:#667085;font-size:10px;text-transform:uppercase;font-weight:850;margin-bottom:5px}
+.professional-tags{display:flex;flex-wrap:wrap;gap:8px}
+.professional-tags>span{padding:8px 11px;border-radius:999px;background:#eef4ff;color:#175cd3;border:1px solid #d1e1ff;font-size:12px;font-weight:750}
+.equipment-tags>span{background:#f2f4f7;color:#344054;border-color:#e4e7ec}
+.portfolio-featured-links{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:13px}
+.portfolio-featured-card{display:flex;flex-direction:column;gap:5px;padding:15px;border-radius:13px;background:#f5f9ff;border:1px solid #cfe0ff;text-decoration:none}
+.portfolio-featured-card span{font-size:11px;color:#667085}
+.section-title-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
+.section-title-row h2,.section-title-row p{margin:0}
+.section-title-row p{font-size:12px}
+.profile-review-form{padding:16px;border-radius:14px;background:#f8fafc;border:1px solid #eaecf0;margin-bottom:15px}
+.profile-review-form h3{margin:0 0 8px}
+.profile-review-form textarea{width:100%;min-height:90px;margin:10px 0}
+.interactive-stars{display:inline-flex;flex-direction:row-reverse;justify-content:flex-end}
+.interactive-stars input{display:none}
+.interactive-stars label{font-size:29px;color:#d0d5dd;cursor:pointer}
+.interactive-stars label:hover,.interactive-stars label:hover~label,.interactive-stars input:checked~label{color:#f79009}
+.profile-reviews-list{display:grid;gap:10px}
+.profile-review-card{padding:14px;border-radius:13px;border:1px solid #eaecf0;background:#fff}
+.profile-review-author{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:10px;align-items:center}
+.profile-review-author>img,.profile-review-author>span{width:42px;height:42px;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:#1769e0;color:#fff;font-weight:900}
+.profile-review-author b{display:block}
+.profile-review-author small{color:#98a2b3}
+.profile-review-card p{margin:10px 0 0}
+.professional-contact-card{padding:18px}
+.professional-contact-card h2{margin-top:0}
+.professional-contact-card>a{display:flex;flex-direction:column;padding:11px 0;border-bottom:1px solid #eaecf0;text-decoration:none}
+.professional-contact-card>a span{font-size:11px;color:#667085;overflow-wrap:anywhere}
+.remote-service-badge{margin-top:14px;padding:11px;border-radius:11px;background:#ecfdf3;color:#067647;font-size:11px;font-weight:800}
+.empty-review{text-align:center;padding:20px;color:#667085}
+@media(max-width:1000px){
+  .professional-hero-body{grid-template-columns:auto 1fr}
+  .professional-actions{grid-column:1/-1;padding-top:0;justify-content:flex-start}
+  .professional-profile-columns{grid-template-columns:1fr}
+  .professional-profile-columns aside{position:static}
+}
+@media(max-width:720px){
+  .professional-cover{height:180px}
+  .professional-hero-body{display:flex;flex-direction:column;align-items:flex-start;margin-top:-45px;padding:0 16px 18px}
+  .professional-main-info{padding-top:0}
+  .professional-actions{width:100%}
+  .professional-actions>*{flex:1 1 135px}
+  .professional-stats{grid-template-columns:repeat(2,1fr)}
+  .professional-stats>div{border-bottom:1px solid var(--border)}
+  .professional-detail-grid,.portfolio-featured-links{grid-template-columns:1fr}
+  .profile-completeness>div:first-child{flex-direction:column}
+}
