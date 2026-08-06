@@ -84,14 +84,26 @@ function sidebarPlanLabel(plan){
 
 function setIdentityAvatar(container,user,header=false){
   if(!container||!user)return;
-  const initial=String(user.name||'U').trim().slice(0,1).toUpperCase()||'U';
+  const initial=(user.name||'U').trim().slice(0,1).toUpperCase();
+  const cacheKey=`sociaudio_avatar_${user.id||'current'}`;
+  let avatar=(user.avatar||'').trim();
+
+  if(avatar){
+    try{localStorage.setItem(cacheKey,avatar)}catch{}
+  }else{
+    try{avatar=localStorage.getItem(cacheKey)||''}catch{}
+  }
+
   container.innerHTML='';
-  if(user.avatar){
+  if(avatar){
     container.className=header?'header-avatar-image':'sidebar-avatar sidebar-avatar-image';
     const img=document.createElement('img');
-    img.src=user.avatar;
+    img.src=avatar;
     img.alt='Foto de '+(user.name||'usuário');
+    img.decoding='async';
+    img.loading='eager';
     img.addEventListener('error',()=>{
+      try{localStorage.removeItem(cacheKey)}catch{}
       container.className=header?'header-avatar-fallback':'sidebar-avatar sidebar-avatar-fallback';
       container.textContent=initial;
     },{once:true});
@@ -158,7 +170,7 @@ function galleryMarkup(items=[],editable=false){
 }
 async function deleteProfileGallery(id){
   if(!confirm('Remover esta foto da galeria?'))return;
-  try{await api(`/api/profile/gallery/${id}/delete`,{method:'POST'});me=(await api('/api/me')).user;renderSidebarIdentity();renderProfile();toast('Foto removida.')}catch(e){toast(e.message,true)}
+  try{await api(`/api/profile/gallery/${id}/delete`,{method:'POST'});me=(await api('/api/me')).user;try{if(me.avatar)localStorage.setItem(`sociaudio_avatar_${me.id}`,me.avatar)}catch{};renderSidebarIdentity();renderProfile();toast('Foto removida.')}catch(e){toast(e.message,true)}
 }
 
 function showPostMediaPreview(){

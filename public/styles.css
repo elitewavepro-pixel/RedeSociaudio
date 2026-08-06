@@ -2531,3 +2531,88 @@ header .sidebar-brand-panel{
     display:none!important;
   }
 }
+
+
+/* Rede Sociaudio Beta 3.2.1 — foto do perfil lateral corrigida */
+#mainSidebar > #sidebarUserCard{
+  display:grid!important;
+  grid-template-columns:68px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:13px!important;
+  min-height:104px!important;
+  padding:14px!important;
+  overflow:visible!important;
+}
+
+#mainSidebar #sidebarAvatar,
+#mainSidebar #sidebarAvatar.sidebar-avatar-image,
+#mainSidebar #sidebarAvatar.sidebar-avatar-fallback{
+  width:68px!important;
+  height:68px!important;
+  min-width:68px!important;
+  min-height:68px!important;
+  max-width:68px!important;
+  max-height:68px!important;
+  aspect-ratio:1/1!important;
+  border-radius:50%!important;
+  overflow:hidden!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  margin:0!important;
+  background:#1769e0!important;
+  border:4px solid #fff!important;
+  box-shadow:0 0 0 1px #cdd9ea,0 8px 18px rgba(16,24,40,.18)!important;
+  box-sizing:border-box!important;
+  position:relative!important;
+  z-index:2!important;
+}
+
+#mainSidebar #sidebarAvatar.sidebar-avatar-image img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:100%!important;
+  min-height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  object-position:center 25%!important;
+  border:0!important;
+  border-radius:50%!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+}
+
+#mainSidebar #sidebarAvatar.sidebar-avatar-fallback{
+  color:#fff!important;
+  font-size:23px!important;
+  font-weight:900!important;
+  line-height:1!important;
+}
+
+#mainSidebar #sidebarUserCard .sidebar-user-info{
+  width:100%!important;
+  min-width:0!important;
+  overflow:hidden!important;
+}
+
+#mainSidebar #sidebarUserCard #sidebarName{
+  display:block!important;
+  font-size:14px!important;
+  line-height:1.25!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+#mainSidebar #sidebarUserCard #sidebarRole{
+  display:block!important;
+  margin-top:3px!important;
+  font-size:10px!important;
+  line-height:1.35!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
