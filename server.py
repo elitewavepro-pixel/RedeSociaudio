@@ -592,6 +592,9 @@ def init_db():
     for name, typ in additions.items():
         if name not in cols:
             c.execute(f'ALTER TABLE users ADD COLUMN {name} {typ}')
+    qcols = {r['name'] for r in c.execute('PRAGMA table_info(quote_requests)')}
+    if 'budget' not in qcols:
+        c.execute("ALTER TABLE quote_requests ADD COLUMN budget TEXT DEFAULT ''")
     pcols = {r['name'] for r in c.execute('PRAGMA table_info(posts)')}
     for name, typ in [('is_featured', 'INTEGER DEFAULT 0'), ('status', "TEXT DEFAULT 'published'"), ('image_data', "TEXT DEFAULT ''"), ('updated_at', "TEXT DEFAULT ''"), ('media_data', "TEXT DEFAULT ''"), ('media_type', "TEXT DEFAULT ''"), ('media_name', "TEXT DEFAULT ''"), ('media_size', 'INTEGER DEFAULT 0')]:
         if name not in pcols: c.execute(f'ALTER TABLE posts ADD COLUMN {name} {typ}')
@@ -1644,7 +1647,7 @@ class Handler(SimpleHTTPRequestHandler):
             if len(message)<10:return self.send_json({'error':'Descreva melhor o serviço desejado.'},400)
             c=connect(); target=c.execute("SELECT id,name FROM users WHERE id=? AND status='active'",(uid,)).fetchone()
             if not target: c.close(); return self.send_json({'error':'Profissional não encontrado.'},404)
-            c.execute('''INSERT INTO quote_requests(professional_id,requester_id,requester_name,requester_phone,city,event_date,event_type,audience,message,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,'novo',?)''',(uid,u['id'],d.get('requester_name',u['name']).strip(),d.get('requester_phone','').strip(),d.get('city','').strip(),d.get('event_date','').strip(),d.get('event_type','').strip(),d.get('audience','').strip(),message,now()))
+            c.execute('''INSERT INTO quote_requests(professional_id,requester_id,requester_name,requester_phone,city,event_date,event_type,audience,budget,message,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,'novo',?)''',(uid,u['id'],d.get('requester_name',u['name']).strip(),d.get('requester_phone','').strip(),d.get('city','').strip(),d.get('event_date','').strip(),d.get('event_type','').strip(),d.get('audience','').strip(),d.get('budget','').strip(),message,now()))
             c.execute("INSERT INTO notifications(user_id,actor_id,type,message,is_read,created_at) VALUES(?,?,'quote',?,0,?)",(uid,u['id'],f"{u['name']} enviou uma solicitação de orçamento.",now()))
             c.commit(); c.close(); return self.send_json({'ok':True},201)
         if p == '/api/marketplace':

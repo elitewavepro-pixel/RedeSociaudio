@@ -648,3 +648,16 @@ main,.main-content,#content{min-width:0;overflow-x:hidden}
   .search-page-title{align-items:stretch;flex-direction:column}
   .search-results{grid-template-columns:1fr}
 }
+
+
+/* Rede Sociaudio V20.5.3 — solicitação de orçamento */
+#quoteDlg{width:min(620px,calc(100vw - 28px));max-height:90vh;border:0;border-radius:18px;padding:0;box-shadow:0 24px 80px rgba(15,23,42,.28)}
+#quoteDlg::backdrop{background:rgba(15,23,42,.58);backdrop-filter:blur(3px)}
+#quoteForm{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:22px}
+#quoteForm .dialog-head,#quoteForm label:nth-last-of-type(1),#quoteForm button[type="submit"]{grid-column:1/-1}
+#quoteForm .dialog-head{margin:-22px -22px 5px;padding:19px 22px;border-bottom:1px solid var(--border);background:#f8faff}
+#quoteForm label{font-size:12px;font-weight:750;color:#344054}
+#quoteForm input,#quoteForm textarea{margin-top:6px}
+#quoteForm textarea{min-height:115px;resize:vertical}
+#quoteForm button[type="submit"]{min-height:46px;font-weight:850}
+@media(max-width:620px){#quoteForm{grid-template-columns:1fr}#quoteForm>*{grid-column:1!important}}
