@@ -1140,3 +1140,51 @@ button.danger{background:#fff1f3;color:#b42318;border:1px solid #fecdd3}.quote-e
   0%,60%,100%{transform:translateY(0);opacity:.45}
   30%{transform:translateY(-4px);opacity:1}
 }
+
+
+/* Rede Sociaudio Beta 1.0 — estabilidade */
+.beta-status-wrap{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  margin-left:10px;
+}
+.beta-label{
+  padding:4px 7px;
+  border-radius:999px;
+  background:#eef4ff;
+  color:#175cd3;
+  border:1px solid #bfd5ff;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.beta-health{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  color:#667085;
+  font-size:10px;
+  font-weight:750;
+}
+.beta-health::before{
+  content:'';
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#98a2b3;
+}
+.beta-health.ok{color:#067647}
+.beta-health.ok::before{background:#12b76a;box-shadow:0 0 0 3px rgba(18,183,106,.12)}
+.beta-health.error{color:#b42318}
+.beta-health.error::before{background:#f04438;box-shadow:0 0 0 3px rgba(240,68,56,.12)}
+button:disabled{
+  opacity:.58;
+  cursor:not-allowed;
+}
+img{
+  max-width:100%;
+}
+@media(max-width:900px){
+  .beta-health{display:none}
+}

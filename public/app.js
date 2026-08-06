@@ -1,4 +1,35 @@
 let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
+
+const SOCIAUDIO_VERSION='Beta 1.0';
+
+window.addEventListener('error',event=>{
+  console.error('[Rede Sociaudio]',event.error||event.message);
+});
+
+window.addEventListener('unhandledrejection',event=>{
+  console.error('[Rede Sociaudio] Falha assíncrona:',event.reason);
+});
+
+async function checkPlatformHealth(){
+  try{
+    const health=await api('/api/health');
+    const indicator=document.getElementById('betaHealth');
+    if(indicator){
+      indicator.textContent=health.ok?'Sistema online':'Sistema instável';
+      indicator.classList.toggle('ok',!!health.ok);
+      indicator.classList.toggle('error',!health.ok);
+      indicator.title=`${health.version} · ${health.database?.tables||0} tabelas`;
+    }
+  }catch(error){
+    const indicator=document.getElementById('betaHealth');
+    if(indicator){
+      indicator.textContent='Sistema instável';
+      indicator.classList.remove('ok');
+      indicator.classList.add('error');
+    }
+  }
+}
+
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 const ICONS={
@@ -1050,3 +1081,16 @@ document.querySelectorAll('[data-view="notifications"],#notificationBtn,.notific
 });
 loadNotifications();
 notificationPoll=setInterval(()=>loadNotifications(view==='notifications'),5000);
+
+checkPlatformHealth();
+setInterval(checkPlatformHealth,120000);
+
+
+function showBetaNotice(){
+  if(sessionStorage.getItem('sociaudio_beta_notice'))return;
+  sessionStorage.setItem('sociaudio_beta_notice','1');
+  setTimeout(()=>{
+    toast('Rede Sociaudio Beta 1.0: ajude-nos testando e relatando problemas.');
+  },900);
+}
+showBetaNotice();

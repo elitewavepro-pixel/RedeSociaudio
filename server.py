@@ -3,6 +3,12 @@ from datetime import datetime, timedelta, timezone
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
+
+APP_VERSION = 'Beta 1.0'
+APP_ENV = os.environ.get('APP_ENV','production')
+STARTED_AT = datetime.now(timezone.utc).isoformat()
+
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = os.path.join(ROOT, 'public')
 HOST = os.environ.get('HOST', '0.0.0.0')
@@ -174,6 +180,29 @@ def create_admin_backup():
 def now():
     return datetime.now(timezone.utc).isoformat()
 
+
+
+
+def log_error(context,exc):
+    try:
+        print(f"[ERRO] {context}: {type(exc).__name__}: {exc}",flush=True)
+    except Exception:
+        pass
+
+def database_diagnostics():
+    result={'ok':False,'tables':0,'users':0,'error':''}
+    try:
+        c=connect()
+        result['tables']=c.execute(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table'"
+        ).fetchone()[0]
+        result['users']=c.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        c.execute("SELECT 1").fetchone()
+        c.close()
+        result['ok']=True
+    except Exception as exc:
+        result['error']=str(exc)
+    return result
 
 def create_notification(c,user_id,actor_id,ntype,title,message='',target_type='',target_id=0):
     if not user_id or int(user_id)==int(actor_id or 0):
@@ -1068,6 +1097,10 @@ class Handler(SimpleHTTPRequestHandler):
     def send_json(self, obj, status=200):
         body = json.dumps(obj, ensure_ascii=False).encode('utf-8')
         self.send_response(status)
+        self.send_header('X-Content-Type-Options','nosniff')
+        self.send_header('X-Frame-Options','SAMEORIGIN')
+        self.send_header('Referrer-Policy','strict-origin-when-cross-origin')
+        self.send_header('Permissions-Policy','camera=(), microphone=(self), geolocation=()')
         self.send_header('Content-Type','application/json; charset=utf-8')
         self.send_header('Cache-Control','no-store')
         self.send_header('Content-Length',str(len(body)))
