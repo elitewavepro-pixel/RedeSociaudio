@@ -486,3 +486,139 @@ main,.main-content,#content{min-width:0;overflow-x:hidden}
   .sidebar{width:100%;max-width:none}
   .community-grid{grid-template-columns:1fr}
 }
+
+
+/* Rede Sociaudio V20.5.1 — cartão lateral profissional */
+.sidebar-profile.sidebar-user-card{
+  display:grid;
+  grid-template-columns:52px minmax(0,1fr);
+  align-items:center;
+  column-gap:11px;
+  width:100%;
+  max-width:100%;
+  min-height:76px;
+  padding:11px 12px;
+  border-radius:16px;
+  overflow:hidden;
+  box-sizing:border-box;
+}
+
+.sidebar-profile #sidebarAvatar,
+.sidebar-profile .sidebar-avatar-image,
+.sidebar-profile .sidebar-avatar-fallback{
+  width:52px!important;
+  height:52px!important;
+  min-width:52px!important;
+  min-height:52px!important;
+  max-width:52px!important;
+  max-height:52px!important;
+  aspect-ratio:1/1;
+  border-radius:50%!important;
+  overflow:hidden!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  margin:0!important;
+  line-height:1!important;
+  box-sizing:border-box!important;
+  flex:none!important;
+}
+
+.sidebar-profile .sidebar-avatar-image{
+  border:3px solid #fff!important;
+  box-shadow:0 0 0 1px #d5dfef,0 5px 14px rgba(17,24,39,.12)!important;
+  background:#edf3fb!important;
+}
+
+.sidebar-profile .sidebar-avatar-image img{
+  width:100%!important;
+  height:100%!important;
+  min-width:100%!important;
+  min-height:100%!important;
+  display:block!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+  border-radius:50%!important;
+  padding:0!important;
+  margin:0!important;
+}
+
+.sidebar-profile .sidebar-avatar-fallback{
+  background:linear-gradient(135deg,var(--blue),#174ea6)!important;
+  color:#fff!important;
+  font-size:19px!important;
+  font-weight:900!important;
+  border:3px solid #fff!important;
+  box-shadow:0 0 0 1px #d5dfef,0 5px 14px rgba(17,24,39,.12)!important;
+}
+
+.sidebar-user-info{
+  display:block!important;
+  min-width:0!important;
+  width:100%!important;
+  overflow:hidden!important;
+}
+
+.sidebar-user-name-row{
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  min-width:0!important;
+  width:100%!important;
+  overflow:hidden!important;
+}
+
+.sidebar-user-name-row b{
+  display:block!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:14px!important;
+  line-height:1.25!important;
+}
+
+#sidebarRole{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin-top:3px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:10.5px!important;
+  line-height:1.25!important;
+}
+
+.sidebar-user-meta{
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  margin-top:6px!important;
+  min-width:0!important;
+  overflow:hidden!important;
+}
+
+.sidebar-plan,.sidebar-online{
+  flex:none!important;
+  white-space:nowrap!important;
+}
+
+@media(max-width:1180px){
+  .sidebar-profile.sidebar-user-card{
+    grid-template-columns:46px minmax(0,1fr);
+    padding:9px;
+    min-height:68px;
+  }
+  .sidebar-profile #sidebarAvatar,
+  .sidebar-profile .sidebar-avatar-image,
+  .sidebar-profile .sidebar-avatar-fallback{
+    width:46px!important;
+    height:46px!important;
+    min-width:46px!important;
+    min-height:46px!important;
+    max-width:46px!important;
+    max-height:46px!important;
+  }
+}
