@@ -843,20 +843,144 @@ async function renderAdmin(){
   <section class="card plan-admin"><h2>Planos dos usuários</h2>${users.map(x=>`<div class="plan-row"><span>${avatar(x)}<b>${esc(x.name)}</b><small>${esc(x.email||'')}</small></span><select onchange="setUserPlan(${x.id},this.value)"><option value="free" ${x.plan==='free'?'selected':''}>Gratuito · 250 MB</option><option value="pro" ${x.plan==='pro'?'selected':''}>PRO · 2 GB</option><option value="company" ${x.plan==='company'?'selected':''}>Empresa · 5 GB</option><option value="admin" ${x.plan==='admin'?'selected':''}>Administrador · 5 GB</option></select><select onchange="setUserBadge(${x.id},this.value)"><option value="" ${!x.verified_badge?'selected':''}>Sem selo</option><option value="professional" ${x.verified_badge==='professional'?'selected':''}>Profissional verificado</option><option value="company" ${x.verified_badge==='company'?'selected':''}>Empresa verificada</option><option value="manufacturer" ${x.verified_badge==='manufacturer'?'selected':''}>Fabricante oficial</option><option value="school" ${x.verified_badge==='school'?'selected':''}>Escola parceira</option><option value="specialist" ${x.verified_badge==='specialist'?'selected':''}>Especialista certificado</option></select></div>`).join('')}</section>
   ${posts.map(postCard).join('')}`;
 }
-let chatConversationId=null,chatPoll=null;
+let chatConversationId=null,chatPoll=null,chatTypingTimer=null,chatTypingLastSent=0;
 function chatAvatar(x){return x.other_avatar?`<img class="avatar" src="${x.other_avatar}">`:`<span class="avatar fallback">${esc((x.other_name||x.name||'?')[0])}</span>`}
 async function renderChat(){clearInterval(chatPoll);let convs=await api('/api/chat/conversations');content.innerHTML=`<section class="chat-shell card"><aside class="chat-list"><div class="chat-list-head"><div><span class="eyebrow">CHAT PROFISSIONAL</span><h1>Mensagens</h1></div><button class="primary icon-only" onclick="openNewChat()" title="Nova conversa">${icon('plus')}</button></div><input id="chatSearch" class="chat-search" placeholder="Buscar conversas..."><div id="chatConversationList">${convs.length?convs.map(chatConversationCard).join(''):'<div class="chat-empty-small">Nenhuma conversa. Clique em + para iniciar.</div>'}</div></aside><main id="chatMain" class="chat-main"><div class="chat-welcome">${icon('chat')}<h2>Converse com profissionais</h2><p>Envie mensagens, documentos, áudios e arquivos técnicos sem sair da Rede Sociaudio.</p><button class="primary" onclick="openNewChat()">Iniciar conversa</button></div></main></section>`;hydrateIcons(content);chatSearch.oninput=()=>{let q=chatSearch.value.toLowerCase();document.querySelectorAll('.chat-conversation').forEach(x=>x.hidden=!x.textContent.toLowerCase().includes(q))};if(chatConversationId)openConversation(chatConversationId,false)}
-function chatConversationCard(c){return `<button class="chat-conversation ${chatConversationId===c.id?'active':''}" onclick="openConversation(${c.id})">${chatAvatar(c)}<span><b>${esc(c.other_name)}</b><small>${esc(c.last_body||c.last_attachment||'Nova conversa')}</small></span>${c.unread?`<em>${c.unread}</em>`:''}</button>`}
+function chatConversationCard(c){
+  const unread=Number(c.unread||0);
+  return `<button class="chat-conversation ${chatConversationId===c.id?'active':''} ${unread?'has-unread':''}" onclick="openConversation(${c.id})">
+    ${chatAvatar(c)}
+    <span>
+      <b>${esc(c.other_name)}</b>
+      <small>${esc(c.last_body||c.last_attachment||'Nova conversa')}</small>
+    </span>
+    ${unread?`<em class="chat-unread-count">${unread>99?'99+':unread}</em>`:''}
+  </button>`;
+}
 function contactRow(x){let detail=[x.role,x.company,x.city].filter(Boolean).map(esc).join(' · '),tags=(x.specialties||'').split(',').map(s=>s.trim()).filter(Boolean).slice(0,3);return `<button class="contact-row" onclick="startChat(${x.id})">${x.avatar?`<img class="avatar" src="${x.avatar}">`:`<span class="avatar fallback">${esc((x.name||'?')[0])}</span>`}<span class="contact-info"><b>${esc(x.name)}</b><small>${detail||'Membro da comunidade'}</small>${tags.length?`<em>${tags.map(t=>`<i>${esc(t)}</i>`).join('')}</em>`:''}</span><span class="contact-action">Conversar</span></button>`}
 function emptyContactsHtml(q=''){return `<div class="chat-no-contacts">${icon('users')}<h3>${q?'Nenhum resultado encontrado':'Ainda não há outro usuário disponível'}</h3><p>${q?'Tente pesquisar por outro nome, profissão, empresa, especialidade ou cidade.':'Para iniciar uma conversa, é necessário existir pelo menos mais uma conta cadastrada.'}</p>${me?.is_admin&&!q?'<button class="primary" onclick="createDemoChatUser()">Criar conta de teste</button>':''}</div>`}
 async function openNewChat(){let contacts=await api('/api/chat/contacts');let main=content.querySelector('#chatMain');main.innerHTML=`<div class="chat-contact-picker"><div class="chat-panel-head"><div><h2>Nova conversa</h2><p>Encontre profissionais por nome, profissão, empresa, especialidade ou cidade.</p></div></div><div class="contact-search-wrap">${icon('search')}<input id="contactSearch" autocomplete="off" placeholder="Buscar profissionais..."></div><div class="contact-filter-note">${contacts.length?`${contacts.length} profissional(is) disponível(is)`:''}</div><div id="contactList">${contacts.length?contacts.map(contactRow).join(''):emptyContactsHtml()}</div></div>`;hydrateIcons(main);let timer;contactSearch.oninput=()=>{clearTimeout(timer);timer=setTimeout(async()=>{let q=contactSearch.value.trim();contactList.innerHTML='<div class="chat-searching">Buscando profissionais...</div>';try{let xs=await api('/api/chat/contacts?q='+encodeURIComponent(q));contactList.innerHTML=xs.length?xs.map(contactRow).join(''):emptyContactsHtml(q);hydrateIcons(contactList)}catch(e){contactList.innerHTML=`<div class="chat-no-contacts"><h3>Não foi possível buscar</h3><p>${esc(e.message)}</p></div>`}},250)}}
 async function createDemoChatUser(){try{let r=await api('/api/chat/demo-user',{method:'POST',body:'{}'});toast('Conta de teste criada. Senha: '+r.password);await openNewChat()}catch(e){toast(e.message,true)}}
 async function startChat(uid){let r=await api('/api/chat/conversations',{method:'POST',body:JSON.stringify({user_id:uid})});chatConversationId=r.id;await renderChat();openConversation(r.id)}
-async function openConversation(id,reload=true){chatConversationId=id;let convs=await api('/api/chat/conversations'),c=convs.find(x=>x.id===id);if(!c){chatConversationId=null;return renderChat()}let msgs=await api(`/api/chat/conversations/${id}/messages`);let main=content.querySelector('#chatMain');if(!main)return;main.innerHTML=`<div class="chat-header">${chatAvatar(c)}<div><b>${esc(c.other_name)}</b><small>${esc(c.other_role)}${c.other_city?' · '+esc(c.other_city):''}</small></div><button class="secondary" onclick="openProfile(${c.other_user_id})">Ver perfil</button></div><div id="chatMessages" class="chat-messages">${msgs.map(chatMessage).join('')||'<div class="chat-day">Inicie a conversa com uma mensagem.</div>'}</div><form id="chatForm" class="chat-compose"><label class="chat-attach" title="Anexar arquivo">${icon('file')}<input id="chatFile" type="file" hidden></label><div id="chatFileBadge" class="chat-file-badge" hidden></div><textarea id="chatBody" placeholder="Digite uma mensagem..." rows="1"></textarea><button class="primary">Enviar</button></form>`;hydrateIcons(main);chatMessages.scrollTop=chatMessages.scrollHeight;chatFile.onchange=()=>{let f=chatFile.files[0];chatFileBadge.hidden=!f;chatFileBadge.textContent=f?`${f.name} · ${humanSize(f.size)}`:''};chatForm.onsubmit=sendChatMessage;document.querySelectorAll('.chat-conversation').forEach(x=>x.classList.toggle('active',Number(x.getAttribute('onclick').match(/\d+/)?.[0])===id));clearInterval(chatPoll);chatPoll=setInterval(()=>refreshChatMessages(id),4000)}
-function chatMessage(m){let mine=m.sender_id===me.id,att=m.attachment_url?`<a class="chat-attachment" href="${esc(m.attachment_url)}" target="_blank" ${m.attachment_type?.startsWith('audio/')?'':'download'}>${icon(m.attachment_type?.startsWith('audio/')?'audio':'file')}<span><b>${esc(m.attachment_name||'Arquivo')}</b><small>${humanSize(m.attachment_size||0)}</small></span></a>${m.attachment_type?.startsWith('audio/')?`<audio controls src="${esc(m.attachment_url)}"></audio>`:''}`:'';return `<div class="chat-message ${mine?'mine':''}"><div>${m.body?`<p>${esc(m.body)}</p>`:''}${att}<small>${new Date(m.created_at).toLocaleString('pt-BR')}</small></div></div>`}
+async function openConversation(id,reload=true){
+  chatConversationId=id;
+  let convs=await api('/api/chat/conversations');
+  let c=convs.find(x=>x.id===id);
+  if(!c){
+    chatConversationId=null;
+    return renderChat();
+  }
+
+  let msgs=await api(`/api/chat/conversations/${id}/messages`);
+  let main=content.querySelector('#chatMain');
+  if(!main)return;
+
+  main.innerHTML=`<div class="chat-header">
+    ${chatAvatar(c)}
+    <div class="chat-header-person">
+      <b>${esc(c.other_name)}</b>
+      <small id="chatPresence">${esc(c.other_role)}${c.other_city?' · '+esc(c.other_city):''}</small>
+    </div>
+    <button class="secondary" onclick="openProfile(${c.other_user_id})">Ver perfil</button>
+  </div>
+  <div id="chatMessages" class="chat-messages">${msgs.map(chatMessage).join('')||'<div class="chat-day">Inicie a conversa com uma mensagem.</div>'}</div>
+  <div id="chatTypingIndicator" class="chat-typing-indicator" hidden>
+    <span></span><span></span><span></span><b>${esc(c.other_name)} está digitando...</b>
+  </div>
+  <form id="chatForm" class="chat-compose">
+    <label class="chat-attach" title="Anexar arquivo">${icon('file')}<input id="chatFile" type="file" hidden></label>
+    <div id="chatFileBadge" class="chat-file-badge" hidden></div>
+    <textarea id="chatBody" placeholder="Digite uma mensagem..." rows="1"></textarea>
+    <button class="primary">Enviar</button>
+  </form>`;
+
+  hydrateIcons(main);
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+
+  chatFile.onchange=()=>{
+    let f=chatFile.files[0];
+    chatFileBadge.hidden=!f;
+    chatFileBadge.textContent=f?`${f.name} · ${humanSize(f.size)}`:'';
+  };
+
+  chatBody.addEventListener('input',sendTypingSignal);
+  chatBody.addEventListener('blur',()=>stopTypingSignal());
+  chatForm.onsubmit=sendChatMessage;
+
+  document.querySelectorAll('.chat-conversation').forEach(x=>{
+    const current=Number(x.getAttribute('onclick').match(/\d+/)?.[0])===id;
+    x.classList.toggle('active',current);
+    if(current){
+      x.classList.remove('has-unread');
+      x.querySelector('.chat-unread-count')?.remove();
+    }
+  });
+
+  clearInterval(chatPoll);
+  chatPoll=setInterval(()=>refreshChatMessages(id),3000);
+  await refreshTypingStatus(id);
+}
+function chatMessage(m){
+  let mine=m.sender_id===me.id;
+  let att=m.attachment_url?`<a class="chat-attachment" href="${esc(m.attachment_url)}" target="_blank" ${m.attachment_type?.startsWith('audio/')?'':'download'}>${icon(m.attachment_type?.startsWith('audio/')?'audio':'file')}<span><b>${esc(m.attachment_name||'Arquivo')}</b><small>${humanSize(m.attachment_size||0)}</small></span></a>${m.attachment_type?.startsWith('audio/')?`<audio controls src="${esc(m.attachment_url)}"></audio>`:''}`:'';
+  let receipt=mine?`<span class="chat-receipt ${m.read_at?'seen':'sent'}">${m.read_at?'✓✓ Visto':'✓ Enviado'}</span>`:'';
+  return `<div class="chat-message ${mine?'mine':''}">
+    <div>
+      ${m.body?`<p>${esc(m.body)}</p>`:''}
+      ${att}
+      <small class="chat-message-meta">${new Date(m.created_at).toLocaleString('pt-BR')} ${receipt}</small>
+    </div>
+  </div>`;
+}
+
+async function sendTypingSignal(){
+  if(!chatConversationId)return;
+  const nowMs=Date.now();
+  if(nowMs-chatTypingLastSent>1800){
+    chatTypingLastSent=nowMs;
+    api(`/api/chat/conversations/${chatConversationId}/typing`,{
+      method:'POST',
+      body:JSON.stringify({active:true})
+    }).catch(()=>{});
+  }
+  clearTimeout(chatTypingTimer);
+  chatTypingTimer=setTimeout(()=>stopTypingSignal(),2600);
+}
+
+async function stopTypingSignal(){
+  clearTimeout(chatTypingTimer);
+  if(!chatConversationId)return;
+  api(`/api/chat/conversations/${chatConversationId}/typing`,{
+    method:'POST',
+    body:JSON.stringify({active:false})
+  }).catch(()=>{});
+}
+
+async function refreshTypingStatus(id){
+  if(view!=='chat'||chatConversationId!==id)return;
+  try{
+    const state=await api(`/api/chat/conversations/${id}/typing`);
+    const indicator=document.getElementById('chatTypingIndicator');
+    if(indicator)indicator.hidden=!state.typing;
+  }catch{}
+}
+
 async function uploadChatFile(f){if(!allowedGenericFile(f)&&!f.type.startsWith('audio/'))throw Error('Use documentos, arquivos técnicos ou áudio no chat.');let endpoint=f.type.startsWith('audio/')?'/api/media/audio':'/api/media/file';let r=await fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':f.type||'application/octet-stream','X-File-Type':f.type||'application/octet-stream','X-File-Name':encodeURIComponent(f.name)},body:f});let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Falha no envio.');return d}
-async function sendChatMessage(e){e.preventDefault();let body=chatBody.value.trim(),f=chatFile.files[0],att={};try{let btn=chatForm.querySelector('button');btn.disabled=true;btn.textContent=f?'Enviando...':'Enviar';if(f)att=await uploadChatFile(f);await api(`/api/chat/conversations/${chatConversationId}/messages`,{method:'POST',body:JSON.stringify({body,attachment_url:att.media_data||'',attachment_name:att.media_name||'',attachment_type:att.media_type||'',attachment_size:att.size||0})});chatBody.value='';chatFile.value='';await openConversation(chatConversationId)}catch(err){toast(err.message,true)}finally{let btn=chatForm?.querySelector('button');if(btn){btn.disabled=false;btn.textContent='Enviar'}}}
-async function refreshChatMessages(id){if(view!=='chat'||chatConversationId!==id)return;try{let msgs=await api(`/api/chat/conversations/${id}/messages`),box=$('#chatMessages');if(box){let near=box.scrollHeight-box.scrollTop-box.clientHeight<100;box.innerHTML=msgs.map(chatMessage).join('');hydrateIcons(box);if(near)box.scrollTop=box.scrollHeight}}catch{}}
+async function sendChatMessage(e){e.preventDefault();let body=chatBody.value.trim(),f=chatFile.files[0],att={};try{let btn=chatForm.querySelector('button');btn.disabled=true;btn.textContent=f?'Enviando...':'Enviar';if(f)att=await uploadChatFile(f);await api(`/api/chat/conversations/${chatConversationId}/messages`,{method:'POST',body:JSON.stringify({body,attachment_url:att.media_data||'',attachment_name:att.media_name||'',attachment_type:att.media_type||'',attachment_size:att.size||0})});chatBody.value='';chatFile.value='';await stopTypingSignal();await openConversation(chatConversationId)}catch(err){toast(err.message,true)}finally{let btn=chatForm?.querySelector('button');if(btn){btn.disabled=false;btn.textContent='Enviar'}}}
+async function refreshChatMessages(id){
+  if(view!=='chat'||chatConversationId!==id)return;
+  try{
+    let msgs=await api(`/api/chat/conversations/${id}/messages`);
+    let box=$('#chatMessages');
+    if(box){
+      let near=box.scrollHeight-box.scrollTop-box.clientHeight<100;
+      box.innerHTML=msgs.map(chatMessage).join('');
+      hydrateIcons(box);
+      if(near)box.scrollTop=box.scrollHeight;
+    }
+    await refreshTypingStatus(id);
+  }catch{}
+}
 
 function render(){document.body.classList.toggle('chat-page',view==='chat');document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));if(view==='experts')return renderExperts();if(view==='companies')return renderCompanies();if(view==='jobs')return renderJobs();if(view==='marketplace')return renderMarketplace();if(view==='knowledge')return renderKnowledge();if(view==='audioai')return renderAudioAI();if(view==='chat')return renderChat();if(view==='communities')return renderCommunities();if(view==='profile')return renderProfile();if(view==='notifications')return loadNotifications(true);if(view==='hire')return renderHire();if(view==='opportunities')return renderOpportunities();if(view==='requests')return renderRequests();if(view==='admin')return renderAdmin();return renderFeed(view==='saved')}
 search.oninput=scheduleGlobalSearch;
@@ -925,4 +1049,4 @@ document.querySelectorAll('[data-view="notifications"],#notificationBtn,.notific
   };
 });
 loadNotifications();
-notificationPoll=setInterval(()=>loadNotifications(view==='notifications'),30000);
+notificationPoll=setInterval(()=>loadNotifications(view==='notifications'),5000);

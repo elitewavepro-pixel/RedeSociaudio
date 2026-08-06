@@ -581,6 +581,16 @@ def init_db():
       FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
     );
     ''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS conversation_typing(
+      conversation_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      typed_at TEXT NOT NULL,
+      PRIMARY KEY(conversation_id,user_id),
+      FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )''')
+
     # Migração leve da V3
     cols = {r['name'] for r in c.execute('PRAGMA table_info(users)')}
     additions = {
@@ -1355,6 +1365,38 @@ class Handler(SimpleHTTPRequestHandler):
                   WHERE COALESCE(NULLIF(status,''),'active')='active' AND id<>?
                   ORDER BY is_admin DESC,name LIMIT 50''',(u['id'],)).fetchall()
             out=[dict(x) for x in rows];c.close();return self.send_json(out)
+        if p.startswith('/api/chat/conversations/') and p.endswith('/typing'):
+            u=self.require_user()
+            if not u:return
+            try:cid=int(p.split('/')[4])
+            except:return self.send_json({'error':'Conversa inválida.'},400)
+            c=connect()
+            member=c.execute(
+                'SELECT 1 FROM conversation_members WHERE conversation_id=? AND user_id=?',
+                (cid,u['id'])
+            ).fetchone()
+            if not member:
+                c.close();return self.send_json({'error':'Acesso restrito.'},403)
+            row=c.execute(
+                '''SELECT t.user_id,us.name,t.typed_at
+                   FROM conversation_typing t
+                   JOIN users us ON us.id=t.user_id
+                   WHERE t.conversation_id=? AND t.user_id<>?
+                   ORDER BY t.typed_at DESC LIMIT 1''',
+                (cid,u['id'])
+            ).fetchone()
+            typing=False
+            name=''
+            if row:
+                try:
+                    typed=datetime.fromisoformat(row['typed_at'])
+                    typing=(datetime.now(timezone.utc)-typed).total_seconds()<7
+                    name=row['name'] if typing else ''
+                except Exception:
+                    typing=False
+            c.close()
+            return self.send_json({'typing':typing,'name':name})
+
         if p.startswith('/api/chat/conversations/') and p.endswith('/messages'):
             u=self.require_user()
             if not u:return
@@ -1940,6 +1982,33 @@ class Handler(SimpleHTTPRequestHandler):
             try:cid=write_transaction(create_conv)
             except ValueError as e:return self.send_json({'error':str(e)},404)
             return self.send_json({'id':cid},201)
+        if p.startswith('/api/chat/conversations/') and p.endswith('/typing'):
+            try:cid=int(p.split('/')[4])
+            except:return self.send_json({'error':'Conversa inválida.'},400)
+            active=bool(d.get('active',True))
+            c=connect()
+            member=c.execute(
+                'SELECT 1 FROM conversation_members WHERE conversation_id=? AND user_id=?',
+                (cid,u['id'])
+            ).fetchone()
+            if not member:
+                c.close();return self.send_json({'error':'Acesso restrito.'},403)
+            if active:
+                c.execute(
+                    '''INSERT INTO conversation_typing(conversation_id,user_id,typed_at)
+                       VALUES(?,?,?)
+                       ON CONFLICT(conversation_id,user_id)
+                       DO UPDATE SET typed_at=excluded.typed_at''',
+                    (cid,u['id'],now())
+                )
+            else:
+                c.execute(
+                    'DELETE FROM conversation_typing WHERE conversation_id=? AND user_id=?',
+                    (cid,u['id'])
+                )
+            c.commit();c.close()
+            return self.send_json({'ok':True})
+
         if p.startswith('/api/chat/conversations/') and p.endswith('/messages'):
             u=self.require_user()
             if not u:return
@@ -1948,9 +2017,47 @@ class Handler(SimpleHTTPRequestHandler):
             body=(d.get('body') or '').strip()[:5000];url=(d.get('attachment_url') or '').strip()[:2000];name=(d.get('attachment_name') or '').strip()[:220];atype=(d.get('attachment_type') or '').strip()[:120];asize=int(d.get('attachment_size') or 0)
             if not body and not url:return self.send_json({'error':'Digite uma mensagem ou anexe um arquivo.'},400)
             def send_msg(c):
-                member=c.execute('SELECT 1 FROM conversation_members WHERE conversation_id=? AND user_id=?',(cid,u['id'])).fetchone()
-                if not member:raise PermissionError()
-                stamp=now();c.execute('''INSERT INTO chat_messages(conversation_id,sender_id,body,attachment_url,attachment_name,attachment_type,attachment_size,created_at) VALUES(?,?,?,?,?,?,?,?)''',(cid,u['id'],body,url,name,atype,asize,stamp));mid=c.execute('SELECT last_insert_rowid()').fetchone()[0];c.execute('UPDATE conversations SET updated_at=? WHERE id=?',(stamp,cid));return mid
+                member=c.execute(
+                    'SELECT 1 FROM conversation_members WHERE conversation_id=? AND user_id=?',
+                    (cid,u['id'])
+                ).fetchone()
+                if not member:
+                    raise PermissionError()
+
+                stamp=now()
+                c.execute(
+                    '''INSERT INTO chat_messages(
+                         conversation_id,sender_id,body,attachment_url,
+                         attachment_name,attachment_type,attachment_size,created_at
+                       ) VALUES(?,?,?,?,?,?,?,?)''',
+                    (cid,u['id'],body,url,name,atype,asize,stamp)
+                )
+                mid=c.execute('SELECT last_insert_rowid()').fetchone()[0]
+                c.execute('UPDATE conversations SET updated_at=? WHERE id=?',(stamp,cid))
+
+                recipients=c.execute(
+                    '''SELECT user_id FROM conversation_members
+                       WHERE conversation_id=? AND user_id<>?''',
+                    (cid,u['id'])
+                ).fetchall()
+
+                preview=(body or ('Enviou um arquivo: '+name if name else 'Enviou um anexo')).strip()
+                if len(preview)>90:
+                    preview=preview[:87]+'...'
+
+                for recipient in recipients:
+                    create_notification(
+                        c,
+                        recipient['user_id'],
+                        u['id'],
+                        'message',
+                        'Nova mensagem',
+                        f"{u['name']}: {preview}",
+                        'message',
+                        cid
+                    )
+
+                return mid
             try:mid=write_transaction(send_msg)
             except PermissionError:return self.send_json({'error':'Acesso restrito.'},403)
             return self.send_json({'id':mid},201)
