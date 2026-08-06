@@ -1779,3 +1779,384 @@ main.content .professional-profile-columns,
   .about-grid{grid-template-columns:1fr}
   .beta-platform-subtitle{display:none}
 }
+
+
+/* ==========================================================
+   REDE SOCIAUDIO BETA 3.1 — PROFESSIONAL UI
+   ========================================================== */
+
+:root{
+  --ui-bg:#f5f7fb;
+  --ui-surface:#ffffff;
+  --ui-surface-soft:#f8fafc;
+  --ui-border:#e6eaf0;
+  --ui-text:#182230;
+  --ui-muted:#667085;
+  --ui-blue:#1769e0;
+  --ui-blue-strong:#0f56bd;
+  --ui-blue-soft:#edf4ff;
+  --ui-success:#12b76a;
+  --ui-warning:#f79009;
+  --ui-danger:#f04438;
+  --ui-purple:#7f56d9;
+  --ui-shadow:0 8px 24px rgba(16,24,40,.06);
+  --ui-radius:16px;
+}
+
+html,body{
+  background:var(--ui-bg)!important;
+  color:var(--ui-text)!important;
+}
+
+body{
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  letter-spacing:-.005em;
+}
+
+/* Header */
+header,
+.topbar,
+.app-header{
+  background:rgba(255,255,255,.96)!important;
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--ui-border)!important;
+  box-shadow:0 1px 0 rgba(16,24,40,.02)!important;
+}
+
+header .logo,
+.topbar .logo{
+  font-weight:850!important;
+  letter-spacing:-.03em!important;
+}
+
+header input[type="search"],
+header .search,
+.topbar input[type="search"]{
+  background:#f3f5f8!important;
+  border:1px solid transparent!important;
+  border-radius:12px!important;
+  min-height:44px!important;
+  transition:.2s ease;
+}
+
+header input[type="search"]:focus,
+header .search:focus-within{
+  background:#fff!important;
+  border-color:#b9cdf2!important;
+  box-shadow:0 0 0 4px rgba(23,105,224,.08)!important;
+}
+
+/* Sidebar */
+.sidebar,
+aside.sidebar{
+  background:#f7f9fc!important;
+  border-right:1px solid var(--ui-border)!important;
+}
+
+.sidebar-brand-panel{
+  display:grid;
+  gap:7px;
+  padding:14px 16px 15px;
+  margin:0 12px 12px;
+  border:1px solid var(--ui-border);
+  border-radius:14px;
+  background:linear-gradient(180deg,#fff,#f9fbff);
+  box-shadow:0 6px 18px rgba(16,24,40,.04);
+}
+
+.sidebar-brand-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+
+.beta-label{
+  display:inline-flex!important;
+  align-items:center;
+  min-height:22px;
+  padding:4px 8px!important;
+  border-radius:999px!important;
+  background:var(--ui-blue-soft)!important;
+  color:var(--ui-blue)!important;
+  border:1px solid #cfe0ff!important;
+  font-size:9px!important;
+  font-weight:900!important;
+  letter-spacing:.08em!important;
+}
+
+.professional-ui-label{
+  color:#475467;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+
+.sidebar-brand-panel>strong{
+  font-size:11px;
+  line-height:1.35;
+  color:#344054;
+}
+
+.beta-health{
+  display:inline-flex!important;
+  align-items:center;
+  gap:6px;
+  width:max-content;
+  font-size:10px!important;
+  font-weight:750!important;
+  color:#667085!important;
+}
+
+.beta-health::before{
+  content:'';
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#98a2b3;
+}
+
+.beta-health.ok{
+  color:#067647!important;
+}
+
+.beta-health.ok::before{
+  background:var(--ui-success);
+  box-shadow:0 0 0 3px rgba(18,183,106,.12);
+}
+
+.sidebar .user-card,
+.sidebar .profile-card,
+.sidebar-user-card{
+  margin:0 12px 14px!important;
+  border:1px solid var(--ui-border)!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  box-shadow:0 6px 18px rgba(16,24,40,.04)!important;
+}
+
+.sidebar nav a,
+.sidebar .nav-item,
+.sidebar button.nav-item{
+  min-height:44px!important;
+  margin:3px 10px!important;
+  border-radius:11px!important;
+  color:#344054!important;
+  font-weight:720!important;
+  transition:.18s ease!important;
+}
+
+.sidebar nav a:hover,
+.sidebar .nav-item:hover{
+  background:#eef4ff!important;
+  color:var(--ui-blue)!important;
+}
+
+.sidebar nav a.active,
+.sidebar .nav-item.active{
+  background:linear-gradient(90deg,#edf4ff,#f6f9ff)!important;
+  color:var(--ui-blue)!important;
+  box-shadow:inset 3px 0 0 var(--ui-blue)!important;
+}
+
+/* Cards */
+.card,
+.post-card,
+.story-card,
+.widget,
+.panel{
+  border:1px solid var(--ui-border)!important;
+  border-radius:var(--ui-radius)!important;
+  background:var(--ui-surface)!important;
+  box-shadow:var(--ui-shadow)!important;
+}
+
+.post-card{
+  overflow:hidden;
+}
+
+.post-card:hover,
+.card.interactive:hover{
+  border-color:#d7deea!important;
+  box-shadow:0 12px 30px rgba(16,24,40,.08)!important;
+}
+
+/* Buttons */
+button,
+.btn{
+  border-radius:10px!important;
+  font-weight:780!important;
+  transition:.18s ease!important;
+}
+
+button.primary,
+.btn.primary{
+  background:linear-gradient(180deg,var(--ui-blue),var(--ui-blue-strong))!important;
+  color:#fff!important;
+  border:1px solid var(--ui-blue-strong)!important;
+  box-shadow:0 5px 14px rgba(23,105,224,.18)!important;
+}
+
+button.primary:hover,
+.btn.primary:hover{
+  transform:translateY(-1px);
+  box-shadow:0 8px 18px rgba(23,105,224,.24)!important;
+}
+
+button.secondary,
+.btn.secondary{
+  background:#f5f7fa!important;
+  color:#344054!important;
+  border:1px solid #dfe4eb!important;
+}
+
+button.secondary:hover,
+.btn.secondary:hover{
+  background:#eef2f6!important;
+}
+
+button.danger,
+.btn.danger{
+  background:#fff1f0!important;
+  color:#b42318!important;
+  border:1px solid #fecdca!important;
+}
+
+button.success,
+.btn.success{
+  background:#ecfdf3!important;
+  color:#067647!important;
+  border:1px solid #abefc6!important;
+}
+
+/* Feed action rows */
+.post-actions,
+.feed-actions{
+  border-top:1px solid var(--ui-border)!important;
+  background:#fcfdff!important;
+}
+
+.post-actions button,
+.feed-actions button{
+  color:#667085!important;
+}
+
+.post-actions button:hover,
+.feed-actions button:hover{
+  background:#eef4ff!important;
+  color:var(--ui-blue)!important;
+}
+
+/* Right widgets */
+.rightbar .card,
+.right-column .card{
+  background:#fff!important;
+}
+
+.trending-card,
+.profile-completion-card{
+  border-radius:16px!important;
+}
+
+/* Typography */
+h1,h2,h3{
+  color:#182230!important;
+  letter-spacing:-.025em!important;
+}
+
+h1{font-weight:850!important}
+h2{font-weight:820!important}
+h3{font-weight:800!important}
+
+p,small,.muted{
+  color:var(--ui-muted);
+}
+
+/* Inputs */
+input,textarea,select{
+  border:1px solid #d7dde6!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  transition:.18s ease!important;
+}
+
+input:focus,textarea:focus,select:focus{
+  outline:none!important;
+  border-color:#84adf4!important;
+  box-shadow:0 0 0 4px rgba(23,105,224,.08)!important;
+}
+
+/* Status and badges */
+.badge,
+.tag,
+.chip{
+  border-radius:999px!important;
+  font-weight:780!important;
+}
+
+/* Scrollbars */
+*{
+  scrollbar-width:thin;
+  scrollbar-color:#98a2b3 transparent;
+}
+
+*::-webkit-scrollbar{
+  width:8px;
+  height:8px;
+}
+
+*::-webkit-scrollbar-thumb{
+  background:#aab2c0;
+  border-radius:999px;
+}
+
+*::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+/* Footer */
+footer{
+  color:#98a2b3!important;
+  font-size:10px!important;
+}
+
+.footer-link{
+  color:#667085!important;
+}
+
+.footer-link:hover{
+  color:var(--ui-blue)!important;
+}
+
+/* Responsive */
+@media(max-width:1100px){
+  .sidebar-brand-panel>strong{
+    font-size:10px;
+  }
+}
+
+@media(max-width:900px){
+  .professional-ui-label{
+    display:none;
+  }
+}
+
+@media(max-width:720px){
+  .sidebar-brand-panel{
+    margin:0 8px 10px;
+    padding:11px;
+  }
+
+  .sidebar-brand-panel>strong{
+    display:none;
+  }
+
+  .beta-health{
+    display:none!important;
+  }
+
+  .card,
+  .post-card{
+    border-radius:13px!important;
+  }
+}

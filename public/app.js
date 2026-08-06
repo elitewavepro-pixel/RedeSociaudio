@@ -1,6 +1,6 @@
 let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
-const SOCIAUDIO_VERSION='Beta 3.0';
+const SOCIAUDIO_VERSION='Beta 3.1';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -1407,7 +1407,7 @@ function showBetaNotice(){
   if(sessionStorage.getItem('sociaudio_beta_notice'))return;
   sessionStorage.setItem('sociaudio_beta_notice','1');
   setTimeout(()=>{
-    toast('Rede Sociaudio Beta 3.0: marketplace inteligente de áudio.');
+    toast('Rede Sociaudio Beta 3.1: interface profissional atualizada.');
   },900);
 }
 showBetaNotice();
