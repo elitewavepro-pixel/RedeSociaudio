@@ -1,4 +1,4 @@
-import base64, hashlib, hmac, json, mimetypes, os, secrets, sqlite3, webbrowser, threading, time
+import base64, hashlib, hmac, json, mimetypes, os, secrets, sqlite3, webbrowser, threading, time, zipfile, tempfile, shutil
 from datetime import datetime, timedelta, timezone
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -131,6 +131,45 @@ def write_transaction(callback, retries=5):
                 c.close()
         raise last_error
 
+
+
+def create_admin_backup():
+    """Cria um ZIP consistente com banco SQLite, uploads e manifesto."""
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')
+    filename = f'redesociaudio-backup-{stamp}.zip'
+    zip_path = os.path.join(BACKUP_DIR, filename)
+    temp_dir = tempfile.mkdtemp(prefix='sociaudio-backup-')
+    snapshot_db = os.path.join(temp_dir, 'sociaudio.db')
+    source = connect()
+    destination = sqlite3.connect(snapshot_db)
+    try:
+        source.backup(destination)
+    finally:
+        destination.close(); source.close()
+    counts = {}
+    c = connect()
+    try:
+        for table in ('users','posts','comments','communities','companies','jobs','marketplace_listings','conversations','chat_messages'):
+            try: counts[table] = c.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]
+            except sqlite3.Error: counts[table] = 0
+    finally:
+        c.close()
+    manifest = {'produto':'Rede Sociaudio','versao':'20.2','gerado_em_utc':datetime.now(timezone.utc).isoformat(),'conteudo':['data/sociaudio.db','uploads/'],'quantidades':counts,'aviso':'Guarde este arquivo em local seguro. Ele contém dados dos usuários e mensagens.'}
+    try:
+        with zipfile.ZipFile(zip_path,'w',compression=zipfile.ZIP_DEFLATED,allowZip64=True) as archive:
+            archive.write(snapshot_db,'data/sociaudio.db')
+            archive.writestr('manifesto.json',json.dumps(manifest,ensure_ascii=False,indent=2))
+            if os.path.isdir(UPLOAD_ROOT):
+                for dirpath,_,filenames in os.walk(UPLOAD_ROOT):
+                    for name in filenames:
+                        full=os.path.join(dirpath,name)
+                        if not os.path.isfile(full) or name.endswith('.part'): continue
+                        rel=os.path.relpath(full,UPLOAD_ROOT).replace('\\','/')
+                        archive.write(full,f'uploads/{rel}')
+        return zip_path,filename
+    finally:
+        shutil.rmtree(temp_dir,ignore_errors=True)
 
 def now():
     return datetime.now(timezone.utc).isoformat()
@@ -946,6 +985,34 @@ class Handler(SimpleHTTPRequestHandler):
             if not member:c.close();return self.send_json({'error':'Acesso restrito.'},403)
             rows=[dict(x) for x in c.execute('''SELECT m.*,us.name sender_name,us.avatar sender_avatar FROM chat_messages m JOIN users us ON us.id=m.sender_id WHERE m.conversation_id=? ORDER BY m.id''',(cid,)).fetchall()]
             c.execute("UPDATE chat_messages SET read_at=? WHERE conversation_id=? AND sender_id<>? AND COALESCE(read_at,'')=''",(now(),cid,u['id']));c.commit();c.close();return self.send_json(rows)
+        if p == '/api/admin/backup':
+            u=self.require_user()
+            if not u:return
+            if not u.get('is_admin'):return self.send_json({'error':'Acesso restrito ao administrador.'},403)
+            zip_path=''
+            try:
+                zip_path,filename=create_admin_backup()
+                size=os.path.getsize(zip_path)
+                self.send_response(200)
+                self.send_header('Content-Type','application/zip')
+                self.send_header('Content-Disposition',f'attachment; filename="{filename}"')
+                self.send_header('Content-Length',str(size))
+                self.send_header('Cache-Control','no-store')
+                self.end_headers()
+                with open(zip_path,'rb') as fh:
+                    while True:
+                        chunk=fh.read(1024*1024)
+                        if not chunk:break
+                        self.wfile.write(chunk)
+            except (BrokenPipeError,ConnectionResetError):pass
+            except Exception as exc:
+                try:self.send_json({'error':'Não foi possível gerar o backup: '+str(exc)},500)
+                except Exception:pass
+            finally:
+                if zip_path:
+                    try:os.remove(zip_path)
+                    except OSError:pass
+            return
         if p == '/api/admin/stats':
             u=self.require_user()
             if not u:return
