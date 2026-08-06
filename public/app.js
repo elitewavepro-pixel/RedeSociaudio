@@ -428,31 +428,96 @@ hireForm.onsubmit=async e=>{e.preventDefault();try{let result=await api('/api/hi
 function matchCard(u){return `<article class="card match-card"><div class="match-score"><b>${u.score}%</b><span>compatibilidade</span></div>${avatar(u,'big')}<div class="match-main"><h3>${esc(u.name)}</h3><p class="match-headline">${esc(u.headline||u.role)}</p>${u.company?`<small>${esc(u.company)}</small>`:''}<p class="meta">${icon('location')} ${esc(u.city||'Cidade não informada')}</p><div class="skills">${lines(u.specialties)}</div><div class="match-facts"><span><b>${esc(u.experience||'—')}</b> experiência</span><span><b>${esc(u.completed_projects||'—')}</b> projetos</span><span><b>${esc(u.response_time||'Até 24h')}</b></span></div></div><div class="match-actions"><button class="secondary" onclick="openProfile(${u.id})">Ver perfil</button><button class="primary" onclick="openQuote(${u.id})">Solicitar orçamento</button></div></article>`}
 async function renderHire(matches=null,requestId=null){let requests=[];try{requests=await api('/api/hire-requests')}catch{};let latest=matches||(requests[0]?.matches||[]);content.innerHTML=`<section class="hire-hero card"><div><span class="eyebrow">REDE SOCIAUDIO MATCH</span><h1>Contrate o especialista certo para o seu projeto</h1><p>Descreva sua necessidade e receba recomendações baseadas em cidade, especialidade, equipamentos e disponibilidade.</p><div class="hire-benefits"><span>✓ Profissionais por compatibilidade</span><span>✓ Perfis e experiência verificados</span><span>✓ Contato e orçamento direto</span></div><button class="primary hire-cta" onclick="openHire()">${icon('target')} Encontrar especialista</button></div><div class="hire-visual"><div class="pulse-ring">${icon('target')}</div><b>Busca inteligente</b><small>Conectando sua necessidade aos melhores profissionais da comunidade.</small></div></section>${latest.length?`<div class="section-heading"><div><h2>Profissionais recomendados</h2><p>${latest.length} perfis compatíveis com sua solicitação.</p></div><span class="request-number">Solicitação #${requestId||requests[0]?.id||''}</span></div><div class="matches-list">${latest.map(matchCard).join('')}</div>`:`<section class="card hire-empty"><div>${icon('professionals')}</div><h2>Pronto para encontrar um especialista?</h2><p>Crie sua primeira solicitação. As recomendações aparecerão aqui.</p><button class="primary" onclick="openHire()">Começar agora</button></section>`}${requests.length?`<section class="request-history"><div class="section-heading"><div><h2>Minhas solicitações</h2><p>Acompanhe os pedidos já criados.</p></div></div>${requests.map(r=>`<article class="card request-row"><div><span class="tag">${esc(r.status)}</span><h3>${esc(r.event_type||'Serviço de áudio')}</h3><p>${esc(r.city)}${r.event_date?` · ${esc(r.event_date)}`:''}${r.budget?` · ${esc(r.budget)}`:''}</p><small>${r.match_count} profissional(is) recomendado(s) · ${new Date(r.created_at).toLocaleString('pt-BR')}</small></div><button class="secondary" onclick='renderHire(${JSON.stringify(r.matches)},${r.id})'>Ver recomendações</button></article>`).join('')}</section>`:''}`;hydrateIcons(content)}
 async function renderOpportunities(){let items=await api('/api/opportunities');content.innerHTML=`<div class="page-title"><h1>Oportunidades para você</h1><p>Solicitações compatíveis com seu perfil profissional.</p></div>${items.length?items.map(o=>`<article class="card opportunity-card"><div class="opportunity-score"><b>${o.score}%</b><small>compatibilidade</small></div><div><span class="tag">${esc(o.status)}</span><h2>${esc(o.event_type||'Serviço de áudio')}</h2><p class="meta">${icon('location')} ${esc(o.city)}${o.event_date?` · ${esc(o.event_date)}`:''}</p><p>${esc(o.message)}</p><div class="opportunity-info">${o.audience?`<span>Público: <b>${esc(o.audience)}</b></span>`:''}${o.budget?`<span>Orçamento: <b>${esc(o.budget)}</b></span>`:''}${o.equipment?`<span>Equipamentos: <b>${esc(o.equipment)}</b></span>`:''}</div><small>Solicitado por ${esc(o.requester_name)} · ${new Date(o.created_at).toLocaleString('pt-BR')}</small></div>${o.requester_phone?`<a class="primary btn" target="_blank" href="https://wa.me/${o.requester_phone.replace(/\D/g,'')}">Falar no WhatsApp</a>`:''}</article>`).join(''):'<div class="empty">Ainda não há oportunidades compatíveis. Complete seu perfil para melhorar as recomendações.</div>'}`;hydrateIcons(content)}
-async function renderRequests(){let items=await api('/api/quote-requests');content.innerHTML=`<div class="page-title"><h1>Solicitações de orçamento</h1><p>Pedidos enviados por possíveis clientes.</p></div>${items.length?items.map(q=>`<article class="card quote-card"><div><span class="tag">${esc(q.status)}</span><h3>${esc(q.requester_name)}</h3><p><b>${esc(q.event_type||'Serviço de áudio')}</b> · ${esc(q.city||'Cidade não informada')}</p><p>${esc(q.message)}</p><small>${q.event_date?`Data: ${esc(q.event_date)} · `:''}${q.audience?`Público: ${esc(q.audience)} · `:''}${q.budget?`Orçamento: ${esc(q.budget)} · `:''}${new Date(q.created_at).toLocaleString('pt-BR')}</small></div>${q.requester_phone?`<a class="primary btn" target="_blank" href="https://wa.me/${q.requester_phone.replace(/\D/g,'')}">Responder no WhatsApp</a>`:''}</article>`).join(''):'<div class="empty">Nenhuma solicitação recebida ainda.</div>'}`}
-function companyLogo(c,cls=''){return c.logo?`<img class="company-logo ${cls}" src="${c.logo}">`:`<div class="company-logo placeholder ${cls}">${esc((c.name||'E').slice(0,2).toUpperCase())}</div>`}
-async function renderCompanies(){let items=await api('/api/companies');content.innerHTML=`<div class="page-title company-page-title"><div><h1>Empresas</h1><p>Conheça empresas, integradores, lojas, igrejas e marcas da comunidade.</p></div><button class="primary" onclick="editMyCompany()">${icon('plus')} Criar ou editar minha empresa</button></div><div class="company-grid">${items.map(c=>`<article class="card company-card"><div class="company-cover-mini" style="${c.cover?`background-image:url('${c.cover}')`:''}"></div><div class="company-card-body">${companyLogo(c)}<div class="company-title-row"><h2>${esc(c.name)}</h2>${c.verified?'<span class="verified-badge">✓</span>':''}</div><span class="tag">${esc(c.category||'Empresa de áudio')}</span><p>${esc(c.tagline||c.description||'Empresa da comunidade Rede Sociaudio.')}</p><small>${icon('location')} ${esc(c.city||'Localização não informada')}</small><div class="company-metrics"><span><b>${c.services_count}</b> serviços</span><span><b>${c.projects_count}</b> projetos</span></div><button class="primary" onclick="openCompany(${c.id})">Ver página</button></div></article>`).join('')}</div>`;hydrateIcons(content)}
-async function openCompany(id){let c=await api(`/api/companies/${id}`);view='companies';content.innerHTML=`<section class="company-profile"><div class="company-hero card"><div class="company-cover" style="${c.cover?`background-image:url('${c.cover}')`:''}"></div><div class="company-identity">${companyLogo(c,'large')}<div><div class="company-title-row"><h1>${esc(c.name)}</h1>${c.verified?'<span class="verified-badge">✓ Empresa verificada</span>':''}</div><h3>${esc(c.tagline||c.category)}</h3><p>${icon('location')} ${esc(c.city||'Localização não informada')} · ${esc(c.service_region||'Atendimento a combinar')}</p></div><div class="company-actions">${c.whatsapp?`<a class="primary btn" target="_blank" href="https://wa.me/${c.whatsapp.replace(/\D/g,'')}">WhatsApp</a>`:''}${c.website?`<a class="secondary btn" target="_blank" href="${esc(c.website)}">Site</a>`:''}${c.can_edit?`<button class="secondary" onclick="editMyCompany(${c.id})">Editar empresa</button>`:''}</div></div></div><div class="company-layout"><main><section class="card company-section"><h2>Sobre</h2><p>${esc(c.description||'Esta empresa ainda não adicionou uma descrição.')}</p></section><section class="company-section"><div class="section-heading"><div><h2>Serviços</h2><p>Soluções oferecidas pela empresa.</p></div></div><div class="service-grid">${c.services.length?c.services.map(s=>`<article class="card service-card"><span>${esc(s.icon||'🎚️')}</span><h3>${esc(s.title)}</h3><p>${esc(s.description)}</p></article>`).join(''):'<div class="empty">Nenhum serviço cadastrado.</div>'}</div></section><section class="company-section"><div class="section-heading"><div><h2>Projetos</h2><p>Trabalhos e cases realizados.</p></div></div><div class="project-grid">${c.projects.length?c.projects.map(p=>`<article class="card project-card">${p.image?`<img src="${p.image}">`:''}<div><h3>${esc(p.title)}</h3><p>${esc(p.description)}</p>${p.link_url?`<a target="_blank" href="${esc(p.link_url)}">Ver projeto</a>`:''}</div></article>`).join(''):'<div class="empty">Nenhum projeto cadastrado.</div>'}</div></section><section class="company-section"><div class="section-heading"><div><h2>Equipe</h2><p>Pessoas que fazem parte da empresa.</p></div></div><div class="team-grid">${c.team.length?c.team.map(t=>`<article class="card team-card">${t.photo?`<img src="${t.photo}">`:`<div class="team-avatar">${esc(t.name.slice(0,1))}</div>`}<h3>${esc(t.name)}</h3><b>${esc(t.role)}</b><p>${esc(t.bio)}</p></article>`).join(''):'<div class="empty">Nenhum integrante cadastrado.</div>'}</div></section></main><aside class="card company-contact"><h3>Contato</h3>${c.phone?`<p><b>Telefone</b><br>${esc(c.phone)}</p>`:''}${c.email?`<p><b>E-mail</b><br>${esc(c.email)}</p>`:''}${c.instagram?`<p><b>Instagram</b><br>${esc(c.instagram)}</p>`:''}<p><b>Responsável</b><br>${esc(c.owner_name)}</p></aside></div></section>`;hydrateIcons(content)}
-async function editMyCompany(id=null){let companies=await api('/api/companies');let mine=companies.find(x=>x.owner_id===me.id);let c=mine?await api(`/api/companies/${mine.id}`):{name:me.company||'',category:'Empresa de áudio',tagline:'',description:'',city:me.city||'',service_region:me.service_region||'',phone:'',whatsapp:me.whatsapp||'',email:me.email||'',instagram:me.instagram||'',website:me.website||'',logo:'',cover:'',services:[],team:[],projects:[]};let services=(c.services||[]).map(x=>`${x.icon||'🎚️'}|${x.title}|${x.description}`).join('\n'),team=(c.team||[]).map(x=>`${x.name}|${x.role}|${x.bio}`).join('\n'),projects=(c.projects||[]).map(x=>`${x.title}|${x.description}|${x.link_url||''}`).join('\n');content.innerHTML=`<div class="page-title"><div><h1>Página da empresa</h1><p>Crie uma apresentação profissional para sua marca.</p></div></div><form class="card profile-grid" onsubmit="saveCompany(event)"><label class="wide">Nome da empresa<input id="coName" required value="${esc(c.name||'')}"></label><label>Categoria<input id="coCategory" value="${esc(c.category||'')}"></label><label>Cidade<input id="coCity" value="${esc(c.city||'')}"></label><label class="wide">Frase de posicionamento<input id="coTagline" value="${esc(c.tagline||'')}"></label><label class="wide">Descrição<textarea id="coDescription">${esc(c.description||'')}</textarea></label><label>Região de atendimento<input id="coRegion" value="${esc(c.service_region||'')}"></label><label>Telefone<input id="coPhone" value="${esc(c.phone||'')}"></label><label>WhatsApp<input id="coWhatsapp" value="${esc(c.whatsapp||'')}"></label><label>E-mail<input id="coEmail" value="${esc(c.email||'')}"></label><label>Instagram<input id="coInstagram" value="${esc(c.instagram||'')}"></label><label>Site<input id="coWebsite" value="${esc(c.website||'')}"></label><label>Logo<input id="coLogoFile" type="file" accept="image/*"></label><label>Imagem de capa<input id="coCoverFile" type="file" accept="image/*"></label><label class="wide">Serviços <small>Formato: ícone|título|descrição, um por linha</small><textarea id="coServices">${esc(services)}</textarea></label><label class="wide">Equipe <small>Formato: nome|função|biografia, um por linha</small><textarea id="coTeam">${esc(team)}</textarea></label><label class="wide">Projetos <small>Formato: título|descrição|link, um por linha</small><textarea id="coProjects">${esc(projects)}</textarea></label><button class="primary">Salvar página empresarial</button></form>`;window.companyEditing=c;coLogoFile.onchange=async()=>{window.companyEditing.logo=await fileToData(coLogoFile.files[0],600);toast('Logo pronta para salvar.')};coCoverFile.onchange=async()=>{window.companyEditing.cover=await fileToData(coCoverFile.files[0],1800);toast('Capa pronta para salvar.')}}
-async function saveCompany(e){e.preventDefault();let parse=(text,kind)=>text.split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{let p=line.split('|').map(x=>x.trim());if(kind==='service')return{icon:p[0]||'🎚️',title:p[1]||p[0],description:p.slice(2).join('|')};if(kind==='team')return{name:p[0],role:p[1]||'',bio:p.slice(2).join('|')};return{title:p[0],description:p[1]||'',link_url:p[2]||''}});try{let r=await api('/api/companies',{method:'POST',body:JSON.stringify({name:coName.value,category:coCategory.value,tagline:coTagline.value,description:coDescription.value,city:coCity.value,service_region:coRegion.value,phone:coPhone.value,whatsapp:coWhatsapp.value,email:coEmail.value,instagram:coInstagram.value,website:coWebsite.value,logo:window.companyEditing.logo||'',cover:window.companyEditing.cover||'',services:parse(coServices.value,'service'),team:parse(coTeam.value,'team'),projects:parse(coProjects.value,'project')})});toast('Página empresarial atualizada.');openCompany(r.id)}catch(err){toast(err.message,true)}}
-async function renderNotifications(){content.innerHTML='<div class="page-title"><h1>Notificações</h1></div>'+((notifications.items||[]).length?notifications.items.map(n=>`<article class="card notification ${n.is_read?'':'unread'}"><span>${n.type==='comment'?icon('comment'):n.type==='like'?icon('like'):icon('profile')}</span><div><b>${esc(n.message)}</b><p class="meta">${new Date(n.created_at).toLocaleString('pt-BR')}</p></div></article>`).join(''):'<div class="empty">Você ainda não possui notificações.</div>');if(notifications.unread){await api('/api/notifications/read',{method:'POST'});notifications.unread=0;bellCount.textContent=''}}
 
-let adminAssistantPending=null;
+let quoteRequestFilter='novo';
 
-function adminAssistantMessage(role,text,action=null,logId=0){
-  let box=document.querySelector('#adminAssistantMessages');
-  if(!box)return;
-  let item=document.createElement('div');
-  item.className='admin-ai-message '+role;
-  item.innerHTML=`<span>${role==='user'?'Você':'Assistente'}</span><p>${esc(text)}</p>`;
-  if(action){
-    adminAssistantPending={action,log_id:logId};
-    let controls=document.createElement('div');
-    controls.className='admin-ai-confirm';
-    controls.innerHTML=`<b>${esc(action.label||'Confirmar alteração')}</b><button class="primary" onclick="confirmAdminAssistantAction()">Confirmar</button><button class="secondary" onclick="cancelAdminAssistantAction()">Cancelar</button>`;
-    item.appendChild(controls);
+function quoteStatusLabel(status){
+  return ({novo:'Novo',negociacao:'Em negociação',concluido:'Concluído',arquivado:'Arquivado'})[status]||status;
+}
+function quoteStatusClass(status){
+  return ({novo:'quote-new',negociacao:'quote-negotiation',concluido:'quote-completed',arquivado:'quote-archived'})[status]||'';
+}
+function setQuoteRequestFilter(status){
+  quoteRequestFilter=status;
+  renderRequests();
+}
+async function updateQuoteRequestStatus(id,status){
+  let closed_value='';
+  if(status==='concluido')closed_value=prompt('Informe o valor fechado (opcional):','')||'';
+  try{
+    await api(`/api/quote-requests/${id}/status`,{
+      method:'POST',
+      body:JSON.stringify({status,closed_value})
+    });
+    toast(`Solicitação movida para ${quoteStatusLabel(status)}.`);
+    renderRequests();
+  }catch(e){toast(e.message,true)}
+}
+async function deleteQuoteRequest(id){
+  if(!confirm('Excluir definitivamente esta solicitação? Esta ação não poderá ser desfeita.'))return;
+  try{
+    await api(`/api/quote-requests/${id}/delete`,{method:'POST',body:'{}'});
+    toast('Solicitação excluída definitivamente.');
+    renderRequests();
+  }catch(e){toast(e.message,true)}
+}
+function quoteRequestActions(q){
+  if(q.status==='concluido'){
+    return `<button class="secondary" onclick="updateQuoteRequestStatus(${q.id},'novo')">Reabrir solicitação</button>
+            <button class="danger" onclick="deleteQuoteRequest(${q.id})">Excluir definitivamente</button>`;
   }
-  box.appendChild(item);
-  box.scrollTop=box.scrollHeight;
+  return `<button class="primary quote-attended-button" onclick="markQuoteAsAttended(${q.id})">Marcar como atendido</button>`;
+}
+
+async function markQuoteAsAttended(id){
+  try{
+    await api(`/api/quote-requests/${id}/status`,{
+      method:'POST',
+      body:JSON.stringify({status:'concluido'})
+    });
+    quoteRequestFilter='concluido';
+    toast('Solicitação marcada como atendida e movida para Orçamentos concluídos.');
+    renderRequests();
+  }catch(e){
+    toast(e.message,true);
+  }
+}
+
+async function renderRequests(){
+  const items=await api('/api/quote-requests');
+  const counts={novo:0,negociacao:0,concluido:0,arquivado:0};
+  items.forEach(q=>{if(counts[q.status]!==undefined)counts[q.status]++});
+  const list=items.filter(q=>{
+    if(quoteRequestFilter==='concluido')return q.status==='concluido';
+    return q.status!=='concluido';
+  });
+
+  content.innerHTML=`<div class="page-title"><h1>Solicitações de orçamento</h1><p>Gerencie cada oportunidade do primeiro contato até a conclusão.</p></div>
+  <div class="quote-stats">
+    <button class="${quoteRequestFilter==='novo'?'active':''}" onclick="setQuoteRequestFilter('novo')"><b>${counts.novo}</b><span>Solicitações pendentes</span></button>
+    <button class="${quoteRequestFilter==='concluido'?'active':''}" onclick="setQuoteRequestFilter('concluido')"><b>${counts.concluido}</b><span>Orçamentos concluídos</span></button>
+  </div>
+  <section class="quote-list">
+  ${list.length?list.map(q=>`<article class="card quote-card ${quoteStatusClass(q.status)}">
+    <div class="quote-card-head">
+      <div>${avatar({name:q.requester_name||q.requester_account||'C',avatar:q.requester_avatar||''})}<span><b>${esc(q.requester_name||q.requester_account||'Cliente')}</b><small>${esc(q.city||'Cidade não informada')}</small></span></div>
+      <span class="quote-status ${quoteStatusClass(q.status)}">${quoteStatusLabel(q.status)}</span>
+    </div>
+    <div class="quote-details">
+      <p><b>Tipo de serviço:</b> ${esc(q.event_type||'Não informado')}</p>
+      <p><b>Data:</b> ${esc(q.event_date||'Não informada')}</p>
+      <p><b>Público:</b> ${esc(q.audience||'Não informado')}</p>
+      <p><b>Faixa de orçamento:</b> ${esc(q.budget||'Não informada')}</p>
+      ${q.closed_value?`<p><b>Valor fechado:</b> ${esc(q.closed_value)}</p>`:''}
+      <p class="wide"><b>Solicitação:</b> ${esc(q.message||'')}</p>
+    </div>
+    <div class="quote-contact">
+      ${q.requester_phone?`<a class="secondary action-link" target="_blank" href="https://wa.me/${q.requester_phone.replace(/\D/g,'')}">Responder no WhatsApp</a>`:''}
+      <small>Recebido em ${new Date(q.created_at).toLocaleString('pt-BR')}</small>
+    </div>
+    <div class="quote-actions">${quoteRequestActions(q)}</div>
+  </article>`).join(''):`<div class="card empty quote-empty"><h2>${quoteRequestFilter==='concluido'?'Nenhum orçamento concluído':'Nenhuma solicitação pendente'}</h2><p>Quando houver solicitações nesta etapa, elas aparecerão aqui.</p></div>`}
+  </section>`;
 }
 
 async function askAdminAssistant(){

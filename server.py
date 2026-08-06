@@ -595,6 +595,13 @@ def init_db():
     qcols = {r['name'] for r in c.execute('PRAGMA table_info(quote_requests)')}
     if 'budget' not in qcols:
         c.execute("ALTER TABLE quote_requests ADD COLUMN budget TEXT DEFAULT ''")
+    qcols = {r['name'] for r in c.execute('PRAGMA table_info(quote_requests)')}
+    if 'completed_at' not in qcols:
+        c.execute("ALTER TABLE quote_requests ADD COLUMN completed_at TEXT DEFAULT ''")
+    if 'closed_value' not in qcols:
+        c.execute("ALTER TABLE quote_requests ADD COLUMN closed_value TEXT DEFAULT ''")
+    if 'archived_at' not in qcols:
+        c.execute("ALTER TABLE quote_requests ADD COLUMN archived_at TEXT DEFAULT ''")
     pcols = {r['name'] for r in c.execute('PRAGMA table_info(posts)')}
     for name, typ in [('is_featured', 'INTEGER DEFAULT 0'), ('status', "TEXT DEFAULT 'published'"), ('image_data', "TEXT DEFAULT ''"), ('updated_at', "TEXT DEFAULT ''"), ('media_data', "TEXT DEFAULT ''"), ('media_type', "TEXT DEFAULT ''"), ('media_name', "TEXT DEFAULT ''"), ('media_size', 'INTEGER DEFAULT 0')]:
         if name not in pcols: c.execute(f'ALTER TABLE posts ADD COLUMN {name} {typ}')
@@ -1187,7 +1194,22 @@ class Handler(SimpleHTTPRequestHandler):
         if p == '/api/quote-requests':
             u=self.require_user()
             if not u:return
-            c=connect(); rows=[dict(x) for x in c.execute('''SELECT q.*,r.name requester_account FROM quote_requests q JOIN users r ON r.id=q.requester_id WHERE q.professional_id=? ORDER BY q.id DESC''',(u['id'],)).fetchall()]; c.close(); return self.send_json(rows)
+            c=connect()
+            rows=[dict(x) for x in c.execute(
+                '''SELECT q.*,r.name requester_account,r.avatar requester_avatar
+                   FROM quote_requests q
+                   JOIN users r ON r.id=q.requester_id
+                   WHERE q.professional_id=?
+                   ORDER BY CASE q.status
+                     WHEN 'novo' THEN 0
+                     WHEN 'negociacao' THEN 1
+                     WHEN 'concluido' THEN 2
+                     WHEN 'arquivado' THEN 3
+                     ELSE 4 END,q.id DESC''',
+                (u['id'],)
+            ).fetchall()]
+            c.close()
+            return self.send_json(rows)
         if p == '/api/knowledge':
             u=self.require_user()
             if not u:return
@@ -1640,6 +1662,44 @@ class Handler(SimpleHTTPRequestHandler):
             matches=[dict(x) for x in c.execute('''SELECT m.score,u.id,u.name,u.role,u.city,u.avatar,u.headline,u.company,u.specialties,u.equipment,u.availability,u.experience,u.completed_projects,u.response_time
                 FROM service_request_matches m JOIN users u ON u.id=m.professional_id WHERE m.request_id=? ORDER BY m.score DESC''',(rid,)).fetchall()]
             c.close(); return self.send_json({'ok':True,'request_id':rid,'matches':matches},201)
+        if p.startswith('/api/quote-requests/') and p.endswith('/status'):
+            u=self.require_user()
+            if not u:return
+            try:qid=int(p.split('/')[3])
+            except:return self.send_json({'error':'Solicitação inválida.'},400)
+            d=self.read_json();status=(d.get('status') or '').strip()
+            if status not in {'novo','negociacao','concluido','arquivado'}:
+                return self.send_json({'error':'Status inválido.'},400)
+            c=connect()
+            row=c.execute('SELECT id FROM quote_requests WHERE id=? AND professional_id=?',(qid,u['id'])).fetchone()
+            if not row:
+                c.close();return self.send_json({'error':'Solicitação não encontrada.'},404)
+            completed_at=now() if status=='concluido' else ''
+            archived_at=now() if status=='arquivado' else ''
+            closed_value=(d.get('closed_value') or '').strip()
+            c.execute(
+                '''UPDATE quote_requests SET status=?,completed_at=?,archived_at=?,
+                   closed_value=CASE WHEN ?<>'' THEN ? ELSE closed_value END
+                   WHERE id=? AND professional_id=?''',
+                (status,completed_at,archived_at,closed_value,closed_value,qid,u['id'])
+            )
+            c.commit();c.close()
+            return self.send_json({'ok':True,'status':status})
+
+        if p.startswith('/api/quote-requests/') and p.endswith('/delete'):
+            u=self.require_user()
+            if not u:return
+            try:qid=int(p.split('/')[3])
+            except:return self.send_json({'error':'Solicitação inválida.'},400)
+            c=connect()
+            row=c.execute('SELECT status FROM quote_requests WHERE id=? AND professional_id=?',(qid,u['id'])).fetchone()
+            if not row:
+                c.close();return self.send_json({'error':'Solicitação não encontrada.'},404)
+            if row['status'] not in ('concluido','arquivado'):
+                c.close();return self.send_json({'error':'Conclua ou arquive antes de excluir.'},400)
+            c.execute('DELETE FROM quote_requests WHERE id=? AND professional_id=?',(qid,u['id']))
+            c.commit();c.close()
+            return self.send_json({'ok':True})
         if p.startswith('/api/users/') and p.endswith('/quote'):
             try:uid=int(p.split('/')[3])
             except:return self.send_json({'error':'Profissional inválido.'},400)
