@@ -2625,3 +2625,269 @@ header .sidebar-brand-panel{
   box-shadow:0 0 0 3px rgba(32,200,120,.15)!important;
 }
 #mainSidebar>#sidebarUserCard #sidebarAvatar img{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center center!important;}
+
+
+/* Rede Sociaudio Beta 3.2.4 — Comunidades */
+.communities-page{
+  display:grid;
+  gap:18px;
+  width:100%;
+}
+
+.communities-hero{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:24px;
+  align-items:center;
+  padding:28px!important;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 90% 15%,rgba(255,255,255,.16),transparent 30%),
+    linear-gradient(135deg,#092654,#1769e0)!important;
+  color:#fff!important;
+}
+
+.communities-kicker{
+  display:inline-block;
+  padding:5px 9px;
+  border-radius:999px;
+  background:rgba(255,255,255,.13);
+  border:1px solid rgba(255,255,255,.2);
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.09em;
+}
+
+.communities-hero h1{
+  margin:13px 0 8px;
+  color:#fff!important;
+  font-size:30px;
+  line-height:1.15;
+}
+
+.communities-hero p{
+  max-width:680px;
+  margin:0;
+  color:rgba(255,255,255,.82)!important;
+  line-height:1.55;
+}
+
+.communities-summary{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(90px,1fr));
+  gap:8px;
+}
+
+.communities-summary>div{
+  min-width:90px;
+  padding:15px 12px;
+  border-radius:13px;
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.16);
+  text-align:center;
+}
+
+.communities-summary b,
+.communities-summary span{
+  display:block;
+}
+
+.communities-summary b{
+  color:#fff;
+  font-size:23px;
+}
+
+.communities-summary span{
+  margin-top:3px;
+  color:rgba(255,255,255,.75);
+  font-size:10px;
+}
+
+.communities-toolbar{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.communities-toolbar h2,
+.communities-toolbar p{
+  margin:0;
+}
+
+.communities-toolbar p{
+  margin-top:4px;
+  color:#667085;
+  font-size:12px;
+}
+
+.communities-search{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:280px;
+  padding:0 12px;
+  border:1px solid #d7dde6;
+  border-radius:11px;
+  background:#fff;
+}
+
+.communities-search input{
+  width:100%;
+  min-height:42px;
+  padding:0!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+
+.communities-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:15px;
+}
+
+.community-card{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  padding:18px!important;
+  border-top:4px solid #cfd7e6!important;
+  transition:.18s ease;
+}
+
+.community-card.joined{
+  border-top-color:#12b76a!important;
+  background:linear-gradient(180deg,#fff,#f8fffb)!important;
+}
+
+.community-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 13px 30px rgba(16,24,40,.09)!important;
+}
+
+.community-card-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.community-icon{
+  width:50px;
+  height:50px;
+  display:grid;
+  place-items:center;
+  border-radius:14px;
+  background:#eef4ff;
+  font-size:25px;
+}
+
+.community-joined-badge{
+  padding:5px 8px;
+  border-radius:999px;
+  background:#ecfdf3;
+  color:#067647;
+  font-size:9px;
+  font-weight:900;
+}
+
+.community-card-body{
+  flex:1;
+  padding:15px 0;
+}
+
+.community-category{
+  color:#1769e0;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+
+.community-card h2{
+  margin:6px 0 7px;
+  font-size:18px;
+}
+
+.community-card p{
+  margin:0;
+  color:#667085;
+  line-height:1.55;
+  font-size:12px;
+}
+
+.community-card-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding-top:14px;
+  border-top:1px solid #eaecf0;
+}
+
+.community-card-footer>span{
+  color:#667085;
+  font-size:11px;
+}
+
+.community-card-footer button{
+  min-width:130px;
+}
+
+.communities-empty{
+  grid-column:1/-1;
+  padding:42px!important;
+  text-align:center;
+}
+
+.communities-empty>div{
+  margin-bottom:9px;
+  font-size:38px;
+}
+
+.communities-empty h2,
+.communities-empty p{
+  margin:5px 0;
+}
+
+@media(max-width:1100px){
+  .communities-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .communities-hero{
+    grid-template-columns:1fr;
+  }
+
+  .communities-summary{
+    max-width:480px;
+  }
+}
+
+@media(max-width:700px){
+  .communities-hero{
+    padding:21px!important;
+  }
+
+  .communities-hero h1{
+    font-size:24px;
+  }
+
+  .communities-toolbar{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .communities-search{
+    min-width:0;
+    width:100%;
+  }
+
+  .communities-grid{
+    grid-template-columns:1fr;
+  }
+
+  .communities-summary{
+    grid-template-columns:repeat(3,1fr);
+  }
+}

@@ -1,6 +1,6 @@
 let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
-const SOCIAUDIO_VERSION='Beta 3.2.3';
+const SOCIAUDIO_VERSION='Beta 3.2.4';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -238,6 +238,7 @@ function mountProfessionalSidebar(){
   const userInfo=userCard.querySelector('.sidebar-user-info');
   [['display','block'],['width','100%'],['min-width','0'],['overflow','hidden']]
     .forEach(([p,v])=>setImportantStyle(userInfo,p,v));
+  bindViewNavigation();
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
@@ -323,7 +324,7 @@ loginTab.onclick=()=>{tab('login');loginTab.classList.add('active');registerTab.
 login.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/login',{method:'POST',body:JSON.stringify({email:le.value,password:lp.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
 register.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/register',{method:'POST',body:JSON.stringify({name:rn.value,email:re.value,password:rp.value,role:rr.value,city:rc.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
 logoutBtn.onclick=async()=>{try{await api('/api/logout',{method:'POST'})}catch{}localStorage.removeItem('sociaudio_token');location.reload()};
-document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;render()});bellBtn.onclick=async()=>{
+bindViewNavigation();bellBtn.onclick=async()=>{
   view='notifications';
   await loadNotifications(true);
 };
@@ -342,6 +343,94 @@ function editPost(id){let p=posts.find(x=>x.id===id);if(!p)return toast('Publica
 postForm.onsubmit=async e=>{e.preventDefault();let btn=postSubmit;btn.disabled=true;btn.textContent=postMediaType.startsWith('audio/')?'Enviando áudio...':postMediaType.startsWith('video/')?'Enviando vídeo...':'Salvando...';try{let uploaded=null;if(pendingPostFile&&postMediaType.startsWith('audio/'))uploaded=await uploadPendingAudio(pendingPostFile);else if(pendingPostFile&&!postMediaType.startsWith('image/')&&!postMediaType.startsWith('video/'))uploaded=await uploadPendingFile(pendingPostFile);let payload={type:pt.value,category:pc.value,title:pti.value,body:pb.value,link_url:purl.value.trim()};if(!editingPostId||imageChanged){payload.media_data=uploaded?.media_data??(postGallery.length>1?'':postImage);payload.media_type=uploaded?.media_type??postMediaType;payload.media_name=uploaded?.media_name??postMediaName;payload.media_size=uploaded?.size??postMediaSize;payload.gallery_images=postGallery}await api(editingPostId?`/api/posts/${editingPostId}/edit`:'/api/posts',{method:'POST',body:JSON.stringify(payload)});let edited=!!editingPostId;postDlg.close();resetPostDialog();toast(edited?'Publicação atualizada.':'Publicação criada.');loadAll()}catch(e){toast(e.message,true)}finally{btn.disabled=false;btn.textContent=editingPostId?'Salvar alterações':'Publicar'}};
 async function like(id){await api(`/api/posts/${id}/like`,{method:'POST'});loadAll()} async function bookmark(id){await api(`/api/posts/${id}/bookmark`,{method:'POST'});loadAll()}
 function toggleComments(id){openCommentPosts.has(id)?openCommentPosts.delete(id):openCommentPosts.add(id);render()} async function submitComment(id){let el=document.getElementById(`comment-${id}`),body=(el?.value||'').trim();if(!body)return toast('Digite um comentário.',true);try{await api(`/api/posts/${id}/comments`,{method:'POST',body:JSON.stringify({body})});openCommentPosts.add(id);toast('Comentário publicado.');await loadAll()}catch(e){toast(e.message,true)}}
+
+function renderCommunities(){
+  const items=Array.isArray(communities)?communities:[];
+  const joinedCount=items.filter(c=>Number(c.joined)===1||c.joined===true).length;
+  const totalMembers=items.reduce((sum,c)=>sum+Number(c.members||0),0);
+
+  content.innerHTML=`<section class="communities-page">
+    <div class="communities-hero card">
+      <div>
+        <span class="communities-kicker">COMUNIDADES SOCIAUDIO</span>
+        <h1>Encontre sua comunidade no mercado de áudio</h1>
+        <p>Participe de grupos de técnicos, operadores, empresas, igrejas, produtores e profissionais especializados.</p>
+      </div>
+      <div class="communities-summary">
+        <div><b>${items.length}</b><span>Comunidades</span></div>
+        <div><b>${joinedCount}</b><span>Participando</span></div>
+        <div><b>${totalMembers}</b><span>Membros</span></div>
+      </div>
+    </div>
+
+    <div class="communities-toolbar">
+      <div>
+        <h2>Comunidades disponíveis</h2>
+        <p>Escolha uma comunidade para participar ou sair.</p>
+      </div>
+      <label class="communities-search">
+        <span>🔎</span>
+        <input id="communitySearchInput" type="search" placeholder="Pesquisar comunidade ou categoria">
+      </label>
+    </div>
+
+    <div id="communitiesGrid" class="communities-grid">
+      ${items.length?items.map(communityCardMarkup).join(''):`<div class="card communities-empty">
+        <div>👥</div>
+        <h2>Nenhuma comunidade disponível</h2>
+        <p>As comunidades cadastradas aparecerão aqui.</p>
+      </div>`}
+    </div>
+  </section>`;
+
+  const input=document.getElementById('communitySearchInput');
+  if(input){
+    input.oninput=()=>{
+      const term=input.value.trim().toLowerCase();
+      const filtered=items.filter(c=>
+        String(c.name||'').toLowerCase().includes(term)||
+        String(c.category||'').toLowerCase().includes(term)||
+        String(c.description||'').toLowerCase().includes(term)
+      );
+      const grid=document.getElementById('communitiesGrid');
+      if(grid){
+        grid.innerHTML=filtered.length
+          ?filtered.map(communityCardMarkup).join('')
+          :`<div class="card communities-empty"><div>🔍</div><h2>Nenhum resultado</h2><p>Tente pesquisar outro nome ou categoria.</p></div>`;
+      }
+    };
+  }
+}
+
+function communityCardMarkup(c){
+  const joined=Number(c.joined)===1||c.joined===true;
+  const members=Number(c.members||0);
+  const iconValue=esc(c.icon||'🎚️');
+
+  return `<article class="card community-card ${joined?'joined':''}">
+    <div class="community-card-top">
+      <div class="community-icon">${iconValue}</div>
+      ${joined?'<span class="community-joined-badge">Participando</span>':''}
+    </div>
+
+    <div class="community-card-body">
+      <span class="community-category">${esc(c.category||'Geral')}</span>
+      <h2>${esc(c.name||'Comunidade')}</h2>
+      <p>${esc(c.description||'Comunidade profissional da Rede Sociaudio.')}</p>
+    </div>
+
+    <div class="community-card-footer">
+      <span><b>${members}</b> membro${members===1?'':'s'}</span>
+      <button
+        id="joinCommunity-${Number(c.id)}"
+        class="${joined?'secondary':'primary'}"
+        onclick="joinCommunity(${Number(c.id)})">
+        ${joined?'Sair da comunidade':'Participar'}
+      </button>
+    </div>
+  </article>`;
+}
+
 async function joinCommunity(id){
   const btn=document.querySelector(`#joinCommunity-${id}`);
   try{
@@ -1449,6 +1538,16 @@ async function refreshChatMessages(id){
     }
     await refreshTypingStatus(id);
   }catch{}
+}
+
+
+function bindViewNavigation(){
+  document.querySelectorAll('[data-view]').forEach(button=>{
+    button.onclick=()=>{
+      view=button.dataset.view;
+      render();
+    };
+  });
 }
 
 function render(){document.body.classList.toggle('chat-page',view==='chat');document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));if(view==='experts')return renderExperts();if(view==='companies')return renderCompanies();if(view==='jobs')return renderJobs();if(view==='marketplace')return renderMarketplace();if(view==='knowledge')return renderKnowledge();if(view==='audioai')return renderAudioAI();if(view==='chat')return renderChat();if(view==='communities')return renderCommunities();if(view==='profile')return renderProfile();if(view==='notifications')return loadNotifications(true);
