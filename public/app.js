@@ -2,7 +2,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 
 let chatPoll=null;
 let chatConversationId=null;
-const SOCIAUDIO_VERSION='v4.0.5 Public';
+const SOCIAUDIO_VERSION='v4.0.6 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -156,7 +156,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.0.5 PUBLIC</span>
+        <span class="beta-label">V4.0.6 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -2666,7 +2666,7 @@ function render(){
   document.querySelectorAll('[data-view]').forEach(b=>{
     const selected=b.dataset.view===view ||
       (isChat&&['chat','messages'].includes(b.dataset.view)) ||
-      (view==='opportunities'&&['opportunities','jobs'].includes(b.dataset.view));
+      (view==='opportunities'&&b.dataset.view==='opportunities');
     b.classList.toggle('selected',selected);
   });
 
