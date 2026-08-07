@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.1.6 Public';
+const SOCIAUDIO_VERSION='v5.2.0 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.1.6 PUBLIC</span>
+        <span class="beta-label">V5.2.0 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -4053,4 +4053,104 @@ window.addEventListener('DOMContentLoaded',()=>{
     bindSimplePostButtons();
   });
   simplePostObserver.observe(document.body,{childList:true,subtree:true});
+});
+
+
+// ================================================================
+// REDE SOCIAUDIO v5.2.0 — EXPERIENCIA MOBILE
+// ================================================================
+function buildMobileMoreMenu(){
+  if(document.getElementById('mobileMoreButton'))return;
+
+  const sidebar=document.querySelector('.sidebar');
+  if(!sidebar)return;
+
+  const btn=document.createElement('button');
+  btn.id='mobileMoreButton';
+  btn.type='button';
+  btn.className='mobile-more-button';
+  btn.setAttribute('aria-label','Abrir mais opções');
+  btn.innerHTML=`<span class="mobile-more-dots">•••</span><small>Mais</small>`;
+
+  const drawer=document.createElement('div');
+  drawer.id='mobileMoreDrawer';
+  drawer.className='mobile-more-drawer';
+  drawer.innerHTML=`
+    <div class="mobile-more-backdrop"></div>
+    <section class="mobile-more-sheet">
+      <div class="mobile-more-handle"></div>
+      <div class="mobile-more-head">
+        <div>
+          <b>Mais opções</b>
+          <small>Rede Sociaudio</small>
+        </div>
+        <button type="button" class="mobile-more-close" aria-label="Fechar">×</button>
+      </div>
+      <div class="mobile-more-grid"></div>
+    </section>`;
+
+  document.body.appendChild(btn);
+  document.body.appendChild(drawer);
+
+  const grid=drawer.querySelector('.mobile-more-grid');
+
+  const preferredViews=[
+    'messages','saved','notifications','communities','experts','companies',
+    'marketplace','knowledge','ai','hire','opportunities','profile','budgets'
+  ];
+
+  const originals=[...sidebar.querySelectorAll('button[data-view]')];
+
+  preferredViews.forEach(viewName=>{
+    const original=originals.find(el=>el.dataset.view===viewName);
+    if(!original)return;
+
+    const item=document.createElement('button');
+    item.type='button';
+    item.className='mobile-more-item';
+    item.dataset.mobileView=viewName;
+
+    const iconEl=original.querySelector('.sa-icon,i,svg');
+    const labelEl=original.querySelector('span');
+    const label=(labelEl?.textContent||original.textContent||viewName).trim();
+
+    item.innerHTML=`
+      <span class="mobile-more-item-icon">${iconEl?iconEl.outerHTML:''}</span>
+      <span>${label}</span>`;
+
+    item.onclick=()=>{
+      drawer.classList.remove('open');
+      document.body.classList.remove('mobile-menu-open');
+      original.click();
+    };
+    grid.appendChild(item);
+  });
+
+  const close=()=>{
+    drawer.classList.remove('open');
+    document.body.classList.remove('mobile-menu-open');
+  };
+
+  btn.onclick=()=>{
+    drawer.classList.add('open');
+    document.body.classList.add('mobile-menu-open');
+  };
+
+  drawer.querySelector('.mobile-more-close').onclick=close;
+  drawer.querySelector('.mobile-more-backdrop').onclick=close;
+
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape')close();
+  });
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(buildMobileMoreMenu,300);
+});
+
+window.addEventListener('resize',()=>{
+  if(window.innerWidth>760){
+    document.getElementById('mobileMoreDrawer')?.classList.remove('open');
+    document.body.classList.remove('mobile-menu-open');
+  }
 });
