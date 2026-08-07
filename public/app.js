@@ -1,6 +1,6 @@
 let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
-const SOCIAUDIO_VERSION='Beta 3.2.7';
+const SOCIAUDIO_VERSION='Beta 3.2.8';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -154,7 +154,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">BETA 3.2.3</span>
+        <span class="beta-label">BETA 3.2.8</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -962,20 +962,25 @@ function relativeTime(value){
 }
 
 async function loadNotifications(renderPage=false){
+  if(renderPage&&view==='notifications'){
+    content.innerHTML=`<section class="notifications-page">
+      <div class="notifications-loading card">
+        <span></span>
+        <p>Carregando notificações...</p>
+      </div>
+    </section>`;
+  }
+
   try{
     const data=await api('/api/notifications');
-    notificationItems=data.items||[];
+    notificationItems=(data.items||[]).map(n=>({
+      ...n,
+      title:n.title||notificationTitle(n.type),
+      message:n.message||n.description||'Nova atividade na sua conta.',
+      is_read:Number(n.is_read||0),
+      actor_avatar:n.actor_avatar||''
+    }));
     notificationUnread=Number(data.unread||0);
-
-    if(renderPage&&view==='notifications'&&notificationUnread>0){
-      const result=await api('/api/notifications/read-all',{
-        method:'POST',
-        body:'{}'
-      });
-      notificationItems.forEach(n=>n.is_read=1);
-      notificationUnread=Number(result.unread||0);
-    }
-
     updateNotificationBadge();
 
     if(renderPage&&view==='notifications'){
@@ -983,13 +988,35 @@ async function loadNotifications(renderPage=false){
     }
   }catch(error){
     console.error('Erro ao carregar notificações:',error);
+    notificationItems=[];
     notificationUnread=0;
     updateNotificationBadge();
+
     if(renderPage&&view==='notifications'){
-      notificationItems=[];
-      renderNotifications();
+      content.innerHTML=`<section class="notifications-page">
+        <div class="card notifications-error">
+          <div>⚠️</div>
+          <h2>Não foi possível carregar as notificações</h2>
+          <p>${esc(error.message||'Tente novamente.')}</p>
+          <button class="secondary" onclick="loadNotifications(true)">Tentar novamente</button>
+        </div>
+      </section>`;
     }
   }
+}
+
+function notificationTitle(type){
+  return ({
+    follow:'Novo seguidor',
+    like:'Nova curtida',
+    comment:'Novo comentário',
+    message:'Nova mensagem',
+    community:'Comunidade',
+    quote:'Orçamento',
+    review:'Nova avaliação',
+    job_apply:'Nova candidatura',
+    job_status:'Atualização de candidatura'
+  })[type]||'Nova notificação';
 }
 
 function updateNotificationBadge(){
@@ -1117,17 +1144,19 @@ function renderUnreadNotifications(){
 }
 
 function notificationCard(n){
-  return `<article class="notification-card ${n.is_read?'read':'unread'}" onclick="openNotification(${n.id})">
+  const title=n.title||notificationTitle(n.type);
+  const message=n.message||n.description||'Nova atividade na sua conta.';
+  return `<article class="notification-card ${Number(n.is_read)?'read':'unread'}" onclick="openNotification(${n.id})">
     <div class="notification-avatar-wrap">
       ${n.actor_avatar?`<img class="notification-avatar" src="${esc(n.actor_avatar)}" alt="">`:`<span class="notification-avatar fallback">${esc((n.actor_name||'S').slice(0,1).toUpperCase())}</span>`}
       <span class="notification-type-icon">${notificationIcon(n.type)}</span>
     </div>
     <div class="notification-content">
       <div class="notification-card-head">
-        <b>${esc(n.title)}</b>
-        ${!n.is_read?'<span class="notification-dot"></span>':''}
+        <b>${esc(title)}</b>
+        ${!Number(n.is_read)?'<span class="notification-dot"></span>':''}
       </div>
-      <p>${esc(n.message||'')}</p>
+      <p>${esc(message)}</p>
       <small>${relativeTime(n.created_at)}</small>
     </div>
     <button class="notification-delete" aria-label="Excluir notificação" onclick="deleteNotification(${n.id},event)">×</button>
@@ -1554,12 +1583,8 @@ hireClose.onclick=()=>hireDlg.close();
 hireForm.onsubmit=async e=>{e.preventDefault();try{let result=await api('/api/hire-requests',{method:'POST',body:JSON.stringify({requester_name:hireName.value,requester_phone:hirePhone.value,city:hireCity.value,event_date:hireDate.value,event_type:hireType.value,audience:hireAudience.value,budget:hireBudget.value,equipment:hireEquipment.value,message:hireMessage.value})});lastHireMatches=result.matches||[];hireDlg.close();view='hire';toast('Especialistas encontrados.');renderHire(lastHireMatches,result.request_id)}catch(e){toast(e.message,true)}};
 function matchCard(u){return `<article class="card match-card"><div class="match-score"><b>${u.score}%</b><span>compatibilidade</span></div>${avatar(u,'big')}<div class="match-main"><h3>${esc(u.name)}</h3><p class="match-headline">${esc(u.headline||u.role)}</p>${u.company?`<small>${esc(u.company)}</small>`:''}<p class="meta">${icon('location')} ${esc(u.city||'Cidade não informada')}</p><div class="skills">${lines(u.specialties)}</div><div class="match-facts"><span><b>${esc(u.experience||'—')}</b> experiência</span><span><b>${esc(u.completed_projects||'—')}</b> projetos</span><span><b>${esc(u.response_time||'Até 24h')}</b></span></div></div><div class="match-actions"><button class="secondary" onclick="openProfile(${u.id})">Ver perfil</button><button class="primary" onclick="openQuote(${u.id})">Solicitar orçamento</button></div></article>`}
 async function renderHire(matches=null,requestId=null){let requests=[];try{requests=await api('/api/hire-requests')}catch{};let latest=matches||(requests[0]?.matches||[]);content.innerHTML=`<section class="hire-hero card"><div><span class="eyebrow">REDE SOCIAUDIO MATCH</span><h1>Contrate o especialista certo para o seu projeto</h1><p>Descreva sua necessidade e receba recomendações baseadas em cidade, especialidade, equipamentos e disponibilidade.</p><div class="hire-benefits"><span>✓ Profissionais por compatibilidade</span><span>✓ Perfis e experiência verificados</span><span>✓ Contato e orçamento direto</span></div><button class="primary hire-cta" onclick="openHire()">${icon('target')} Encontrar especialista</button></div><div class="hire-visual"><div class="pulse-ring">${icon('target')}</div><b>Busca inteligente</b><small>Conectando sua necessidade aos melhores profissionais da comunidade.</small></div></section>${latest.length?`<div class="section-heading"><div><h2>Profissionais recomendados</h2><p>${latest.length} perfis compatíveis com sua solicitação.</p></div><span class="request-number">Solicitação #${requestId||requests[0]?.id||''}</span></div><div class="matches-list">${latest.map(matchCard).join('')}</div>`:`<section class="card hire-empty"><div>${icon('professionals')}</div><h2>Pronto para encontrar um especialista?</h2><p>Crie sua primeira solicitação. As recomendações aparecerão aqui.</p><button class="primary" onclick="openHire()">Começar agora</button></section>`}${requests.length?`<section class="request-history"><div class="section-heading"><div><h2>Minhas solicitações</h2><p>Acompanhe os pedidos já criados.</p></div></div>${requests.map(r=>`<article class="card request-row"><div><span class="tag">${esc(r.status)}</span><h3>${esc(r.event_type||'Serviço de áudio')}</h3><p>${esc(r.city)}${r.event_date?` · ${esc(r.event_date)}`:''}${r.budget?` · ${esc(r.budget)}`:''}</p><small>${r.match_count} profissional(is) recomendado(s) · ${new Date(r.created_at).toLocaleString('pt-BR')}</small></div><button class="secondary" onclick='renderHire(${JSON.stringify(r.matches)},${r.id})'>Ver recomendações</button></article>`).join('')}</section>`:''}`;hydrateIcons(content)}
-async function renderOpportunities(){let items=await api('/api/opportunities');content.innerHTML=`<div class="page-title"><h1>Oportunidades para você</h1><p>Solicitações compatíveis com seu perfil profissional.</p></div>${items.length?items.map(o=>`<article class="card opportunity-card"><div class="opportunity-score"><b>${o.score}%</b><small>compatibilidade</small></div><div><span class="tag">${esc(o.status)}</span><h2>${esc(o.event_type||'Serviço de áudio')}</h2><p class="meta">${icon('location')} ${esc(o.city)}${o.event_date?` · ${esc(o.event_date)}`:''}</p><p>${esc(o.message)}</p><div class="opportunity-info">${o.audience?`<span>Público: <b>${esc(o.audience)}</b></span>`:''}${o.budget?`<span>Orçamento: <b>${esc(o.budget)}</b></span>`:''}${o.equipment?`<span>Equipamentos: <b>${esc(o.equipment)}</b></span>`:''}</div><small>Solicitado por ${esc(o.requester_name)} · ${new Date(o.created_at).toLocaleString('pt-BR')}</small></div>${o.requester_phone?`<a class="primary btn" target="_blank" href="https://wa.me/${o.requester_phone.replace(/\D/g,'')}">Falar no WhatsApp</a>`:''}</article>`).join(''):'<div class="empty">Ainda não há oportunidades compatíveis. Complete seu perfil para melhorar as recomendações.</div>'}`;hydrateIcons(content)}
-
-let quoteRequestFilter='novo';
-
-function quoteStatusLabel(status){
-  return ({novo:'Novo',negociacao:'Em negociação',concluido:'Concluído',arquivado:'Arquivado'})[status]||status;
+async function renderOpportunities(){
+  return renderJobs();
 }
 function quoteStatusClass(status){
   return ({novo:'quote-new',negociacao:'quote-negotiation',concluido:'quote-completed',arquivado:'quote-archived'})[status]||'';
@@ -1898,8 +1923,32 @@ function bindViewNavigation(){
   });
 }
 
-function render(){document.body.classList.toggle('chat-page',view==='chat');document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));if(view==='experts')return renderExperts();if(view==='companies')return renderCompanies();if(view==='jobs')return renderJobs();if(view==='marketplace')return renderMarketplace();if(view==='knowledge')return renderKnowledge();if(view==='audioai')return renderAudioAI();if(view==='chat')return renderChat();if(view==='communities')return renderCommunities();if(view==='profile')return renderProfile();if(view==='notifications')return loadNotifications(true);
-  if(view==='about')return renderAbout();if(view==='hire')return renderHire();if(view==='opportunities')return renderOpportunities();if(view==='requests')return renderRequests();if(view==='admin')return renderAdmin();return renderFeed(view==='saved')}
+function render(){
+  const isChat=view==='chat'||view==='messages';
+  document.body.classList.toggle('chat-page',isChat);
+  document.querySelectorAll('[data-view]').forEach(b=>{
+    const selected=b.dataset.view===view ||
+      (isChat&&['chat','messages'].includes(b.dataset.view)) ||
+      (view==='opportunities'&&['opportunities','jobs'].includes(b.dataset.view));
+    b.classList.toggle('selected',selected);
+  });
+
+  if(view==='experts')return renderExperts();
+  if(view==='companies')return renderCompanies();
+  if(view==='jobs'||view==='opportunities')return renderJobs();
+  if(view==='marketplace')return renderMarketplace();
+  if(view==='knowledge')return renderKnowledge();
+  if(view==='audioai')return renderAudioAI();
+  if(view==='chat'||view==='messages')return renderChat();
+  if(view==='communities')return renderCommunities();
+  if(view==='profile')return renderProfile();
+  if(view==='notifications')return loadNotifications(true);
+  if(view==='about')return renderAbout();
+  if(view==='hire')return renderHire();
+  if(view==='requests')return renderRequests();
+  if(view==='admin')return renderAdmin();
+  return renderFeed(view==='saved');
+}
 search.oninput=scheduleGlobalSearch;
 search.onkeydown=e=>{
   if(e.key==='Enter'){
