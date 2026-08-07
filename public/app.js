@@ -1,6 +1,6 @@
 let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
-const SOCIAUDIO_VERSION='Beta 3.2.8';
+const SOCIAUDIO_VERSION='Beta 3.2.9';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -154,7 +154,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">BETA 3.2.8</span>
+        <span class="beta-label">BETA 3.2.9</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -972,19 +972,25 @@ async function loadNotifications(renderPage=false){
   }
 
   try{
-    const data=await api('/api/notifications');
-    notificationItems=(data.items||[]).map(n=>({
+    const data=await Promise.race([
+      api('/api/notifications'),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('O carregamento das notificações demorou demais.')),12000))
+    ]);
+
+    const items=Array.isArray(data?.items)?data.items:[];
+    notificationItems=items.map(n=>({
       ...n,
-      title:n.title||notificationTitle(n.type),
+      title:n.title||safeNotificationTitle(n.type),
       message:n.message||n.description||'Nova atividade na sua conta.',
       is_read:Number(n.is_read||0),
       actor_avatar:n.actor_avatar||''
     }));
-    notificationUnread=Number(data.unread||0);
+
+    notificationUnread=Number(data?.unread||notificationItems.filter(n=>!n.is_read).length);
     updateNotificationBadge();
 
     if(renderPage&&view==='notifications'){
-      renderNotifications();
+      renderNotificationsSafe(false);
     }
   }catch(error){
     console.error('Erro ao carregar notificações:',error);
@@ -1005,7 +1011,7 @@ async function loadNotifications(renderPage=false){
   }
 }
 
-function notificationTitle(type){
+function safeNotificationTitle(type){
   return ({
     follow:'Novo seguidor',
     like:'Nova curtida',
@@ -1017,6 +1023,89 @@ function notificationTitle(type){
     job_apply:'Nova candidatura',
     job_status:'Atualização de candidatura'
   })[type]||'Nova notificação';
+}
+
+function safeNotificationIcon(type){
+  return ({
+    follow:'👤',
+    like:'👍',
+    comment:'💬',
+    message:'✉️',
+    community:'👥',
+    quote:'💼',
+    review:'⭐',
+    job_apply:'📄',
+    job_status:'📌'
+  })[type]||'🔔';
+}
+
+function safeRelativeTime(value){
+  try{
+    if(typeof relativeTime==='function')return relativeTime(value);
+    return new Date(value).toLocaleString('pt-BR');
+  }catch{
+    return '';
+  }
+}
+
+function renderNotificationsSafe(unreadOnly=false){
+  const list=unreadOnly?notificationItems.filter(n=>!Number(n.is_read)):notificationItems;
+  const unread=notificationItems.filter(n=>!Number(n.is_read)).length;
+
+  content.innerHTML=`<section class="notifications-page">
+    <div class="page-title notification-title">
+      <div>
+        <h1>${unreadOnly?'Notificações não lidas':'Notificações'}</h1>
+        <p>${unreadOnly?`${unread} pendente(s).`:'Acompanhe as atividades da sua conta.'}</p>
+      </div>
+      ${notificationItems.length?`<button class="secondary" onclick="markAllNotificationsRead()" ${!unread?'disabled':''}>Marcar todas como lidas</button>`:''}
+    </div>
+
+    <div class="notification-filter-row">
+      <button class="${!unreadOnly?'active':''}" onclick="renderNotificationsSafe(false)">
+        Todas <span>${notificationItems.length}</span>
+      </button>
+      <button class="${unreadOnly?'active':''}" onclick="renderNotificationsSafe(true)">
+        Não lidas <span>${unread}</span>
+      </button>
+    </div>
+
+    <div class="notification-list">
+      ${list.length
+        ?list.map(safeNotificationCard).join('')
+        :`<div class="card empty notification-empty">
+            <div>${unreadOnly?'✅':'🔔'}</div>
+            <h2>${unreadOnly?'Tudo em dia':'Nenhuma notificação'}</h2>
+            <p>${unreadOnly?'Você não tem notificações não lidas.':'As novas atividades aparecerão aqui.'}</p>
+          </div>`}
+    </div>
+  </section>`;
+}
+
+function safeNotificationCard(n){
+  const title=n.title||safeNotificationTitle(n.type);
+  const message=n.message||'Nova atividade na sua conta.';
+  const initial=esc((n.actor_name||'S').slice(0,1).toUpperCase());
+
+  return `<article class="notification-card ${Number(n.is_read)?'read':'unread'}" onclick="openNotification(${Number(n.id)})">
+    <div class="notification-avatar-wrap">
+      ${n.actor_avatar
+        ?`<img class="notification-avatar" src="${esc(n.actor_avatar)}" alt="">`
+        :`<span class="notification-avatar fallback">${initial}</span>`}
+      <span class="notification-type-icon">${safeNotificationIcon(n.type)}</span>
+    </div>
+
+    <div class="notification-content">
+      <div class="notification-card-head">
+        <b>${esc(title)}</b>
+        ${!Number(n.is_read)?'<span class="notification-dot"></span>':''}
+      </div>
+      <p>${esc(message)}</p>
+      <small>${safeRelativeTime(n.created_at)}</small>
+    </div>
+
+    <button class="notification-delete" aria-label="Excluir notificação" onclick="deleteNotification(${Number(n.id)},event)">×</button>
+  </article>`;
 }
 
 function updateNotificationBadge(){
@@ -1113,56 +1202,10 @@ async function openNotification(id){
   }
 }
 
-function renderNotifications(){
-  const unread=notificationItems.filter(n=>!n.is_read).length;
-  content.innerHTML=`<div class="page-title notification-title">
-    <div><h1>Notificações</h1><p>Acompanhe as atividades da sua conta.</p></div>
-    ${notificationItems.length?`<button class="secondary" onclick="markAllNotificationsRead()" ${!unread?'disabled':''}>Marcar todas como lidas</button>`:''}
-  </div>
-  <div class="notification-filter-row">
-    <button class="active" onclick="renderNotifications()">Todas <span>${notificationItems.length}</span></button>
-    <button onclick="renderUnreadNotifications()">Não lidas <span>${unread}</span></button>
-  </div>
-  <section class="notification-list">
-    ${notificationItems.length?notificationItems.map(notificationCard).join(''):`<div class="card empty notification-empty"><div>🔔</div><h2>Nenhuma notificação</h2><p>As novas atividades aparecerão aqui.</p></div>`}
-  </section>`;
-}
+function renderNotifications(){return renderNotificationsSafe(false)}
+function renderUnreadNotifications(){return renderNotificationsSafe(true)}
 
-function renderUnreadNotifications(){
-  const list=notificationItems.filter(n=>!n.is_read);
-  content.innerHTML=`<div class="page-title notification-title">
-    <div><h1>Notificações não lidas</h1><p>${list.length} notificação(ões) pendente(s).</p></div>
-    <button class="secondary" onclick="markAllNotificationsRead()" ${!list.length?'disabled':''}>Marcar todas como lidas</button>
-  </div>
-  <div class="notification-filter-row">
-    <button onclick="renderNotifications()">Todas <span>${notificationItems.length}</span></button>
-    <button class="active" onclick="renderUnreadNotifications()">Não lidas <span>${list.length}</span></button>
-  </div>
-  <section class="notification-list">
-    ${list.length?list.map(notificationCard).join(''):`<div class="card empty notification-empty"><div>✅</div><h2>Tudo em dia</h2><p>Você não tem notificações não lidas.</p></div>`}
-  </section>`;
-}
-
-function notificationCard(n){
-  const title=n.title||notificationTitle(n.type);
-  const message=n.message||n.description||'Nova atividade na sua conta.';
-  return `<article class="notification-card ${Number(n.is_read)?'read':'unread'}" onclick="openNotification(${n.id})">
-    <div class="notification-avatar-wrap">
-      ${n.actor_avatar?`<img class="notification-avatar" src="${esc(n.actor_avatar)}" alt="">`:`<span class="notification-avatar fallback">${esc((n.actor_name||'S').slice(0,1).toUpperCase())}</span>`}
-      <span class="notification-type-icon">${notificationIcon(n.type)}</span>
-    </div>
-    <div class="notification-content">
-      <div class="notification-card-head">
-        <b>${esc(title)}</b>
-        ${!Number(n.is_read)?'<span class="notification-dot"></span>':''}
-      </div>
-      <p>${esc(message)}</p>
-      <small>${relativeTime(n.created_at)}</small>
-    </div>
-    <button class="notification-delete" aria-label="Excluir notificação" onclick="deleteNotification(${n.id},event)">×</button>
-  </article>`;
-}
-
+function notificationCard(n){return safeNotificationCard(n)}
 
 function renderAbout(){
   content.innerHTML=`<section class="about-page">
@@ -1775,8 +1818,83 @@ async function renderAdmin(){
 }
 let chatConversationId=null,chatPoll=null,chatTypingTimer=null,chatTypingLastSent=0;
 function chatAvatar(x){return x.other_avatar?`<img class="avatar" src="${x.other_avatar}">`:`<span class="avatar fallback">${esc((x.other_name||x.name||'?')[0])}</span>`}
-async function renderChat(){clearInterval(chatPoll);let convs=await api('/api/chat/conversations');content.innerHTML=`<section class="chat-shell card"><aside class="chat-list"><div class="chat-list-head"><div><span class="eyebrow">CHAT PROFISSIONAL</span><h1>Mensagens</h1></div><button class="primary icon-only" onclick="openNewChat()" title="Nova conversa">${icon('plus')}</button></div><input id="chatSearch" class="chat-search" placeholder="Buscar conversas..."><div id="chatConversationList">${convs.length?convs.map(chatConversationCard).join(''):'<div class="chat-empty-small">Nenhuma conversa. Clique em + para iniciar.</div>'}</div></aside><main id="chatMain" class="chat-main"><div class="chat-welcome">${icon('chat')}<h2>Converse com profissionais</h2><p>Envie mensagens, documentos, áudios e arquivos técnicos sem sair da Rede Sociaudio.</p><button class="primary" onclick="openNewChat()">Iniciar conversa</button></div></main></section>`;hydrateIcons(content);
-  loadAvailabilityManager();chatSearch.oninput=()=>{let q=chatSearch.value.toLowerCase();document.querySelectorAll('.chat-conversation').forEach(x=>x.hidden=!x.textContent.toLowerCase().includes(q))};if(chatConversationId)openConversation(chatConversationId,false)}
+async function renderChat(){
+  clearInterval(chatPoll);
+
+  content.innerHTML=`<section class="chat-safe-loading card">
+    <span></span>
+    <h2>Carregando mensagens...</h2>
+  </section>`;
+
+  try{
+    const convs=await Promise.race([
+      api('/api/chat/conversations'),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('O carregamento das mensagens demorou demais.')),12000))
+    ]);
+
+    const conversations=Array.isArray(convs)?convs:[];
+
+    content.innerHTML=`<section class="chat-shell card">
+      <aside class="chat-list">
+        <div class="chat-list-head">
+          <div>
+            <span class="eyebrow">CHAT PROFISSIONAL</span>
+            <h1>Mensagens</h1>
+          </div>
+          <button class="primary icon-only" id="newChatButton" title="Nova conversa">${icon('plus')}</button>
+        </div>
+
+        <input id="chatSearchInput" class="chat-search" placeholder="Buscar conversas...">
+
+        <div id="chatConversationList">
+          ${conversations.length
+            ?conversations.map(chatConversationCard).join('')
+            :'<div class="chat-empty-small">Nenhuma conversa. Clique em + para iniciar.</div>'}
+        </div>
+      </aside>
+
+      <main id="chatMain" class="chat-main">
+        <div class="chat-welcome">
+          ${icon('chat')}
+          <h2>Converse com profissionais</h2>
+          <p>Envie mensagens, documentos, áudios e arquivos técnicos sem sair da Rede Sociaudio.</p>
+          <button class="primary" id="startChatButton">Iniciar conversa</button>
+        </div>
+      </main>
+    </section>`;
+
+    hydrateIcons(content);
+
+    const newButton=document.getElementById('newChatButton');
+    const startButton=document.getElementById('startChatButton');
+    const searchInput=document.getElementById('chatSearchInput');
+
+    if(newButton)newButton.onclick=()=>openNewChat();
+    if(startButton)startButton.onclick=()=>openNewChat();
+
+    if(searchInput){
+      searchInput.oninput=()=>{
+        const q=searchInput.value.toLowerCase();
+        document.querySelectorAll('.chat-conversation').forEach(item=>{
+          item.hidden=!item.textContent.toLowerCase().includes(q);
+        });
+      };
+    }
+
+    if(chatConversationId){
+      await openConversation(chatConversationId,false);
+    }
+  }catch(error){
+    console.error('Erro ao abrir mensagens:',error);
+    content.innerHTML=`<section class="card chat-safe-error">
+      <div>💬</div>
+      <h2>Não foi possível abrir as mensagens</h2>
+      <p>${esc(error.message||'Tente novamente.')}</p>
+      <button class="secondary" onclick="renderChat()">Tentar novamente</button>
+    </section>`;
+  }
+}
+
 function chatConversationCard(c){
   const unread=Number(c.unread||0);
   return `<button class="chat-conversation ${chatConversationId===c.id?'active':''} ${unread?'has-unread':''}" onclick="openConversation(${c.id})">
