@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.0.1 Public';
+const SOCIAUDIO_VERSION='v5.1.0 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.0.1 PUBLIC</span>
+        <span class="beta-label">V5.1.0 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -3651,4 +3651,236 @@ window.addEventListener('pageshow',()=>{
   if(localStorage.getItem('sociaudio_token') && !token){
     token=localStorage.getItem('sociaudio_token')||'';
   }
+});
+
+
+// ================================================================
+// REDE SOCIAUDIO v5.1.0 — PUBLICACAO SIMPLIFICADA
+// ================================================================
+let simplePostMediaType='post';
+
+function postFieldByLabel(labelText){
+  const labels=[...document.querySelectorAll('label')];
+  const label=labels.find(l=>(l.textContent||'').trim().toLowerCase().startsWith(labelText.toLowerCase()));
+  if(!label)return null;
+  return label.querySelector('input,textarea,select') || document.getElementById(label.getAttribute('for'));
+}
+
+function findPostDialog(){
+  const dialogs=[...document.querySelectorAll('dialog,.modal,.dialog')];
+  return dialogs.find(el=>{
+    const text=(el.textContent||'').toLowerCase();
+    return text.includes('nova publicação') || text.includes('nova publicacao');
+  }) || document.getElementById('postDlg') || document.getElementById('postDialog');
+}
+
+function ensureSimplePostUI(){
+  const dlg=findPostDialog();
+  if(!dlg)return;
+
+  if(dlg.dataset.simplePostReady==='1')return;
+  dlg.dataset.simplePostReady='1';
+
+  const form=dlg.querySelector('form')||dlg;
+  const submit=[...form.querySelectorAll('button')].find(b=>{
+    const t=(b.textContent||'').trim().toLowerCase();
+    return t==='publicar' || t.includes('publicar');
+  });
+
+  const typeField=postFieldByLabel('tipo');
+  const categoryField=postFieldByLabel('categoria');
+  const titleField=postFieldByLabel('título')||postFieldByLabel('titulo');
+  const descriptionField=postFieldByLabel('descrição')||postFieldByLabel('descricao');
+  const linkField=postFieldByLabel('link externo');
+
+  const fieldWrap=field=>{
+    if(!field)return null;
+    return field.closest('label,.field,.form-group,.input-group')||field.parentElement;
+  };
+
+  const advancedWrap=document.createElement('div');
+  advancedWrap.className='simple-post-advanced';
+  advancedWrap.hidden=true;
+
+  [typeField,categoryField,titleField,linkField].forEach(field=>{
+    const wrap=fieldWrap(field);
+    if(wrap && !advancedWrap.contains(wrap)){
+      advancedWrap.appendChild(wrap);
+    }
+  });
+
+  if(advancedWrap.children.length){
+    const detailsButton=document.createElement('button');
+    detailsButton.type='button';
+    detailsButton.className='simple-post-details-button';
+    detailsButton.innerHTML='<span>＋</span> Mais detalhes';
+    detailsButton.onclick=()=>{
+      advancedWrap.hidden=!advancedWrap.hidden;
+      detailsButton.classList.toggle('open',!advancedWrap.hidden);
+      detailsButton.innerHTML=advancedWrap.hidden
+        ?'<span>＋</span> Mais detalhes'
+        :'<span>−</span> Ocultar detalhes';
+    };
+
+    const descriptionWrap=fieldWrap(descriptionField);
+    if(descriptionWrap){
+      descriptionWrap.insertAdjacentElement('afterend',detailsButton);
+      detailsButton.insertAdjacentElement('afterend',advancedWrap);
+    }else if(submit){
+      submit.insertAdjacentElement('beforebegin',detailsButton);
+      detailsButton.insertAdjacentElement('afterend',advancedWrap);
+    }else{
+      form.appendChild(detailsButton);
+      form.appendChild(advancedWrap);
+    }
+  }
+
+  // Descrição vira "legenda" no uso simples.
+  if(descriptionField){
+    descriptionField.placeholder='Escreva uma legenda (opcional)';
+    const label=descriptionField.closest('label');
+    if(label){
+      const nodes=[...label.childNodes];
+      const textNode=nodes.find(n=>n.nodeType===3 && n.textContent.trim());
+      if(textNode)textNode.textContent='Legenda ';
+    }
+  }
+
+  // Título não é obrigatório no modo simples.
+  if(titleField){
+    titleField.required=false;
+    titleField.placeholder='Título opcional';
+  }
+  if(categoryField)categoryField.required=false;
+  if(linkField)linkField.required=false;
+  if(typeField)typeField.required=false;
+}
+
+function configureSimplePostDialog(mediaType){
+  simplePostMediaType=mediaType||'post';
+  ensureSimplePostUI();
+
+  const dlg=findPostDialog();
+  if(!dlg)return;
+
+  const form=dlg.querySelector('form')||dlg;
+  const title=dlg.querySelector('h1,h2,h3,.modal-title,.dialog-title');
+  const uploadInput=form.querySelector('input[type="file"]');
+  const descriptionField=postFieldByLabel('legenda')||postFieldByLabel('descrição')||postFieldByLabel('descricao');
+  const titleField=postFieldByLabel('título')||postFieldByLabel('titulo');
+  const typeField=postFieldByLabel('tipo');
+  const advanced=dlg.querySelector('.simple-post-advanced');
+  const detailsButton=dlg.querySelector('.simple-post-details-button');
+
+  if(title){
+    const labels={
+      image:'Nova foto',
+      video:'Novo vídeo',
+      audio:'Novo áudio',
+      file:'Novo arquivo',
+      post:'Nova publicação'
+    };
+    title.textContent=labels[simplePostMediaType]||'Nova publicação';
+  }
+
+  if(advanced)advanced.hidden=true;
+  if(detailsButton){
+    detailsButton.classList.remove('open');
+    detailsButton.innerHTML='<span>＋</span> Mais detalhes';
+  }
+
+  if(descriptionField){
+    descriptionField.value='';
+    descriptionField.placeholder='Escreva uma legenda (opcional)';
+  }
+  if(titleField){
+    titleField.required=false;
+    if(simplePostMediaType==='audio')titleField.placeholder='Título do áudio (opcional)';
+    else if(simplePostMediaType==='file')titleField.placeholder='Título do arquivo (opcional)';
+    else titleField.placeholder='Título opcional';
+  }
+
+  if(typeField){
+    const map={image:'image',video:'video',audio:'audio',file:'file'};
+    if(map[simplePostMediaType]){
+      const option=[...typeField.options].find(o=>{
+        const v=(o.value||'').toLowerCase();
+        const t=(o.textContent||'').toLowerCase();
+        return v.includes(map[simplePostMediaType]) || t.includes(
+          simplePostMediaType==='image'?'foto':
+          simplePostMediaType==='video'?'vídeo':
+          simplePostMediaType==='audio'?'áudio':'arquivo'
+        );
+      });
+      if(option)typeField.value=option.value;
+    }
+  }
+
+  if(uploadInput){
+    uploadInput.value='';
+    uploadInput.multiple=simplePostMediaType==='image';
+    if(simplePostMediaType==='image') uploadInput.accept='image/*';
+    else if(simplePostMediaType==='video') uploadInput.accept='video/*';
+    else if(simplePostMediaType==='audio') uploadInput.accept='audio/*';
+    else if(simplePostMediaType==='file') uploadInput.accept='.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar';
+  }
+
+  // Informativo contextual simples.
+  let hint=dlg.querySelector('.simple-post-hint');
+  if(!hint){
+    hint=document.createElement('div');
+    hint.className='simple-post-hint';
+    const fileWrap=uploadInput && (uploadInput.closest('label,.field,.form-group,.input-group')||uploadInput.parentElement);
+    if(fileWrap)fileWrap.insertAdjacentElement('beforebegin',hint);
+  }
+  if(hint){
+    const hints={
+      image:'Selecione até 6 fotos. A legenda é opcional.',
+      video:'Selecione um vídeo. A legenda é opcional.',
+      audio:'Selecione um áudio. Título e legenda são opcionais.',
+      file:'Selecione um arquivo. Título e descrição são opcionais.',
+      post:'Compartilhe algo com a comunidade.'
+    };
+    hint.textContent=hints[simplePostMediaType]||hints.post;
+  }
+}
+
+function bindSimplePostButtons(){
+  const selectors=[
+    ['image',['foto','imagem']],
+    ['video',['vídeo','video']],
+    ['audio',['áudio','audio']],
+    ['file',['arquivo','documento','pdf']]
+  ];
+
+  document.querySelectorAll('button,a').forEach(el=>{
+    const text=(el.textContent||'').trim().toLowerCase();
+    const title=(el.getAttribute('title')||'').toLowerCase();
+    const aria=(el.getAttribute('aria-label')||'').toLowerCase();
+    const haystack=[text,title,aria].join(' ');
+
+    for(const [type,terms] of selectors){
+      if(terms.some(term=>haystack.includes(term))){
+        if(el.dataset.simplePostBound==='1')break;
+        el.dataset.simplePostBound='1';
+        el.addEventListener('click',()=>{
+          setTimeout(()=>configureSimplePostDialog(type),50);
+        });
+        break;
+      }
+    }
+  });
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{
+    ensureSimplePostUI();
+    bindSimplePostButtons();
+  },150);
+
+  const simplePostObserver=new MutationObserver(()=>{
+    ensureSimplePostUI();
+    bindSimplePostButtons();
+  });
+  simplePostObserver.observe(document.body,{childList:true,subtree:true});
 });
