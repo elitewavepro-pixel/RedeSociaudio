@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.3.1 — Stories Mobile Organizados'
+APP_VERSION = 'v5.3.2 — Mobile Social e Video iPhone'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -1862,8 +1862,8 @@ class Handler(SimpleHTTPRequestHandler):
 
             if not media_data:
                 return self.send_json({'error':'Escolha uma foto ou vídeo para o story.'},400)
-            if not (media_type.startswith('image/') or media_type in ('video/mp4','video/webm')):
-                return self.send_json({'error':'Story aceita somente foto ou vídeo.'},415)
+            if not (media_type.startswith('image/') or media_type in ('video/mp4','video/webm','video/quicktime','video/x-m4v')):
+                return self.send_json({'error':'Story aceita foto ou vídeo MP4, MOV, M4V ou WebM.'},415)
 
             created=now()
             expires=(datetime.now(timezone.utc)+timedelta(hours=24)).isoformat()
@@ -1931,8 +1931,9 @@ class Handler(SimpleHTTPRequestHandler):
                 size=0
 
             media_type=(self.headers.get('Content-Type') or '').split(';',1)[0].strip().lower()
-            if media_type not in ('video/mp4','video/webm'):
-                return self.send_json({'error':'Formato de vídeo não permitido. Use MP4 ou WebM.'},415)
+            allowed_video_types=('video/mp4','video/webm','video/quicktime','video/x-m4v')
+            if media_type not in allowed_video_types:
+                return self.send_json({'error':'Formato de vídeo não permitido. Use MP4, MOV, M4V ou WebM.'},415)
 
             limit=video_limit_for(u)
             if size<=0:
@@ -1947,7 +1948,14 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception:
                 original_name='video'
 
-            ext='.mp4' if media_type=='video/mp4' else '.webm'
+            if media_type=='video/mp4':
+                ext='.mp4'
+            elif media_type=='video/webm':
+                ext='.webm'
+            elif media_type=='video/x-m4v':
+                ext='.m4v'
+            else:
+                ext='.mov'
             filename=f"{datetime.now().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(8)}{ext}"
             final_path=os.path.join(VIDEO_DIR,filename)
             temp_path=final_path+'.part'

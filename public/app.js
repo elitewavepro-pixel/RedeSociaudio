@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.3.1 Public';
+const SOCIAUDIO_VERSION='v5.3.2 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.3.1 PUBLIC</span>
+        <span class="beta-label">V5.3.2 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -313,8 +313,7 @@ async function uploadPendingVideo(file){
       headers:{
         Authorization:'Bearer '+token,
         'Content-Type':file.type,
-        'X-File-Name':encodeURIComponent(file.name),
-        'Content-Length':String(file.size)
+        'X-File-Name':encodeURIComponent(file.name)
       },
       body:file
     });
@@ -322,7 +321,7 @@ async function uploadPendingVideo(file){
     throw Error('Não foi possível enviar o vídeo. Verifique sua conexão.');
   }
   let d=await r.json().catch(()=>({}));
-  if(!r.ok)throw Error(d.error||'Falha no upload do vídeo.');
+  if(!r.ok)throw Error(d.error||'Falha no upload do vídeo. No iPhone, prefira MP4/MOV gravado pela câmera.');
   return d;
 }
 async function uploadPendingAudio(file){let r;try{r=await fetch('/api/media/audio',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':file.type,'X-File-Name':encodeURIComponent(file.name)},body:file})}catch{throw Error('Não foi possível enviar o áudio. Verifique se o servidor está aberto.')}let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Falha no upload do áudio.');return d}
@@ -1687,8 +1686,8 @@ async function chooseStoryFile(file){
   const msg=document.getElementById('storyMsg');
   msg.textContent='';
 
-  if(!(file.type.startsWith('image/')||['video/mp4','video/webm'].includes(file.type))){
-    msg.textContent='Escolha uma foto ou vídeo MP4/WebM.';
+  if(!(file.type.startsWith('image/')||file.type.startsWith('video/'))){
+    msg.textContent='Escolha uma foto ou vídeo.';
     return;
   }
 

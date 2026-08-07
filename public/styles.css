@@ -7391,3 +7391,271 @@ body.admin-mode .app-shell{
     top:76px!important;
   }
 }
+
+
+/* ===============================================================
+   Rede Sociaudio v5.3.2 — Feed mobile social refinado
+   =============================================================== */
+@media(max-width:760px){
+
+  body{
+    background:#f0f2f5!important;
+  }
+
+  /* Cabeçalho branco compacto */
+  #mobileSocialHeader.mobile-social-header-v523{
+    position:sticky!important;
+    top:0!important;
+    z-index:175!important;
+    background:#fff!important;
+    border-bottom:1px solid #e5e7eb!important;
+  }
+
+  .mobile-social-top-v523{
+    height:58px!important;
+    padding:0 12px!important;
+    gap:9px!important;
+  }
+
+  .mobile-social-brand-v523{
+    font-size:27px!important;
+    font-weight:900!important;
+    letter-spacing:-1px!important;
+    color:#1769df!important;
+  }
+
+  .mobile-social-actions-v523{
+    gap:6px!important;
+  }
+
+  .mobile-social-action-v523{
+    width:38px!important;
+    height:38px!important;
+    min-width:38px!important;
+    background:#f0f2f5!important;
+  }
+
+  /* Composer como faixa simples, não um grande cartão */
+  .mobile-social-composer-v523{
+    min-height:66px!important;
+    grid-template-columns:44px minmax(0,1fr) 40px!important;
+    gap:10px!important;
+    padding:9px 12px!important;
+    background:#fff!important;
+    border-top:0!important;
+    border-bottom:1px solid #e4e7ec!important;
+  }
+
+  .mobile-social-avatar-v523{
+    width:44px!important;
+    height:44px!important;
+  }
+
+  .mobile-social-thought-v523{
+    height:44px!important;
+    border:0!important;
+    border-radius:0!important;
+    padding:0 4px!important;
+    background:transparent!important;
+    color:#172033!important;
+    font-size:14px!important;
+    font-weight:750!important;
+  }
+
+  .mobile-social-photo-v523{
+    width:40px!important;
+    height:40px!important;
+  }
+
+  /* Remove qualquer linha de busca desktop residual */
+  #app .search-wrap,
+  #app .desktop-search,
+  #app .global-search-row{
+    display:none!important;
+  }
+
+  #app>.layout{
+    padding:0 0 80px!important;
+    background:#f0f2f5!important;
+  }
+
+  #content{
+    padding:0!important;
+    background:#f0f2f5!important;
+  }
+
+  /* Stories: maiores, em uma única faixa, próximos ao Facebook */
+  #mobileStoryStrip.mobile-story-strip-v523{
+    width:100%!important;
+    min-height:206px!important;
+    max-height:206px!important;
+    margin:0 0 9px!important;
+    padding:8px 8px 9px!important;
+    gap:7px!important;
+    border-top:0!important;
+    border-bottom:1px solid #dfe3e8!important;
+    background:#fff!important;
+  }
+
+  #mobileStoryStrip .mobile-story-card-v523{
+    flex:0 0 118px!important;
+    width:118px!important;
+    min-width:118px!important;
+    max-width:118px!important;
+    height:188px!important;
+    min-height:188px!important;
+    max-height:188px!important;
+    border-radius:13px!important;
+    background:#fff!important;
+    border:1px solid #e1e5ea!important;
+    box-shadow:0 1px 2px rgba(16,24,40,.06)!important;
+  }
+
+  #mobileStoryStrip .mobile-story-photo-v523{
+    height:130px!important;
+    min-height:130px!important;
+    max-height:130px!important;
+  }
+
+  #mobileStoryStrip .mobile-story-plus-v523{
+    top:109px!important;
+    width:40px!important;
+    height:40px!important;
+    border-width:4px!important;
+  }
+
+  #mobileStoryStrip .mobile-story-create-v523 b{
+    bottom:12px!important;
+    color:#111827!important;
+    font-size:12px!important;
+    line-height:1.1!important;
+  }
+
+  #mobileStoryStrip .mobile-real-story-v530{
+    border:0!important;
+    background:#111827!important;
+  }
+
+  #mobileStoryStrip .mobile-story-real-media-v530{
+    width:100%!important;
+    height:100%!important;
+    object-fit:cover!important;
+  }
+
+  #mobileStoryStrip .mobile-story-user-ring-v530{
+    top:8px!important;
+    left:8px!important;
+    width:35px!important;
+    height:35px!important;
+  }
+
+  #mobileStoryStrip .mobile-real-story-v530>span:last-child{
+    left:8px!important;
+    right:8px!important;
+    bottom:10px!important;
+    z-index:5!important;
+    color:#fff!important;
+    font-size:12px!important;
+    font-weight:850!important;
+    line-height:1.08!important;
+    text-shadow:0 1px 2px rgba(0,0,0,.55)!important;
+  }
+
+  /* Feed edge-to-edge, sem cartões estreitos */
+  #content .post,
+  #content .feed-card{
+    width:100%!important;
+    max-width:100%!important;
+    margin:0 0 9px!important;
+    padding-left:12px!important;
+    padding-right:12px!important;
+    border-radius:0!important;
+    border-left:0!important;
+    border-right:0!important;
+    box-shadow:none!important;
+    background:#fff!important;
+  }
+
+  #content .post-image,
+  #content .post-video{
+    width:calc(100% + 24px)!important;
+    max-width:calc(100% + 24px)!important;
+    margin-left:-12px!important;
+    margin-right:-12px!important;
+    border-radius:0!important;
+  }
+
+  #content .post h2{
+    font-size:20px!important;
+    line-height:1.2!important;
+  }
+
+  #content .post-body{
+    font-size:14px!important;
+    line-height:1.5!important;
+  }
+
+  .post-primary-actions{
+    margin-left:-12px!important;
+    margin-right:-12px!important;
+    width:calc(100% + 24px)!important;
+    padding-left:5px!important;
+    padding-right:5px!important;
+  }
+
+  .engagement-summary{
+    margin-left:-12px!important;
+    margin-right:-12px!important;
+    width:calc(100% + 24px)!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Barra inferior limpa */
+  #mobileBottomNav.mobile-bottom-nav-v522{
+    background:#fff!important;
+    border-top:1px solid #dfe3e8!important;
+    box-shadow:none!important;
+  }
+
+  .mobile-bottom-item-v522.active{
+    background:transparent!important;
+    color:#1769df!important;
+  }
+
+  .mobile-bottom-publish-v522{
+    width:48px!important;
+    height:48px!important;
+    flex-basis:48px!important;
+  }
+}
+
+@media(max-width:390px){
+  .mobile-social-brand-v523{
+    font-size:24px!important;
+  }
+
+  #mobileStoryStrip.mobile-story-strip-v523{
+    min-height:194px!important;
+    max-height:194px!important;
+  }
+
+  #mobileStoryStrip .mobile-story-card-v523{
+    flex-basis:108px!important;
+    width:108px!important;
+    min-width:108px!important;
+    max-width:108px!important;
+    height:178px!important;
+    min-height:178px!important;
+    max-height:178px!important;
+  }
+
+  #mobileStoryStrip .mobile-story-photo-v523{
+    height:121px!important;
+    min-height:121px!important;
+    max-height:121px!important;
+  }
+
+  #mobileStoryStrip .mobile-story-plus-v523{
+    top:100px!important;
+  }
+}
