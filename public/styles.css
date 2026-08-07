@@ -2616,3 +2616,12 @@ header .sidebar-brand-panel{
   overflow:hidden!important;
   text-overflow:ellipsis!important;
 }
+
+
+/* Beta 3.2.2 — suporte visual da sidebar refatorada */
+#sidebarBrandPanel .beta-health::before{
+  content:''!important;display:block!important;width:8px!important;height:8px!important;
+  min-width:8px!important;border-radius:50%!important;background:#20c878!important;
+  box-shadow:0 0 0 3px rgba(32,200,120,.15)!important;
+}
+#mainSidebar>#sidebarUserCard #sidebarAvatar img{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center center!important;}
