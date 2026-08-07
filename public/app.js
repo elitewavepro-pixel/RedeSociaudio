@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v4.0.9 Public';
+const SOCIAUDIO_VERSION='v4.1.0 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -157,7 +157,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.0.9 PUBLIC</span>
+        <span class="beta-label">V4.1.0 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -2833,14 +2833,66 @@ document.querySelectorAll('[data-view="about"]').forEach(el=>{
 });
 
 
+
+// ================================================================
+// REDE SOCIAUDIO v4.1.0 — CADASTRO SEM DADOS PRE-PREENCHIDOS
+// ================================================================
+function clearRegistrationForm(){
+  try{
+    if(typeof rn!=='undefined') rn.value='';
+    if(typeof re!=='undefined') re.value='';
+    if(typeof rp!=='undefined') rp.value='';
+    if(typeof rr!=='undefined') rr.value='';
+    if(typeof rc!=='undefined') rc.value='';
+
+    const registerForm=document.getElementById('register')||document.getElementById('registerForm');
+    if(registerForm){
+      registerForm.reset();
+
+      // Limpa novamente após reset para evitar valores default.
+      const fields=registerForm.querySelectorAll('input,select,textarea');
+      fields.forEach(field=>{
+        const type=(field.type||'').toLowerCase();
+        if(type==='checkbox'||type==='radio'){
+          field.checked=false;
+        }else{
+          field.value='';
+        }
+        field.removeAttribute('value');
+      });
+
+      // Evita o preenchimento automático do navegador.
+      registerForm.setAttribute('autocomplete','off');
+    }
+
+    // Remove mensagens antigas do cadastro/login.
+    if(typeof msg!=='undefined'){
+      msg.textContent='';
+      msg.classList.remove('auth-success');
+    }
+  }catch(error){
+    console.warn('[Rede Sociaudio] Nao foi possivel limpar o cadastro:',error);
+  }
+}
+
+function openCleanRegistration(){
+  clearRegistrationForm();
+  try{
+    tab('register');
+    registerTab.classList.add('active');
+    loginTab.classList.remove('active');
+  }catch(_){}
+  setTimeout(clearRegistrationForm,50);
+  setTimeout(clearRegistrationForm,250);
+}
+
 // Versão pública: abre a aba de cadastro quando solicitado pela landing page.
 try{
   const publicParams=new URLSearchParams(location.search);
   if(publicParams.get('cadastro')==='1'){
     window.addEventListener('DOMContentLoaded',()=>{
       setTimeout(()=>{
-        const tab=document.getElementById('registerTab');
-        if(tab)tab.click();
+        openCleanRegistration();
       },80);
     });
   }
@@ -2964,3 +3016,19 @@ function initPasswordRecovery(){
   }
 }
 window.addEventListener('DOMContentLoaded',initPasswordRecovery);
+
+
+window.addEventListener('DOMContentLoaded',()=>{
+  const regTab=document.getElementById('registerTab');
+  if(regTab){
+    regTab.addEventListener('click',()=>{
+      setTimeout(clearRegistrationForm,0);
+      setTimeout(clearRegistrationForm,150);
+    });
+  }
+
+  // Também limpa ao clicar em qualquer link/botão que leve ao cadastro.
+  document.querySelectorAll('[href*="cadastro=1"],[data-action="register"],.register-link').forEach(el=>{
+    el.addEventListener('click',()=>setTimeout(clearRegistrationForm,0));
+  });
+});
