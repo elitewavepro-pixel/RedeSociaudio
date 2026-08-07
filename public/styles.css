@@ -5259,3 +5259,196 @@ body.admin-mode .app-shell{
   .pro-profile-portfolio-grid{grid-template-columns:1fr}
   .pro-profile-form-grid{grid-template-columns:1fr}
 }
+
+
+/* Rede Sociaudio v5.2.1 — Marketplace responsivo corrigido */
+
+/* O marketplace deve ocupar corretamente a coluna central */
+.marketplace-page,
+.marketplace-view,
+.marketplace-container,
+.marketplace-content,
+.marketplace-results,
+.marketplace-list,
+.marketplace-grid{
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+
+/* Grade dos anúncios */
+.marketplace-grid,
+.marketplace-results,
+.marketplace-list{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  align-items:stretch;
+}
+
+/* Card principal */
+.marketplace-card,
+.market-card,
+.listing-card,
+.product-card,
+.classified-card{
+  width:100%;
+  min-width:0;
+  max-width:none;
+  display:grid;
+  grid-template-columns:minmax(220px,42%) minmax(0,1fr);
+  overflow:hidden;
+  border-radius:16px;
+  box-sizing:border-box;
+}
+
+/* Imagem */
+.marketplace-card .marketplace-image,
+.marketplace-card .market-image,
+.marketplace-card .listing-image,
+.marketplace-card>img,
+.market-card .market-image,
+.market-card>img,
+.listing-card .listing-image,
+.listing-card>img,
+.product-card>img,
+.classified-card>img{
+  width:100%;
+  height:100%;
+  min-height:300px;
+  max-height:420px;
+  object-fit:cover;
+  display:block;
+}
+
+/* Coluna de conteúdo */
+.marketplace-card .marketplace-info,
+.marketplace-card .market-info,
+.marketplace-card .listing-info,
+.marketplace-card .content,
+.market-card .market-info,
+.market-card .content,
+.listing-card .listing-info,
+.listing-card .content,
+.product-card .content,
+.classified-card .content{
+  min-width:0;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  box-sizing:border-box;
+}
+
+/* Textos não devem quebrar letra por letra */
+.marketplace-card h2,
+.marketplace-card h3,
+.marketplace-card h4,
+.marketplace-card p,
+.marketplace-card span,
+.market-card h2,
+.market-card h3,
+.market-card p,
+.listing-card h2,
+.listing-card h3,
+.listing-card p,
+.product-card h2,
+.product-card h3,
+.product-card p,
+.classified-card h2,
+.classified-card h3,
+.classified-card p{
+  min-width:0;
+  overflow-wrap:break-word;
+  word-break:normal;
+  white-space:normal;
+}
+
+/* Preço em destaque e sempre legível */
+.marketplace-card .price,
+.marketplace-card .market-price,
+.marketplace-card .listing-price,
+.market-card .price,
+.listing-card .price,
+.product-card .price,
+.classified-card .price{
+  display:block;
+  margin:8px 0;
+  font-size:22px;
+  font-weight:900;
+  line-height:1.1;
+  color:#1769df;
+}
+
+/* Botões ocupam a largura disponível e não cortam texto */
+.marketplace-card button,
+.marketplace-card .button,
+.market-card button,
+.market-card .button,
+.listing-card button,
+.listing-card .button,
+.product-card button,
+.product-card .button,
+.classified-card button,
+.classified-card .button{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  box-sizing:border-box;
+}
+
+/* Em telas médias: um anúncio por linha, ainda horizontal */
+@media(max-width:1180px){
+  .marketplace-grid,
+  .marketplace-results,
+  .marketplace-list{
+    grid-template-columns:1fr;
+  }
+
+  .marketplace-card,
+  .market-card,
+  .listing-card,
+  .product-card,
+  .classified-card{
+    grid-template-columns:minmax(240px,40%) minmax(0,1fr);
+  }
+}
+
+/* Tablet/celular: card vertical */
+@media(max-width:760px){
+  .marketplace-card,
+  .market-card,
+  .listing-card,
+  .product-card,
+  .classified-card{
+    grid-template-columns:1fr;
+  }
+
+  .marketplace-card .marketplace-image,
+  .marketplace-card .market-image,
+  .marketplace-card .listing-image,
+  .marketplace-card>img,
+  .market-card .market-image,
+  .market-card>img,
+  .listing-card .listing-image,
+  .listing-card>img,
+  .product-card>img,
+  .classified-card>img{
+    height:auto;
+    min-height:220px;
+    max-height:360px;
+  }
+}
+
+/* Segurança adicional para qualquer grid interno do card */
+.marketplace-card *,
+.market-card *,
+.listing-card *,
+.product-card *,
+.classified-card *{
+  max-width:100%;
+  box-sizing:border-box;
+}
