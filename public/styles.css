@@ -5591,3 +5591,30 @@ body.admin-mode .app-shell{
     padding:0 22px !important;
   }
 }
+
+
+/* Rede Sociaudio v5.1.5 — Ícone do Marketplace centralizado */
+.market-hero .market-hero-icon{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+  padding:0 !important;
+  box-sizing:border-box !important;
+}
+
+.market-hero .market-hero-icon > svg,
+.market-hero .market-hero-icon .sa-icon{
+  display:block !important;
+  position:static !important;
+  inset:auto !important;
+  margin:0 !important;
+  transform:none !important;
+  flex:0 0 auto !important;
+}
+
+/* Mantém o desenho visualmente no centro mesmo se regras antigas
+   aplicarem line-height, vertical-align ou posicionamento aos SVGs. */
+.market-hero .market-hero-icon svg{
+  vertical-align:middle !important;
+}
