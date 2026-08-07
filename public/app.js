@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v4.0.7 Public';
+const SOCIAUDIO_VERSION='v4.0.8 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -157,7 +157,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.0.7 PUBLIC</span>
+        <span class="beta-label">V4.0.8 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -325,7 +325,48 @@ async function loadAll(){try{
 }catch(e){toast(e.message,true)}}
 loginTab.onclick=()=>{tab('login');loginTab.classList.add('active');registerTab.classList.remove('active')};registerTab.onclick=()=>{tab('register');registerTab.classList.add('active');loginTab.classList.remove('active')};
 login.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/login',{method:'POST',body:JSON.stringify({email:le.value,password:lp.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
-register.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/register',{method:'POST',body:JSON.stringify({name:rn.value,email:re.value,password:rp.value,role:rr.value,city:rc.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
+register.onsubmit=async e=>{
+  e.preventDefault();
+  msg.classList.remove('auth-success');
+  try{
+    const cadastroEmail=re.value.trim();
+
+    await api('/api/register',{
+      method:'POST',
+      body:JSON.stringify({
+        name:rn.value,
+        email:cadastroEmail,
+        password:rp.value,
+        role:rr.value,
+        city:rc.value
+      })
+    });
+
+    // Cadastro concluído: não iniciar sessão automaticamente.
+    token='';
+    me=null;
+    localStorage.removeItem('sociaudio_token');
+    sessionStorage.removeItem('sociaudio_token');
+
+    register.reset();
+
+    // Voltar para a tela Entrar.
+    tab('login');
+    loginTab.classList.add('active');
+    registerTab.classList.remove('active');
+
+    // Facilitar o primeiro login preenchendo somente o e-mail.
+    le.value=cadastroEmail;
+    lp.value='';
+
+    msg.textContent='Cadastro realizado com sucesso. Faça login para acessar a Rede Sociaudio.';
+    msg.classList.add('auth-success');
+    le.focus();
+  }catch(e){
+    msg.classList.remove('auth-success');
+    msg.textContent=e.message;
+  }
+};
 logoutBtn.onclick=async()=>{stopBellRealtime();try{await api('/api/logout',{method:'POST'})}catch{}localStorage.removeItem('sociaudio_token');location.reload()};
 bindViewNavigation();bellBtn.onclick=()=>renderStableNotifications();
 newPostBtn.onclick=()=>openNewPost();closePost.onclick=()=>{postDlg.close();resetPostDialog()};
