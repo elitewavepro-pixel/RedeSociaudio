@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.2.1 Public';
+const SOCIAUDIO_VERSION='v5.2.2 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.2.1 PUBLIC</span>
+        <span class="beta-label">V5.2.2 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -4152,5 +4152,112 @@ window.addEventListener('resize',()=>{
   if(window.innerWidth>760){
     document.getElementById('mobileMoreDrawer')?.classList.remove('open');
     document.body.classList.remove('mobile-menu-open');
+  }
+});
+
+
+// ================================================================
+// REDE SOCIAUDIO v5.2.2 — MOBILE NAV INDEPENDENTE
+// ================================================================
+function buildIndependentMobileNav(){
+  if(document.getElementById('mobileBottomNav'))return;
+
+  const sidebar=document.getElementById('mainSidebar');
+  if(!sidebar)return;
+
+  const nav=document.createElement('nav');
+  nav.id='mobileBottomNav';
+  nav.className='mobile-bottom-nav-v522';
+  nav.setAttribute('aria-label','Navegação mobile');
+
+  const items=[
+    ['feed','home','Início'],
+    ['chat','chat','Mensagens'],
+    ['notifications','bell','Notificações'],
+    ['profile','profile','Perfil']
+  ];
+
+  for(const [viewName,iconName,label] of items){
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='mobile-bottom-item-v522';
+    btn.dataset.mobileView=viewName;
+    btn.innerHTML=`<span class="mobile-bottom-icon-v522" data-icon="${iconName}"></span><small>${label}</small>`;
+    btn.onclick=()=>{
+      const original=sidebar.querySelector(`button[data-view="${viewName}"]`);
+      if(original)original.click();
+      setTimeout(syncIndependentMobileNav,40);
+    };
+    nav.appendChild(btn);
+  }
+
+  const publish=document.createElement('button');
+  publish.type='button';
+  publish.className='mobile-bottom-publish-v522';
+  publish.setAttribute('aria-label','Criar publicação');
+  publish.innerHTML='<span data-icon="plus"></span>';
+  publish.onclick=()=>document.getElementById('newPostBtn')?.click();
+  nav.appendChild(publish);
+
+  const more=document.createElement('button');
+  more.type='button';
+  more.className='mobile-bottom-item-v522 mobile-bottom-more-v522';
+  more.innerHTML='<span class="mobile-more-dots-v522">•••</span><small>Mais</small>';
+  more.onclick=()=>{
+    document.getElementById('mobileMoreButton')?.click();
+  };
+  nav.appendChild(more);
+
+  document.body.appendChild(nav);
+
+  try{hydrateIcons()}catch(_){}
+  syncIndependentMobileNav();
+}
+
+function syncIndependentMobileNav(){
+  const nav=document.getElementById('mobileBottomNav');
+  if(!nav)return;
+  nav.querySelectorAll('[data-mobile-view]').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.mobileView===view);
+  });
+}
+
+function forceMobileFeedVisible(){
+  if(window.innerWidth>760)return;
+
+  const sidebar=document.getElementById('mainSidebar');
+  if(sidebar){
+    sidebar.style.setProperty('display','none','important');
+  }
+
+  const content=document.getElementById('content');
+  if(content){
+    content.style.setProperty('display','block','important');
+    content.style.setProperty('width','100%','important');
+    content.style.setProperty('max-width','100%','important');
+    content.style.setProperty('min-width','0','important');
+  }
+
+  // If the app opened on feed, guarantee it is actually rendered.
+  if(!view || view==='feed'){
+    view='feed';
+    try{render()}catch(error){
+      console.error('[Rede Sociaudio] Falha ao renderizar feed mobile:',error);
+      try{loadAll()}catch(_){}
+    }
+  }
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{
+    buildIndependentMobileNav();
+    forceMobileFeedVisible();
+  },500);
+});
+
+window.addEventListener('resize',()=>{
+  if(window.innerWidth<=760){
+    forceMobileFeedVisible();
+    buildIndependentMobileNav();
   }
 });
