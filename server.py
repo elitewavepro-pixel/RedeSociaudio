@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.3.2 — Mobile Social e Video iPhone'
+APP_VERSION = 'v5.3.3 — Mobile Feed Estrutura Real'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 

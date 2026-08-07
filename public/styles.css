@@ -7659,3 +7659,169 @@ body.admin-mode .app-shell{
     top:100px!important;
   }
 }
+
+
+/* ===============================================================
+   Rede Sociaudio v5.3.3 — Estrutura mobile determinística
+   =============================================================== */
+@media(max-width:760px){
+
+  #app > .topbar{
+    display:none!important;
+    visibility:hidden!important;
+    height:0!important;
+    min-height:0!important;
+    max-height:0!important;
+    padding:0!important;
+    margin:0!important;
+    border:0!important;
+    overflow:hidden!important;
+  }
+
+  body{
+    background:#f0f2f5!important;
+  }
+
+  #mobileSocialHeader{
+    display:block!important;
+    width:100%!important;
+    margin:0!important;
+  }
+
+  #app>.layout{
+    display:block!important;
+    width:100%!important;
+    padding:0 0 76px!important;
+    margin:0!important;
+  }
+
+  #content{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    padding:0!important;
+    margin:0!important;
+  }
+
+  /* exactly one stories strip */
+  #content > #mobileStoryStrip{
+    display:flex!important;
+    width:100%!important;
+    min-height:204px!important;
+    max-height:204px!important;
+    margin:0 0 8px!important;
+    padding:8px 8px!important;
+    gap:7px!important;
+    align-items:flex-start!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    background:#fff!important;
+    border-bottom:1px solid #dfe3e8!important;
+    box-sizing:border-box!important;
+    -webkit-overflow-scrolling:touch!important;
+    scroll-snap-type:x proximity!important;
+  }
+
+  #content > #mobileStoryStrip::-webkit-scrollbar{
+    display:none!important;
+  }
+
+  #content > #mobileStoryStrip .mobile-story-card-v523{
+    flex:0 0 118px!important;
+    width:118px!important;
+    min-width:118px!important;
+    max-width:118px!important;
+    height:187px!important;
+    min-height:187px!important;
+    max-height:187px!important;
+    margin:0!important;
+    border-radius:13px!important;
+    overflow:hidden!important;
+    scroll-snap-align:start!important;
+  }
+
+  #content > #mobileStoryStrip .mobile-story-create-v523{
+    background:#fff!important;
+    border:1px solid #e0e4e8!important;
+  }
+
+  #content > #mobileStoryStrip .mobile-story-photo-v523{
+    height:129px!important;
+    min-height:129px!important;
+    max-height:129px!important;
+  }
+
+  #content > #mobileStoryStrip .mobile-story-plus-v523{
+    top:108px!important;
+    width:40px!important;
+    height:40px!important;
+  }
+
+  #content > #mobileStoryStrip .mobile-real-story-v530{
+    border:0!important;
+    background:#111827!important;
+  }
+
+  /* feed starts immediately */
+  #content > article.post,
+  #content > .feed-card{
+    width:100%!important;
+    max-width:100%!important;
+    margin:0 0 8px!important;
+    border-radius:0!important;
+    border-left:0!important;
+    border-right:0!important;
+    box-shadow:none!important;
+  }
+
+  /* no desktop composer or duplicate desktop stories */
+  #content > .composer,
+  #content > .story-strip{
+    display:none!important;
+  }
+
+  /* Search overlay */
+  .mobile-search-overlay-v533{
+    position:fixed!important;
+    z-index:300!important;
+    inset:0!important;
+    display:none!important;
+    background:#fff!important;
+  }
+
+  .mobile-search-overlay-v533.open{
+    display:block!important;
+  }
+
+  .mobile-search-bar-v533{
+    height:62px!important;
+    display:grid!important;
+    grid-template-columns:34px 24px minmax(0,1fr) 34px!important;
+    align-items:center!important;
+    gap:7px!important;
+    padding:0 10px!important;
+    border-bottom:1px solid #e5e7eb!important;
+    box-sizing:border-box!important;
+  }
+
+  .mobile-search-bar-v533 input{
+    width:100%!important;
+    height:40px!important;
+    padding:0!important;
+    border:0!important;
+    outline:0!important;
+    background:transparent!important;
+    font-size:15px!important;
+  }
+
+  .mobile-search-back-v533,
+  .mobile-search-close-v533{
+    width:34px!important;
+    height:34px!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    color:#111827!important;
+    font-size:28px!important;
+  }
+}

@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.3.2 Public';
+const SOCIAUDIO_VERSION='v5.3.3 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.3.2 PUBLIC</span>
+        <span class="beta-label">V5.3.3 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -1686,17 +1686,22 @@ async function chooseStoryFile(file){
   const msg=document.getElementById('storyMsg');
   msg.textContent='';
 
-  if(!(file.type.startsWith('image/')||file.type.startsWith('video/'))){
+  const storyMime=(file.type||'').toLowerCase();
+  const storyName=(file.name||'').toLowerCase();
+  const isStoryImage=storyMime.startsWith('image/');
+  const isStoryVideo=storyMime.startsWith('video/')||/\.(mp4|mov|m4v|webm)$/i.test(storyName);
+
+  if(!(isStoryImage||isStoryVideo)){
     msg.textContent='Escolha uma foto ou vídeo.';
     return;
   }
 
-  if(file.type.startsWith('image/') && file.size>5*1024*1024){
+  if(isStoryImage && file.size>5*1024*1024){
     msg.textContent='A foto deve ter no máximo 5 MB.';
     return;
   }
 
-  if(file.type.startsWith('video/')){
+  if(isStoryVideo){
     try{
       await validateStoryVideo(file);
     }catch(error){
@@ -1729,13 +1734,24 @@ async function publishStory(){
 
   try{
     let mediaData='';
-    let mediaType=storyFile.type;
+    let mediaType=storyFile.type||'';
+    const storyName=(storyFile.name||'').toLowerCase();
+    const isImage=mediaType.startsWith('image/');
+    const isVideo=mediaType.startsWith('video/')||/\.(mp4|mov|m4v|webm)$/i.test(storyName);
 
-    if(storyFile.type.startsWith('image/')){
+    if(isImage){
       mediaData=await fileToData(storyFile,1600);
       mediaType='image/jpeg';
     }else{
-      const uploaded=await uploadPendingVideo(storyFile);
+      let uploadFile=storyFile;
+      if(!storyFile.type || storyFile.type==='application/octet-stream'){
+        let inferred='video/mp4';
+        if(/\.mov$/i.test(storyFile.name||''))inferred='video/quicktime';
+        else if(/\.m4v$/i.test(storyFile.name||''))inferred='video/x-m4v';
+        else if(/\.webm$/i.test(storyFile.name||''))inferred='video/webm';
+        uploadFile=new File([storyFile],storyFile.name,{type:inferred,lastModified:storyFile.lastModified});
+      }
+      const uploaded=await uploadPendingVideo(uploadFile);
       mediaData=uploaded.media_data;
       mediaType=uploaded.media_type;
     }
@@ -1918,7 +1934,47 @@ async function deleteStory(id){
 }
 
 
-function renderFeed(saved=false){let list=posts.filter(p=>(!saved||p.bookmarked));content.innerHTML=`<section class="card composer"><div class="composer-main">${avatar(me)}<button onclick="openNewPost()">No que você está pensando, ${esc(me.name.split(' ')[0])}?</button></div><div class="composer-tools"><button onclick="openNewPost('video')">${icon('video')}<span>Vídeo</span></button><button onclick="openNewPost('photo')">${icon('photo')}<span>Foto</span></button><button onclick="openNewPost('audio')">${icon('audio')}<span>Áudio</span></button><button onclick="openNewPost('file')">${icon('file')}<span>Arquivo</span></button></div></section>${desktopStoryStripHtml()}${list.length?list.map(postCard).join(''):'<div class="empty">Nenhuma publicação encontrada.</div>'}`}
+function renderFeed(saved=false){
+  const list=posts.filter(p=>(!saved||p.bookmarked));
+
+  if(window.innerWidth<=760){
+    content.innerHTML=`
+      ${saved?'':`<section id="mobileStoryStrip" class="mobile-story-strip-v523">${mobileStoryStripHtml()}</section>`}
+      ${list.length?list.map(postCard).join(''):'<div class="empty">Nenhuma publicação encontrada.</div>'}
+    `;
+
+    // No mobile existe somente o cabeçalho social novo.
+    const desktopTopbar=document.querySelector('#app > .topbar');
+    if(desktopTopbar){
+      desktopTopbar.style.setProperty('display','none','important');
+      desktopTopbar.style.setProperty('visibility','hidden','important');
+      desktopTopbar.style.setProperty('height','0','important');
+      desktopTopbar.style.setProperty('min-height','0','important');
+      desktopTopbar.style.setProperty('overflow','hidden','important');
+    }
+
+    document.querySelector('.composer')?.remove();
+    syncIndependentMobileNav();
+    return;
+  }
+
+  content.innerHTML=`
+    <section class="card composer">
+      <div class="composer-main">
+        ${avatar(me)}
+        <button onclick="openNewPost()">No que você está pensando, ${esc(me.name.split(' ')[0])}?</button>
+      </div>
+      <div class="composer-tools">
+        <button onclick="openNewPost('video')">${icon('video')}<span>Vídeo</span></button>
+        <button onclick="openNewPost('photo')">${icon('photo')}<span>Foto</span></button>
+        <button onclick="openNewPost('audio')">${icon('audio')}<span>Áudio</span></button>
+        <button onclick="openNewPost('file')">${icon('file')}<span>Arquivo</span></button>
+      </div>
+    </section>
+    ${saved?'':desktopStoryStripHtml()}
+    ${list.length?list.map(postCard).join(''):'<div class="empty">Nenhuma publicação encontrada.</div>'}
+  `;
+}
 function renderExperts(){content.innerHTML=`<div class="page-title"><h1>Profissionais</h1><p>Encontre especialistas, conheça seus serviços e faça contatos.</p></div><div class="people-grid">${users.map(u=>`<article class="card person"><div class="mini-cover" style="${u.cover?`background-image:url('${u.cover}')`:''}"></div>${avatar(u,'big')}<h3>${esc(u.name)}${u.is_admin?' ✓':''}</h3><b>${esc(u.role)}</b><p class="availability">● ${esc(u.availability||'Disponível para trabalhos')}</p><p class="meta">${icon('location')} ${esc(u.city||'Cidade não informada')}</p><div class="skills">${lines(u.specialties)}</div><div class="follow-stats"><span><b>${u.followers}</b> seguidores</span><span><b>${u.following}</b> seguindo</span></div><button class="secondary" onclick="openProfile(${u.id})">Ver perfil</button>${u.id!==me.id?`<button class="${u.is_following?'secondary':'primary'}" onclick="followUser(${u.id})">${u.is_following?'Deixar de seguir':'Seguir'}</button>`:''}</article>`).join('')}</div>`}
 
 
@@ -4648,6 +4704,43 @@ window.addEventListener('resize',()=>{
 // ================================================================
 // REDE SOCIAUDIO v5.2.3 — MOBILE SOCIAL LAYOUT
 // ================================================================
+
+function openMobileSearch(){
+  let box=document.getElementById('mobileSearchOverlay');
+  if(!box){
+    box=document.createElement('div');
+    box.id='mobileSearchOverlay';
+    box.className='mobile-search-overlay-v533';
+    box.innerHTML=`
+      <div class="mobile-search-bar-v533">
+        <button type="button" class="mobile-search-back-v533">‹</button>
+        <span data-icon="search"></span>
+        <input type="search" placeholder="Pesquisar na Rede Sociaudio" autocomplete="off">
+        <button type="button" class="mobile-search-close-v533">×</button>
+      </div>
+    `;
+    document.body.appendChild(box);
+
+    const input=box.querySelector('input');
+    const desktopSearch=document.getElementById('search');
+
+    input.addEventListener('input',()=>{
+      if(desktopSearch){
+        desktopSearch.value=input.value;
+        desktopSearch.dispatchEvent(new Event('input',{bubbles:true}));
+      }
+    });
+
+    const close=()=>box.classList.remove('open');
+    box.querySelector('.mobile-search-back-v533').onclick=close;
+    box.querySelector('.mobile-search-close-v533').onclick=close;
+    try{hydrateIcons()}catch(_){}
+  }
+
+  box.classList.add('open');
+  setTimeout(()=>box.querySelector('input')?.focus(),50);
+}
+
 function buildMobileSocialHeader(){
   if(document.getElementById('mobileSocialHeader'))return;
 
@@ -4699,13 +4792,7 @@ function buildMobileSocialHeader(){
   header.querySelector('[data-action="create"]').onclick=()=>document.getElementById('newPostBtn')?.click();
   header.querySelector('.mobile-social-thought-v523').onclick=()=>document.getElementById('newPostBtn')?.click();
 
-  header.querySelector('[data-action="search"]').onclick=()=>{
-    const search=document.querySelector('.topbar .search-wrap input, .topbar input[type="search"]');
-    if(search){
-      search.focus();
-      search.scrollIntoView({behavior:'smooth',block:'center'});
-    }
-  };
+  header.querySelector('[data-action="search"]').onclick=openMobileSearch;
 
   header.querySelector('[data-action="chat"]').onclick=()=>{
     document.getElementById('mainSidebar')?.querySelector('button[data-view="chat"]')?.click();
@@ -4735,29 +4822,31 @@ function buildMobileSocialHeader(){
 }
 
 function buildMobileStoryStrip(){
+  // Desde a v5.3.3, renderFeed() cria a faixa mobile diretamente.
+  // Mantemos esta função apenas por compatibilidade com chamadas antigas.
+  if(window.innerWidth>760 || view!=='feed')return;
   if(document.getElementById('mobileStoryStrip'))return;
-
-  const content=document.getElementById('content');
-  if(!content)return;
-
-  const strip=document.createElement('section');
-  strip.id='mobileStoryStrip';
-  strip.className='mobile-story-strip-v523';
-
-  strip.innerHTML=mobileStoryStripHtml();
-
-  content.prepend(strip);
+  renderFeed(false);
 }
 
 function bootMobileSocialLayout(){
   if(window.innerWidth>760)return;
 
+  const desktopTopbar=document.querySelector('#app > .topbar');
+  if(desktopTopbar){
+    desktopTopbar.style.setProperty('display','none','important');
+    desktopTopbar.style.setProperty('visibility','hidden','important');
+    desktopTopbar.style.setProperty('height','0','important');
+    desktopTopbar.style.setProperty('min-height','0','important');
+    desktopTopbar.style.setProperty('padding','0','important');
+    desktopTopbar.style.setProperty('margin','0','important');
+    desktopTopbar.style.setProperty('overflow','hidden','important');
+  }
+
   buildMobileSocialHeader();
 
-  // Stories only on feed.
   if(view==='feed'){
-    document.getElementById('mobileStoryStrip')?.remove();
-    buildMobileStoryStrip();
+    if(!document.getElementById('mobileStoryStrip'))renderFeed(false);
   }else{
     document.getElementById('mobileStoryStrip')?.remove();
   }
