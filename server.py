@@ -1,10 +1,11 @@
-import base64, hashlib, hmac, json, mimetypes, os, secrets, sqlite3, webbrowser, threading, time, zipfile, tempfile, shutil, re
+import base64, hashlib, hmac, json, mimetypes, os, secrets, sqlite3, webbrowser, threading, time, zipfile, tempfile, shutil, re, smtplib, ssl
 from datetime import datetime, timedelta, timezone
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+from email.message import EmailMessage
 
 
-APP_VERSION = 'v4.0.8 — Cadastro com login explícito'
+APP_VERSION = 'v4.0.9 — Recuperacao de senha'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -176,6 +177,42 @@ def create_admin_backup():
         return zip_path,filename
     finally:
         shutil.rmtree(temp_dir,ignore_errors=True)
+
+
+def password_reset_token_hash(token):
+    return hashlib.sha256((token or '').encode('utf-8')).hexdigest()
+
+def send_password_reset_email(to_email, reset_url):
+    host=os.environ.get('SMTP_HOST','').strip()
+    port=int(os.environ.get('SMTP_PORT','587') or 587)
+    user=os.environ.get('SMTP_USER','').strip()
+    smtp_password=os.environ.get('SMTP_PASSWORD','')
+    sender=os.environ.get('SMTP_FROM','').strip() or user
+    use_tls=os.environ.get('SMTP_USE_TLS','true').strip().lower() not in ('0','false','no')
+
+    if not host or not sender:
+        raise RuntimeError('SMTP nao configurado.')
+
+    message=EmailMessage()
+    message['Subject']='Redefinicao de senha - Rede Sociaudio'
+    message['From']=sender
+    message['To']=to_email
+    message.set_content(
+        'Ola,\n\n'
+        'Recebemos uma solicitacao para redefinir sua senha na Rede Sociaudio.\n\n'
+        'Abra este link:\n'+reset_url+'\n\n'
+        'Este link expira em 30 minutos e so pode ser usado uma vez.\n\n'
+        'Se voce nao solicitou a redefinicao, ignore este e-mail.\n\n'
+        'Rede Sociaudio'
+    )
+
+    context=ssl.create_default_context()
+    with smtplib.SMTP(host,port,timeout=20) as smtp:
+        if use_tls:
+            smtp.starttls(context=context)
+        if user:
+            smtp.login(user,smtp_password)
+        smtp.send_message(message)
 
 def now():
     return datetime.now(timezone.utc).isoformat()
@@ -433,6 +470,16 @@ def init_db():
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY(actor_id) REFERENCES users(id) ON DELETE SET NULL,
       FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS password_resets(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT UNIQUE NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
     CREATE TABLE IF NOT EXISTS community_members(
       community_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
@@ -1717,6 +1764,76 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json({'error':'Não foi possível salvar o arquivo no computador.'},500)
             return self.send_json({'media_data':f'/media/files/{filename}','media_type':media_type,'media_name':original_name,'size':size},201)
         d=self.read_json()
+        if p == '/api/password/forgot':
+            email=(d.get('email') or '').strip().lower()
+            generic={'ok':True,'message':'Se existir uma conta com este e-mail, enviaremos as instrucoes de redefinicao.'}
+            if not email or '@' not in email:
+                return self.send_json(generic)
+
+            c=connect()
+            user=c.execute("SELECT id,email FROM users WHERE lower(email)=? AND status='active'",(email,)).fetchone()
+            if not user:
+                c.close()
+                return self.send_json(generic)
+
+            token_value=secrets.token_urlsafe(32)
+            token_hash=password_reset_token_hash(token_value)
+            created=datetime.now(timezone.utc)
+            expires=created+timedelta(minutes=30)
+
+            c.execute('DELETE FROM password_resets WHERE user_id=? OR expires_at<?',(user['id'],created.isoformat()))
+            c.execute(
+                'INSERT INTO password_resets(user_id,token_hash,expires_at,created_at) VALUES(?,?,?,?)',
+                (user['id'],token_hash,expires.isoformat(),created.isoformat())
+            )
+            c.commit()
+            c.close()
+
+            base=os.environ.get('PUBLIC_BASE_URL','https://redesociaudio.com.br').rstrip('/')
+            reset_url=f"{base}/app?reset_token={token_value}"
+            try:
+                send_password_reset_email(user['email'],reset_url)
+            except Exception as exc:
+                print('[PASSWORD RESET EMAIL ERROR]',exc,flush=True)
+
+            return self.send_json(generic)
+
+        if p == '/api/password/reset':
+            token_value=(d.get('token') or '').strip()
+            new_password=d.get('password') or ''
+
+            if not token_value:
+                return self.send_json({'error':'Link de redefinicao invalido.'},400)
+            if len(new_password)<6:
+                return self.send_json({'error':'A nova senha deve ter pelo menos 6 caracteres.'},400)
+
+            token_hash=password_reset_token_hash(token_value)
+            current=datetime.now(timezone.utc)
+            c=connect()
+            reset=c.execute(
+                'SELECT id,user_id,expires_at,used_at FROM password_resets WHERE token_hash=?',
+                (token_hash,)
+            ).fetchone()
+
+            if not reset or reset['used_at']:
+                c.close()
+                return self.send_json({'error':'Este link e invalido ou ja foi utilizado.'},400)
+
+            expires=datetime.fromisoformat(reset['expires_at'])
+            if expires.tzinfo is None:
+                expires=expires.replace(tzinfo=timezone.utc)
+            if current>expires:
+                c.close()
+                return self.send_json({'error':'Este link expirou. Solicite uma nova redefinicao.'},400)
+
+            c.execute('UPDATE users SET password=? WHERE id=?',(password_hash(new_password),reset['user_id']))
+            c.execute('UPDATE password_resets SET used_at=? WHERE id=?',(current.isoformat(),reset['id']))
+            c.execute('DELETE FROM sessions WHERE user_id=?',(reset['user_id'],))
+            c.commit()
+            c.close()
+
+            return self.send_json({'ok':True,'message':'Senha redefinida com sucesso. Faca login com sua nova senha.'})
+
         if p == '/api/register':
             name=d.get('name','').strip(); email=d.get('email','').strip().lower(); password=d.get('password','')
             if len(name)<2 or '@' not in email or len(password)<6:return self.send_json({'error':'Preencha nome, e-mail válido e senha com pelo menos 6 caracteres.'},400)

@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v4.0.8 Public';
+const SOCIAUDIO_VERSION='v4.0.9 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -157,7 +157,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.0.8 PUBLIC</span>
+        <span class="beta-label">V4.0.9 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -2845,3 +2845,122 @@ try{
     });
   }
 }catch(_){}
+
+
+// ================================================================
+// REDE SOCIAUDIO v4.0.9 — RECUPERACAO DE SENHA
+// ================================================================
+function initPasswordRecovery(){
+  const forgotBtn=document.getElementById('forgotPasswordBtn');
+  const forgotDlg=document.getElementById('forgotPasswordDlg');
+  const forgotForm=document.getElementById('forgotPasswordForm');
+  const forgotEmail=document.getElementById('forgotPasswordEmail');
+  const forgotMsg=document.getElementById('forgotPasswordMsg');
+  const forgotClose=document.getElementById('forgotPasswordClose');
+  const forgotBack=document.getElementById('forgotPasswordBack');
+
+  const resetDlg=document.getElementById('resetPasswordDlg');
+  const resetForm=document.getElementById('resetPasswordForm');
+  const resetValue=document.getElementById('resetPasswordValue');
+  const resetConfirm=document.getElementById('resetPasswordConfirm');
+  const resetMsg=document.getElementById('resetPasswordMsg');
+
+  if(forgotBtn && forgotDlg){
+    forgotBtn.onclick=()=>{
+      forgotMsg.textContent='';
+      forgotMsg.className='auth-recovery-msg';
+      if(typeof le!=='undefined' && le.value)forgotEmail.value=le.value;
+      forgotDlg.showModal();
+      setTimeout(()=>forgotEmail.focus(),50);
+    };
+  }
+
+  if(forgotClose)forgotClose.onclick=()=>forgotDlg.close();
+  if(forgotBack)forgotBack.onclick=()=>forgotDlg.close();
+
+  if(forgotForm){
+    forgotForm.onsubmit=async e=>{
+      e.preventDefault();
+      const button=forgotForm.querySelector('button[type="submit"]');
+      button.disabled=true;
+      forgotMsg.textContent='Enviando instrucoes...';
+      forgotMsg.className='auth-recovery-msg';
+
+      try{
+        const response=await fetch('/api/password/forgot',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({email:forgotEmail.value.trim()})
+        });
+        const data=await response.json();
+        if(!response.ok)throw new Error(data.error||'Nao foi possivel solicitar a redefinicao.');
+        forgotMsg.textContent='Se existir uma conta com este e-mail, enviaremos as instrucoes de redefinicao.';
+        forgotMsg.className='auth-recovery-msg success';
+      }catch(error){
+        forgotMsg.textContent=error.message||'Nao foi possivel enviar as instrucoes.';
+        forgotMsg.className='auth-recovery-msg error';
+      }finally{
+        button.disabled=false;
+      }
+    };
+  }
+
+  const params=new URLSearchParams(location.search);
+  const resetToken=params.get('reset_token');
+
+  if(resetToken && resetDlg){
+    resetDlg.showModal();
+
+    resetForm.onsubmit=async e=>{
+      e.preventDefault();
+      resetMsg.textContent='';
+      resetMsg.className='auth-recovery-msg';
+
+      if(resetValue.value.length<6){
+        resetMsg.textContent='A senha deve ter pelo menos 6 caracteres.';
+        resetMsg.className='auth-recovery-msg error';
+        return;
+      }
+      if(resetValue.value!==resetConfirm.value){
+        resetMsg.textContent='As duas senhas precisam ser iguais.';
+        resetMsg.className='auth-recovery-msg error';
+        return;
+      }
+
+      const button=resetForm.querySelector('button[type="submit"]');
+      button.disabled=true;
+      resetMsg.textContent='Salvando nova senha...';
+
+      try{
+        const response=await fetch('/api/password/reset',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({token:resetToken,password:resetValue.value})
+        });
+        const data=await response.json();
+        if(!response.ok)throw new Error(data.error||'Nao foi possivel redefinir a senha.');
+
+        resetMsg.textContent='Senha redefinida com sucesso.';
+        resetMsg.className='auth-recovery-msg success';
+
+        setTimeout(()=>{
+          resetDlg.close();
+          history.replaceState({},'',location.pathname);
+          try{
+            tab('login');
+            loginTab.classList.add('active');
+            registerTab.classList.remove('active');
+            msg.textContent='Senha redefinida com sucesso. Faca login com sua nova senha.';
+            msg.classList.add('auth-success');
+          }catch(_){}
+        },1000);
+      }catch(error){
+        resetMsg.textContent=error.message||'Nao foi possivel redefinir a senha.';
+        resetMsg.className='auth-recovery-msg error';
+      }finally{
+        button.disabled=false;
+      }
+    };
+  }
+}
+window.addEventListener('DOMContentLoaded',initPasswordRecovery);
