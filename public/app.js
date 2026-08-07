@@ -1,6 +1,6 @@
 let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
-const SOCIAUDIO_VERSION='Beta 3.2.6';
+const SOCIAUDIO_VERSION='Beta 3.2.7';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -361,14 +361,11 @@ async function renderCompanies(){
   </section>`;
 
   try{
-    const [items,mine]=await Promise.all([
-      api('/api/companies'),
-      api('/api/companies/mine')
-    ]);
-
-    const companies=Array.isArray(items)?items:[];
-    const cities=[...new Set(companies.map(x=>x.city).filter(Boolean))].length;
-    const verified=companies.filter(x=>Number(x.verified)===1).length;
+    const companies=await api('/api/companies');
+    const items=Array.isArray(companies)?companies:[];
+    const mine=items.find(c=>Number(c.owner_id)===Number(me.id))||null;
+    const cities=[...new Set(items.map(x=>x.city).filter(Boolean))].length;
+    const verified=items.filter(x=>Number(x.verified)===1).length;
 
     content.innerHTML=`<section class="companies-page">
       <div class="companies-hero card">
@@ -385,7 +382,7 @@ async function renderCompanies(){
         </div>
 
         <div class="companies-summary">
-          <div><b>${companies.length}</b><span>Empresas</span></div>
+          <div><b>${items.length}</b><span>Empresas</span></div>
           <div><b>${cities}</b><span>Cidades</span></div>
           <div><b>${verified}</b><span>Verificadas</span></div>
         </div>
@@ -404,7 +401,7 @@ async function renderCompanies(){
       </div>
 
       <div id="companiesGrid" class="companies-grid">
-        ${companies.length?companies.map(companyCardMarkup).join(''):`<div class="card companies-empty">
+        ${items.length?items.map(companyCardMarkup).join(''):`<div class="card companies-empty">
           <div>🏢</div>
           <h2>Nenhuma empresa cadastrada</h2>
           <p>Seja a primeira empresa a criar um perfil profissional.</p>
@@ -417,13 +414,12 @@ async function renderCompanies(){
     if(input){
       input.oninput=()=>{
         const term=input.value.trim().toLowerCase();
-        const filtered=companies.filter(c=>
+        const filtered=items.filter(c=>
           String(c.name||'').toLowerCase().includes(term)||
-          String(c.legal_name||'').toLowerCase().includes(term)||
+          String(c.category||'').toLowerCase().includes(term)||
           String(c.city||'').toLowerCase().includes(term)||
-          String(c.segment||'').toLowerCase().includes(term)||
-          String(c.services||'').toLowerCase().includes(term)||
-          String(c.specialties||'').toLowerCase().includes(term)
+          String(c.description||'').toLowerCase().includes(term)||
+          String(c.tagline||'').toLowerCase().includes(term)
         );
         const grid=document.getElementById('companiesGrid');
         if(grid){
@@ -434,15 +430,15 @@ async function renderCompanies(){
       };
     }
   }catch(e){
-    content.innerHTML=`<div class="card companies-empty"><div>⚠️</div><h2>Não foi possível carregar Empresas</h2><p>${esc(e.message)}</p></div>`;
+    content.innerHTML=`<div class="card companies-empty"><div>⚠️</div><h2>Não foi possível carregar Empresas</h2><p>${esc(e.message)}</p><button class="secondary" onclick="renderCompanies()">Tentar novamente</button></div>`;
   }
 }
 
 function companyCardMarkup(c){
   const verified=Number(c.verified)===1;
   const companyName=esc(c.name||'Empresa');
-  const description=esc(c.description||c.services||'Empresa cadastrada na Rede Sociaudio.');
-  const location=[c.city,c.state].filter(Boolean).join(' - ')||'Localização não informada';
+  const description=esc(c.tagline||c.description||'Empresa cadastrada na Rede Sociaudio.');
+  const location=c.city||'Localização não informada';
 
   return `<article class="card company-card">
     <div class="company-card-cover" style="${c.cover?`background-image:url('${esc(c.cover)}')`:''}">
@@ -458,17 +454,13 @@ function companyCardMarkup(c){
       <div class="company-title-row">
         <div>
           <h2>${companyName}</h2>
-          <p>${esc(c.segment||'Empresa de áudio')}</p>
+          <p>${esc(c.category||'Empresa de áudio')}</p>
         </div>
         ${verified?'<span class="company-verified-label">Verificada</span>':''}
       </div>
 
       <p class="company-location">📍 ${esc(location)}</p>
       <p class="company-description">${description}</p>
-
-      <div class="company-tags">
-        ${(c.specialties||c.services||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean).slice(0,4).map(x=>`<span>${esc(x)}</span>`).join('')}
-      </div>
     </div>
 
     <div class="company-card-footer">
@@ -478,16 +470,23 @@ function companyCardMarkup(c){
   </article>`;
 }
 
+async function getMyCompany(){
+  const items=await api('/api/companies');
+  return (Array.isArray(items)?items:[]).find(c=>Number(c.owner_id)===Number(me.id))||null;
+}
+
 async function openCompanyForm(){
   try{
-    const company=await api('/api/companies/mine')||{};
+    const company=await getMyCompany()||{};
+    const details=company.id?await api(`/api/companies/${company.id}`):company;
+    const serviceText=(details.services||[]).map(s=>s.title).join('\n');
 
     content.innerHTML=`<section class="company-form-page">
       <div class="company-form-header card">
         <div>
           <span class="companies-kicker">PERFIL EMPRESARIAL</span>
-          <h1>${company.id?'Editar minha empresa':'Cadastrar minha empresa'}</h1>
-          <p>Crie uma vitrine profissional com logo, capa, serviços, contatos e área de atuação.</p>
+          <h1>${details.id?'Editar minha empresa':'Cadastrar minha empresa'}</h1>
+          <p>Crie uma vitrine profissional com logo, capa, serviços e contatos.</p>
         </div>
         <button class="secondary" onclick="view='companies';renderCompanies()">Voltar para Empresas</button>
       </div>
@@ -496,89 +495,84 @@ async function openCompanyForm(){
         <section class="company-form-section">
           <div class="company-form-section-title">
             <span>1</span>
-            <div><h2>Identidade da empresa</h2><p>Nome, segmento, logo e capa.</p></div>
+            <div><h2>Identidade da empresa</h2><p>Nome, categoria, logo e capa.</p></div>
           </div>
 
           <div class="company-media-editor">
-            <div id="companyCoverPreview" class="company-cover-preview" style="${company.cover?`background-image:url('${esc(company.cover)}')`:''}">
+            <div id="companyCoverPreview" class="company-cover-preview" style="${details.cover?`background-image:url('${esc(details.cover)}')`:''}">
               <label class="company-cover-button">Alterar capa<input id="companyCoverFile" type="file" accept="image/*" hidden></label>
             </div>
 
             <div class="company-logo-editor">
               <div id="companyLogoPreview" class="company-logo-preview">
-                ${company.logo?`<img src="${esc(company.logo)}" alt="">`:`<span>${esc((company.name||'E').slice(0,1).toUpperCase())}</span>`}
+                ${details.logo?`<img src="${esc(details.logo)}" alt="">`:`<span>${esc((details.name||'E').slice(0,1).toUpperCase())}</span>`}
               </div>
               <label class="secondary btn">Selecionar logo<input id="companyLogoFile" type="file" accept="image/*" hidden></label>
-              <small>Recomendado: imagem quadrada, até 3 MB.</small>
+              <small>Recomendado: imagem quadrada.</small>
             </div>
           </div>
 
           <div class="company-form-grid">
-            <label>Nome da empresa<input id="companyName" required value="${esc(company.name||'')}"></label>
-            <label>Razão social<input id="companyLegalName" value="${esc(company.legal_name||'')}"></label>
-            <label>Segmento
-              <select id="companySegment">
-                ${['','Locadora de áudio','Igreja','Estúdio','Integradora audiovisual','Assistência técnica','Fabricante','Produtora de eventos','Escola ou curso','Empresa de iluminação','Outro'].map(x=>`<option ${company.segment===x?'selected':''}>${esc(x||'Selecione')}</option>`).join('')}
+            <label>Nome da empresa<input id="companyName" required value="${esc(details.name||'')}"></label>
+            <label>Categoria
+              <select id="companyCategory">
+                ${['Empresa de áudio','Locadora de áudio','Igreja','Estúdio','Integradora audiovisual','Assistência técnica','Fabricante','Produtora de eventos','Escola ou curso','Empresa de iluminação','Outro'].map(x=>`<option ${details.category===x?'selected':''}>${esc(x)}</option>`).join('')}
               </select>
             </label>
-            <label>CNPJ<input id="companyCnpj" value="${esc(company.cnpj||'')}" placeholder="Opcional"></label>
+            <label class="wide">Slogan<input id="companyTagline" value="${esc(details.tagline||'')}" placeholder="Uma frase curta sobre a empresa"></label>
           </div>
         </section>
 
         <section class="company-form-section">
           <div class="company-form-section-title">
             <span>2</span>
-            <div><h2>Apresentação e serviços</h2><p>Explique o que a empresa faz e quais serviços oferece.</p></div>
+            <div><h2>Apresentação e serviços</h2><p>Explique o que a empresa faz.</p></div>
           </div>
 
-          <label>Descrição da empresa<textarea id="companyDescription" maxlength="2500" rows="6" placeholder="Conte a história, experiência e diferenciais da empresa.">${esc(company.description||'')}</textarea></label>
-          <label>Serviços oferecidos<textarea id="companyServices" rows="4" placeholder="Locação de som, instalação, operação técnica, manutenção...">${esc(company.services||'')}</textarea></label>
-          <label>Especialidades<textarea id="companySpecialties" rows="3" placeholder="Separe por vírgulas: eventos corporativos, igrejas, shows, streaming...">${esc(company.specialties||'')}</textarea></label>
+          <label>Descrição da empresa<textarea id="companyDescription" rows="6">${esc(details.description||'')}</textarea></label>
+          <label>Serviços oferecidos<textarea id="companyServices" rows="5" placeholder="Um serviço por linha">${esc(serviceText)}</textarea></label>
         </section>
 
         <section class="company-form-section">
           <div class="company-form-section-title">
             <span>3</span>
-            <div><h2>Localização e atendimento</h2><p>Informe onde a empresa está e quais regiões atende.</p></div>
+            <div><h2>Localização e atendimento</h2></div>
           </div>
 
           <div class="company-form-grid">
-            <label>Cidade<input id="companyCity" value="${esc(company.city||'')}"></label>
-            <label>Estado<input id="companyState" value="${esc(company.state||'')}" placeholder="Ex.: SC"></label>
-            <label class="wide">Endereço<input id="companyAddress" value="${esc(company.address||'')}"></label>
-            <label class="wide">Região de atendimento<input id="companyServiceRegion" value="${esc(company.service_region||'')}" placeholder="Ex.: Joinville e região Norte de SC"></label>
+            <label>Cidade<input id="companyCity" value="${esc(details.city||'')}"></label>
+            <label>Região de atendimento<input id="companyServiceRegion" value="${esc(details.service_region||'')}"></label>
           </div>
         </section>
 
         <section class="company-form-section">
           <div class="company-form-section-title">
             <span>4</span>
-            <div><h2>Contatos</h2><p>Adicione os canais para clientes entrarem em contato.</p></div>
+            <div><h2>Contatos</h2></div>
           </div>
 
           <div class="company-form-grid">
-            <label>WhatsApp<input id="companyWhatsapp" value="${esc(company.whatsapp||'')}"></label>
-            <label>Telefone<input id="companyPhone" value="${esc(company.phone||'')}"></label>
-            <label>E-mail<input id="companyEmail" type="email" value="${esc(company.email||'')}"></label>
-            <label>Site<input id="companyWebsite" value="${esc(company.website||'')}"></label>
-            <label>Instagram<input id="companyInstagram" value="${esc(company.instagram||'')}"></label>
+            <label>WhatsApp<input id="companyWhatsapp" value="${esc(details.whatsapp||'')}"></label>
+            <label>Telefone<input id="companyPhone" value="${esc(details.phone||'')}"></label>
+            <label>E-mail<input id="companyEmail" type="email" value="${esc(details.email||'')}"></label>
+            <label>Site<input id="companyWebsite" value="${esc(details.website||'')}"></label>
+            <label>Instagram<input id="companyInstagram" value="${esc(details.instagram||'')}"></label>
           </div>
         </section>
 
         <div class="company-form-actions">
           <button type="button" class="secondary" onclick="view='companies';renderCompanies()">Cancelar</button>
-          <button type="submit" class="primary">${company.id?'Salvar alterações':'Cadastrar empresa'}</button>
+          <button type="submit" class="primary">${details.id?'Salvar alterações':'Cadastrar empresa'}</button>
         </div>
       </form>
     </section>`;
 
-    let logoData=company.logo||'';
-    let coverData=company.cover||'';
+    let logoData=details.logo||'';
+    let coverData=details.cover||'';
 
     companyLogoFile.onchange=async()=>{
       const file=companyLogoFile.files[0];
       if(!file)return;
-      if(file.size>3*1024*1024)return toast('A logo deve ter até 3 MB.',true);
       logoData=await fileToDataURL(file);
       companyLogoPreview.innerHTML=`<img src="${logoData}" alt="">`;
     };
@@ -586,7 +580,6 @@ async function openCompanyForm(){
     companyCoverFile.onchange=async()=>{
       const file=companyCoverFile.files[0];
       if(!file)return;
-      if(file.size>5*1024*1024)return toast('A capa deve ter até 5 MB.',true);
       coverData=await fileToDataURL(file);
       companyCoverPreview.style.backgroundImage=`url('${coverData}')`;
     };
@@ -594,24 +587,24 @@ async function openCompanyForm(){
     companyForm.onsubmit=async event=>{
       event.preventDefault();
       const button=companyForm.querySelector('button[type="submit"]');
-
       try{
         button.disabled=true;
         button.textContent='Salvando...';
 
-        const result=await api('/api/companies/save',{
+        const services=companyServices.value
+          .split(/\n/)
+          .map(x=>x.trim())
+          .filter(Boolean)
+          .map(title=>({title,description:'',icon:'🎚️'}));
+
+        const result=await api('/api/companies',{
           method:'POST',
           body:JSON.stringify({
             name:companyName.value,
-            legal_name:companyLegalName.value,
-            segment:companySegment.value==='Selecione'?'':companySegment.value,
-            cnpj:companyCnpj.value,
+            category:companyCategory.value,
+            tagline:companyTagline.value,
             description:companyDescription.value,
-            services:companyServices.value,
-            specialties:companySpecialties.value,
             city:companyCity.value,
-            state:companyState.value,
-            address:companyAddress.value,
             service_region:companyServiceRegion.value,
             whatsapp:companyWhatsapp.value,
             phone:companyPhone.value,
@@ -619,16 +612,19 @@ async function openCompanyForm(){
             website:companyWebsite.value,
             instagram:companyInstagram.value,
             logo:logoData,
-            cover:coverData
+            cover:coverData,
+            services,
+            team:details.team||[],
+            projects:details.projects||[]
           })
         });
 
-        toast(company.id?'Empresa atualizada.':'Empresa cadastrada.');
+        toast(details.id?'Empresa atualizada.':'Empresa cadastrada.');
         openCompanyDetails(result.id);
       }catch(e){
         toast(e.message,true);
         button.disabled=false;
-        button.textContent=company.id?'Salvar alterações':'Cadastrar empresa';
+        button.textContent=details.id?'Salvar alterações':'Cadastrar empresa';
       }
     };
   }catch(e){
@@ -639,7 +635,7 @@ async function openCompanyForm(){
 async function openCompanyDetails(id){
   try{
     const c=await api(`/api/companies/${id}`);
-    const tags=(c.specialties||c.services||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
+    const services=Array.isArray(c.services)?c.services:[];
 
     content.innerHTML=`<section class="company-profile-page">
       <article class="company-profile-hero card">
@@ -651,12 +647,13 @@ async function openCompanyDetails(id){
 
           <div class="company-profile-info">
             <h1>${esc(c.name)}</h1>
-            <h2>${esc(c.segment||'Empresa de áudio')}</h2>
-            <p>📍 ${esc([c.city,c.state].filter(Boolean).join(' - ')||'Localização não informada')}</p>
+            <h2>${esc(c.category||'Empresa de áudio')}</h2>
+            <p>${esc(c.tagline||'')}</p>
+            <p>📍 ${esc(c.city||'Localização não informada')}</p>
           </div>
 
           <div class="company-profile-actions">
-            ${Number(c.owner_id)===Number(me.id)?`<button class="secondary" onclick="openCompanyForm()">Editar empresa</button>`:''}
+            ${c.can_edit?`<button class="secondary" onclick="openCompanyForm()">Editar empresa</button>`:''}
             ${c.whatsapp?`<a class="primary btn" target="_blank" href="https://wa.me/${String(c.whatsapp).replace(/\D/g,'')}">Falar no WhatsApp</a>`:''}
           </div>
         </div>
@@ -671,12 +668,9 @@ async function openCompanyDetails(id){
 
           <section class="card company-profile-section">
             <h2>Serviços oferecidos</h2>
-            <p>${esc(c.services||'Não informado.')}</p>
-          </section>
-
-          <section class="card company-profile-section">
-            <h2>Especialidades</h2>
-            <div class="company-profile-tags">${tags.length?tags.map(x=>`<span>${esc(x)}</span>`).join(''):'<p>Nenhuma especialidade cadastrada.</p>'}</div>
+            <div class="company-services-list">
+              ${services.length?services.map(s=>`<article><span>${esc(s.icon||'🎚️')}</span><div><b>${esc(s.title)}</b>${s.description?`<p>${esc(s.description)}</p>`:''}</div></article>`).join(''):'<p>Nenhum serviço cadastrado.</p>'}
+            </div>
           </section>
         </main>
 
