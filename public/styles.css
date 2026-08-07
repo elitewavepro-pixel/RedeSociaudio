@@ -5400,3 +5400,194 @@ body.admin-mode .app-shell{
     min-height:0;
   }
 }
+
+
+/* v5.1.4 — Centro de Conhecimento: layout isolado e corrigido */
+.knowledge-center-v514{
+  display:block !important;
+  width:100% !important;
+  max-width:none !important;
+  min-width:0 !important;
+  padding:0 !important;
+  margin:0 !important;
+  overflow:hidden !important;
+  box-sizing:border-box !important;
+  border:1px solid #dce4ee !important;
+  border-radius:18px !important;
+  background:#ffffff !important;
+  box-shadow:0 8px 24px rgba(15,23,42,.05) !important;
+}
+
+.knowledge-center-v514-top{
+  width:100% !important;
+  min-height:48px !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:10px !important;
+  padding:0 28px !important;
+  background:linear-gradient(90deg,#0b4da2,#1769df) !important;
+  color:#fff !important;
+  font-size:11px !important;
+  line-height:1 !important;
+  font-weight:900 !important;
+  letter-spacing:.08em !important;
+}
+
+.knowledge-center-v514-book{
+  width:27px !important;
+  height:27px !important;
+  flex:0 0 27px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border-radius:8px !important;
+  background:rgba(255,255,255,.16) !important;
+}
+
+.knowledge-center-v514-book .sa-icon{
+  width:15px !important;
+  height:15px !important;
+}
+
+.knowledge-center-v514-main{
+  width:100% !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:36px !important;
+  padding:30px 32px 32px !important;
+}
+
+.knowledge-center-v514-copy{
+  display:block !important;
+  flex:1 1 auto !important;
+  width:auto !important;
+  min-width:0 !important;
+  max-width:650px !important;
+  margin:0 !important;
+  padding:0 !important;
+}
+
+.knowledge-center-v514-eyebrow{
+  display:block !important;
+  margin:0 0 8px !important;
+  color:#1769df !important;
+  font-size:10px !important;
+  line-height:1.3 !important;
+  font-weight:900 !important;
+  letter-spacing:.11em !important;
+}
+
+.knowledge-center-v514-copy h1{
+  display:block !important;
+  width:auto !important;
+  max-width:none !important;
+  margin:0 0 10px !important;
+  padding:0 !important;
+  color:#172033 !important;
+  font-size:34px !important;
+  line-height:1.1 !important;
+  font-weight:850 !important;
+  letter-spacing:-.7px !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  word-break:normal !important;
+}
+
+.knowledge-center-v514-copy p{
+  display:block !important;
+  width:auto !important;
+  max-width:610px !important;
+  margin:0 !important;
+  padding:0 !important;
+  color:#667085 !important;
+  font-size:14px !important;
+  line-height:1.55 !important;
+  white-space:normal !important;
+  word-break:normal !important;
+}
+
+.knowledge-center-v514-button{
+  display:inline-flex !important;
+  width:auto !important;
+  min-width:154px !important;
+  min-height:44px !important;
+  margin:20px 0 0 !important;
+  padding:0 18px !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:7px !important;
+  white-space:nowrap !important;
+  border-radius:10px !important;
+}
+
+.knowledge-center-v514-info{
+  flex:0 0 250px !important;
+  width:250px !important;
+  min-width:250px !important;
+  min-height:112px !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:14px !important;
+  padding:18px !important;
+  border:1px solid #d8e5f5 !important;
+  border-radius:14px !important;
+  background:#f5f9ff !important;
+}
+
+.knowledge-center-v514-info-icon{
+  width:50px !important;
+  height:50px !important;
+  flex:0 0 50px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border-radius:13px !important;
+  background:#1769df !important;
+  color:#fff !important;
+}
+
+.knowledge-center-v514-info-icon .sa-icon{
+  width:24px !important;
+  height:24px !important;
+}
+
+.knowledge-center-v514-info strong{
+  display:block !important;
+  margin:0 0 5px !important;
+  color:#1d2939 !important;
+  font-size:13px !important;
+  line-height:1.3 !important;
+}
+
+.knowledge-center-v514-info span{
+  display:block !important;
+  color:#667085 !important;
+  font-size:10px !important;
+  line-height:1.45 !important;
+}
+
+@media(max-width:760px){
+  .knowledge-center-v514-main{
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    gap:22px !important;
+    padding:25px 22px 26px !important;
+  }
+  .knowledge-center-v514-info{
+    flex:0 0 auto !important;
+    width:100% !important;
+    min-width:0 !important;
+  }
+  .knowledge-center-v514-copy h1{
+    font-size:30px !important;
+  }
+  .knowledge-center-v514-top{
+    padding:0 22px !important;
+  }
+}

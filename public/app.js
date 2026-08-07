@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.1.3 Public';
+const SOCIAUDIO_VERSION='v5.1.4 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.1.3 PUBLIC</span>
+        <span class="beta-label">V5.1.4 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -3536,25 +3536,23 @@ articleClose.onclick=()=>articleDlg.close();
 function openArticleDialog(){articleForm.reset();articleCoverData='';articlePreview.hidden=true;articlePreview.removeAttribute('src');articleFeatured.closest('label').hidden=!me.is_admin;articleDlg.showModal()}
 articleForm.onsubmit=async e=>{e.preventDefault();try{await api('/api/knowledge',{method:'POST',body:JSON.stringify({title:articleTitle.value,category:articleCategory.value,difficulty:articleDifficulty.value,summary:articleSummary.value,body:articleBody.value,link_url:articleLink.value,cover_data:articleCoverData,is_featured:articleFeatured.checked})});articleDlg.close();toast('Artigo publicado no Centro de Conhecimento.');renderKnowledge()}catch(err){toast(err.message,true)}};
 function articleCard(a){return `<article class="knowledge-card card ${a.is_featured?'knowledge-featured':''}">${a.cover_data?`<div class="knowledge-cover" style="background-image:url('${a.cover_data}')"></div>`:`<div class="knowledge-cover knowledge-cover-empty">${icon('book')}</div>`}<div class="knowledge-card-body"><div class="knowledge-meta"><span class="tag">${esc(a.category)}</span><span>${esc(a.difficulty)}</span>${a.is_featured?'<b>DESTAQUE</b>':''}</div><h2>${esc(a.title)}</h2><p>${esc(a.summary||a.body.slice(0,180))}</p><div class="knowledge-author">${a.author_avatar?`<img src="${a.author_avatar}" alt="">`:`<span>${esc(a.author_name).charAt(0)}</span>`}<div><b>${esc(a.author_name)}</b><small>${esc(a.author_role||'Profissional de áudio')}</small></div></div><div class="knowledge-actions"><button class="primary" onclick="openArticle(${a.id})">Ler artigo</button><small>${a.views||0} leitura(s)</small>${a.can_manage?`<button class="danger-link" onclick="deleteArticle(${a.id})">Remover</button>`:''}</div></div></article>`}
-async function renderKnowledge(){let items=await api('/api/knowledge');let featured=items.filter(x=>x.is_featured),cats=[...new Set(items.map(x=>x.category))];content.innerHTML=`<section class="knowledge-hero knowledge-hero-pro card">
-  <div class="knowledge-hero-accent">
-    <span class="knowledge-hero-accent-icon">${icon('book')}</span>
-    <span>Biblioteca Técnica Viva</span>
+async function renderKnowledge(){let items=await api('/api/knowledge');let featured=items.filter(x=>x.is_featured),cats=[...new Set(items.map(x=>x.category))];content.innerHTML=`<section class="knowledge-center-v514 card">
+  <div class="knowledge-center-v514-top">
+    <span class="knowledge-center-v514-book">${icon('book')}</span>
+    <span>BIBLIOTECA TÉCNICA VIVA</span>
   </div>
-  <div class="knowledge-hero-pro-body">
-    <div class="knowledge-hero-pro-copy">
-      <span class="eyebrow">CONHECIMENTO PARA QUEM VIVE DE ÁUDIO</span>
+  <div class="knowledge-center-v514-main">
+    <div class="knowledge-center-v514-copy">
+      <span class="knowledge-center-v514-eyebrow">CONHECIMENTO PARA QUEM VIVE DE ÁUDIO</span>
       <h1>Centro de Conhecimento</h1>
       <p>Guias, artigos e soluções práticas de áudio profissional, organizados para não se perderem no feed.</p>
-      <button class="primary knowledge-hero-pro-btn" onclick="openArticleDialog()">${icon('plus')} Publicar artigo</button>
+      <button class="primary knowledge-center-v514-button" onclick="openArticleDialog()">${icon('plus')} Publicar artigo</button>
     </div>
-    <div class="knowledge-hero-pro-side">
-      <div class="knowledge-mini-card">
-        <span>${icon('book')}</span>
-        <div>
-          <b>Conteúdo técnico</b>
-          <small>Aprenda, compartilhe e evolua com a comunidade.</small>
-        </div>
+    <div class="knowledge-center-v514-info">
+      <div class="knowledge-center-v514-info-icon">${icon('book')}</div>
+      <div>
+        <strong>Conteúdo técnico</strong>
+        <span>Aprenda, compartilhe e evolua com a comunidade.</span>
       </div>
     </div>
   </div>

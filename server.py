@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.1.3 — Centro de Conhecimento Profissional Claro'
+APP_VERSION = 'v5.1.4 — Centro de Conhecimento Layout Corrigido'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
