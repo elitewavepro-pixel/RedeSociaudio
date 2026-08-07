@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.1.0 — Publicacao Simplificada'
+APP_VERSION = 'v5.1.1 — Upload de Midia Corrigido'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -1859,6 +1859,67 @@ class Handler(SimpleHTTPRequestHandler):
                 except OSError: pass
                 return self.send_json({'error':'Não foi possível salvar o áudio no computador.'},500)
             return self.send_json({'media_data':f'/media/audio/{filename}','media_type':media_type,'media_name':original_name,'size':size},201)
+        if p == '/api/media/video':
+            u=self.require_user()
+            if not u:return
+            try:
+                size=int(self.headers.get('Content-Length','0'))
+            except ValueError:
+                size=0
+
+            media_type=(self.headers.get('Content-Type') or '').split(';',1)[0].strip().lower()
+            if media_type not in ('video/mp4','video/webm'):
+                return self.send_json({'error':'Formato de vídeo não permitido. Use MP4 ou WebM.'},415)
+
+            limit=video_limit_for(u)
+            if size<=0:
+                return self.send_json({'error':'O vídeo está vazio.'},400)
+            if size>limit:
+                return self.send_json({'error':f'O vídeo ultrapassa o limite do seu plano ({human_mb(limit)}).'},413)
+
+            raw_name=self.headers.get('X-File-Name','video')
+            try:
+                from urllib.parse import unquote
+                original_name=safe_original_filename(unquote(raw_name))[:220]
+            except Exception:
+                original_name='video'
+
+            ext='.mp4' if media_type=='video/mp4' else '.webm'
+            filename=f"{datetime.now().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(8)}{ext}"
+            final_path=os.path.join(VIDEO_DIR,filename)
+            temp_path=final_path+'.part'
+            remaining=size
+
+            try:
+                with open(temp_path,'wb') as fh:
+                    while remaining>0:
+                        chunk=self.rfile.read(min(1024*1024,remaining))
+                        if not chunk:
+                            break
+                        fh.write(chunk)
+                        remaining-=len(chunk)
+
+                if remaining!=0:
+                    try:os.remove(temp_path)
+                    except OSError:pass
+                    return self.send_json({'error':'O envio do vídeo foi interrompido antes de terminar.'},400)
+
+                os.replace(temp_path,final_path)
+            except Exception as exc:
+                print('[VIDEO UPLOAD ERROR]',exc,flush=True)
+                try:
+                    if os.path.exists(temp_path):os.remove(temp_path)
+                except OSError:
+                    pass
+                return self.send_json({'error':'Não foi possível salvar o vídeo.'},500)
+
+            return self.send_json({
+                'media_data':f'/media/videos/{filename}',
+                'media_type':media_type,
+                'media_name':original_name,
+                'size':size
+            },201)
+
         if p == '/api/media/file':
             u=self.require_user()
             if not u:return
@@ -1988,11 +2049,26 @@ class Handler(SimpleHTTPRequestHandler):
         if p == '/api/logout':
             token=self.headers.get('Authorization','').replace('Bearer ','').strip(); c=connect(); c.execute('DELETE FROM sessions WHERE token=?',(token,)); c.commit(); c.close(); return self.send_json({'ok':True})
         if p == '/api/posts':
-            title=d.get('title','').strip(); body=d.get('body','').strip()
-            if len(title)<5 or len(body)<10:return self.send_json({'error':'Escreva um título e uma descrição mais completos.'},400)
+            title=(d.get('title') or '').strip()
+            body=(d.get('body') or '').strip()
             media=(d.get('media_data') or d.get('image_data') or '')
+            gallery=d.get('gallery_images') or []
             media_type=(d.get('media_type') or ('image/jpeg' if str(media).startswith('data:image/') else ''))[:100]
             media_name=(d.get('media_name') or '')[:220]
+            has_media=bool(media or gallery or media_type or media_name or d.get('simple_media_post'))
+
+            if has_media:
+                if not title:
+                    if media_type.startswith('image/'): title='Foto'
+                    elif media_type.startswith('video/'): title='Vídeo'
+                    elif media_type.startswith('audio/'): title='Áudio'
+                    elif media_name: title=media_name
+                    else: title='Publicação'
+                # Legenda/descrição é opcional para mídia.
+                body=body
+            elif len(title)<5 or len(body)<10:
+                return self.send_json({'error':'Para uma publicação de texto, escreva um título e uma descrição mais completos.'},400)
+
             media_size=int(d.get('media_size') or 0)
             try:
                 media, media_type, media_name = store_media_data(media, media_type, media_name, video_limit_for(u))
@@ -2010,13 +2086,34 @@ class Handler(SimpleHTTPRequestHandler):
         if p.startswith('/api/posts/') and p.endswith('/edit'):
             try: pid=int(p.split('/')[3])
             except: return self.send_json({'error':'Publicação inválida.'},400)
-            title=d.get('title','').strip(); body=d.get('body','').strip()
-            if len(title)<5 or len(body)<10:return self.send_json({'error':'Escreva um título e uma descrição mais completos.'},400)
-            c=connect(); post=c.execute("SELECT user_id,media_data,image_data FROM posts WHERE id=? AND status='published'",(pid,)).fetchone()
+            title=(d.get('title') or '').strip()
+            body=(d.get('body') or '').strip()
+            c=connect(); post=c.execute("SELECT user_id,media_data,image_data,media_type,media_name FROM posts WHERE id=? AND status='published'",(pid,)).fetchone()
             if not post:
                 c.close(); return self.send_json({'error':'Publicação não encontrada.'},404)
             if post['user_id']!=u['id'] and not u['is_admin']:
                 c.close(); return self.send_json({'error':'Você só pode editar suas próprias publicações.'},403)
+
+            incoming_media=d.get('media_data',None)
+            has_media=bool(
+                (incoming_media is not None and incoming_media) or
+                post['media_data'] or post['image_data'] or
+                d.get('gallery_images') or d.get('simple_media_post')
+            )
+            effective_type=(d.get('media_type') or post['media_type'] or '')
+            effective_name=(d.get('media_name') or post['media_name'] or '')
+
+            if has_media:
+                if not title:
+                    if effective_type.startswith('image/'):title='Foto'
+                    elif effective_type.startswith('video/'):title='Vídeo'
+                    elif effective_type.startswith('audio/'):title='Áudio'
+                    elif effective_name:title=effective_name
+                    else:title='Publicação'
+            elif len(title)<5 or len(body)<10:
+                c.close()
+                return self.send_json({'error':'Para uma publicação de texto, escreva um título e uma descrição mais completos.'},400)
+
             media=d.get('media_data',None)
             if media is None and 'image_data' in d: media=d.get('image_data')
             if media is None:
