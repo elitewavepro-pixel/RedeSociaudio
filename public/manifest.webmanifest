@@ -1,0 +1,10 @@
+{
+  "name": "Rede Sociaudio",
+  "short_name": "Sociaudio",
+  "description": "A rede profissional do mercado de áudio.",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#f6f8fc",
+  "theme_color": "#1267df",
+  "lang": "pt-BR"
+}

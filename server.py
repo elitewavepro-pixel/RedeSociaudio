@@ -4,7 +4,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 
-APP_VERSION = 'Beta 3.2.12 — Balão de mensagem atualizado'
+APP_VERSION = 'v4.0 Public Foundation'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -1564,10 +1564,25 @@ class Handler(SimpleHTTPRequestHandler):
                 'communities':c.execute('SELECT COUNT(*) FROM communities').fetchone()[0]
             }; c.close(); return self.send_json(data)
 
-        path = 'index.html' if p == '/' else p.lstrip('/')
-        full = os.path.abspath(os.path.join(PUBLIC,path))
-        if not full.startswith(os.path.abspath(PUBLIC)) or not os.path.isfile(full): full=os.path.join(PUBLIC,'index.html')
-        data=open(full,'rb').read(); self.send_response(200); self.send_header('Content-Type',mimetypes.guess_type(full)[0] or 'application/octet-stream'); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data)
+        if p == '/':
+            path='landing.html'
+        elif p in ('/app','/login','/cadastro'):
+            path='index.html'
+        else:
+            path=p.lstrip('/')
+
+        full=os.path.abspath(os.path.join(PUBLIC,path))
+        if not full.startswith(os.path.abspath(PUBLIC)) or not os.path.isfile(full):
+            full=os.path.join(PUBLIC,'index.html')
+
+        data=open(full,'rb').read()
+        self.send_response(200)
+        self.send_header('Content-Type',mimetypes.guess_type(full)[0] or 'application/octet-stream')
+        if os.path.basename(full) in ('landing.html','index.html'):
+            self.send_header('Cache-Control','no-cache')
+        self.send_header('Content-Length',str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     def do_POST(self):
         p=urlparse(self.path).path

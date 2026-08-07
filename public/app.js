@@ -2,7 +2,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 
 let chatPoll=null;
 let chatConversationId=null;
-const SOCIAUDIO_VERSION='Beta 3.2.12';
+const SOCIAUDIO_VERSION='v4.0 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -156,7 +156,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">BETA 3.2.12</span>
+        <span class="beta-label">V4.0 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -2154,3 +2154,17 @@ showBetaNotice();
 document.querySelectorAll('[data-view="about"]').forEach(el=>{
   el.onclick=()=>{view='about';render()};
 });
+
+
+// Versão pública: abre a aba de cadastro quando solicitado pela landing page.
+try{
+  const publicParams=new URLSearchParams(location.search);
+  if(publicParams.get('cadastro')==='1'){
+    window.addEventListener('DOMContentLoaded',()=>{
+      setTimeout(()=>{
+        const tab=document.getElementById('registerTab');
+        if(tab)tab.click();
+      },80);
+    });
+  }
+}catch(_){}
