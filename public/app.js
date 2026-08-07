@@ -2,7 +2,8 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 
 let chatPoll=null;
 let chatConversationId=null;
-const SOCIAUDIO_VERSION='v4.0.6 Public';
+let quoteRequestFilter='novo';
+const SOCIAUDIO_VERSION='v4.0.7 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -156,7 +157,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.0.6 PUBLIC</span>
+        <span class="beta-label">V4.0.7 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -1751,15 +1752,26 @@ async function markQuoteAsAttended(id){
 }
 
 async function renderRequests(){
-  const items=await api('/api/quote-requests');
-  const counts={novo:0,negociacao:0,concluido:0,arquivado:0};
-  items.forEach(q=>{if(counts[q.status]!==undefined)counts[q.status]++});
-  const list=items.filter(q=>{
-    if(quoteRequestFilter==='concluido')return q.status==='concluido';
-    return q.status!=='concluido';
-  });
+  content.innerHTML=`<section class="card" style="min-height:280px;display:grid;place-items:center;text-align:center">
+    <div>
+      <h2>Carregando orçamentos...</h2>
+      <p style="color:#667085">Aguarde enquanto buscamos suas solicitações.</p>
+    </div>
+  </section>`;
 
-  content.innerHTML=`<div class="page-title"><h1>Solicitações de orçamento</h1><p>Gerencie cada oportunidade do primeiro contato até a conclusão.</p></div>
+  try{
+    const response=await api('/api/quote-requests');
+    const items=Array.isArray(response)?response:[];
+
+    const counts={novo:0,negociacao:0,concluido:0,arquivado:0};
+    items.forEach(q=>{if(counts[q.status]!==undefined)counts[q.status]++});
+
+    const list=items.filter(q=>{
+      if(quoteRequestFilter==='concluido')return q.status==='concluido';
+      return q.status!=='concluido';
+    });
+
+    content.innerHTML=`<div class="page-title"><h1>Solicitações de orçamento</h1><p>Gerencie cada oportunidade do primeiro contato até a conclusão.</p></div>
   <div class="quote-stats">
     <button class="${quoteRequestFilter==='novo'?'active':''}" onclick="setQuoteRequestFilter('novo')"><b>${counts.novo}</b><span>Solicitações pendentes</span></button>
     <button class="${quoteRequestFilter==='concluido'?'active':''}" onclick="setQuoteRequestFilter('concluido')"><b>${counts.concluido}</b><span>Orçamentos concluídos</span></button>
@@ -1799,6 +1811,17 @@ async function renderRequests(){
     </div>
   </article>`).join(''):`<div class="card empty quote-empty"><h2>${quoteRequestFilter==='concluido'?'Nenhum orçamento concluído':'Nenhuma solicitação pendente'}</h2><p>Quando houver solicitações nesta etapa, elas aparecerão aqui.</p></div>`}
   </section>`;
+  }catch(error){
+    console.error('[Rede Sociaudio] Falha ao carregar Orçamentos:',error);
+    content.innerHTML=`<section class="card" style="min-height:300px;display:grid;place-items:center;text-align:center">
+      <div>
+        <div style="font-size:42px">⚠️</div>
+        <h2>Não foi possível carregar os orçamentos</h2>
+        <p style="color:#667085">${esc(error?.message||'Tente novamente.')}</p>
+        <button class="primary" onclick="renderRequests()">Tentar novamente</button>
+      </div>
+    </section>`;
+  }
 }
 
 async function askAdminAssistant(){
