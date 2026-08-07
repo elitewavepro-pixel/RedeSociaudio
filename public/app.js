@@ -1,9 +1,9 @@
-let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
+let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.2.5 Public';
+const SOCIAUDIO_VERSION='v5.3.0 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.2.5 PUBLIC</span>
+        <span class="beta-label">V5.3.0 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -409,8 +409,9 @@ mountProfessionalSidebar();auth.hidden=true;auth.style.display='none';app.hidden
 }try{hydrateIcons()}catch(error){console.warn('[Rede Sociaudio] Icones:',error)}
 loadAll().finally(()=>startBellRealtime())}
 async function loadAll(){try{
-  [posts,users,communities,notifications]=await Promise.all([
+  [posts,stories,users,communities,notifications]=await Promise.all([
     api('/api/posts'),
+    api('/api/stories'),
     api('/api/users'),
     api('/api/communities'),
     api('/api/notifications')
@@ -1618,7 +1619,307 @@ function renderAbout(){
   </section>`;
 }
 
-function renderFeed(saved=false){let list=posts.filter(p=>(!saved||p.bookmarked));content.innerHTML=`<section class="card composer"><div class="composer-main">${avatar(me)}<button onclick="openNewPost()">No que você está pensando, ${esc(me.name.split(' ')[0])}?</button></div><div class="composer-tools"><button onclick="openNewPost('video')">${icon('video')}<span>Vídeo</span></button><button onclick="openNewPost('photo')">${icon('photo')}<span>Foto</span></button><button onclick="openNewPost('audio')">${icon('audio')}<span>Áudio</span></button><button onclick="openNewPost('file')">${icon('file')}<span>Arquivo</span></button></div></section><section class="story-strip"><button class="story create-story" onclick="openNewPost()"><span class="story-plus">${icon('plus')}</span><b>Criar story</b></button><div class="story story-console"><span>${avatar(me)}</span><b>Seu conteúdo</b></div><div class="story story-stage"><span>${icon('audio')}</span><b>Dicas de áudio</b></div><div class="story story-mic"><span>${icon('professionals')}</span><b>Profissionais</b></div></section>${list.length?list.map(postCard).join(''):'<div class="empty">Nenhuma publicação encontrada.</div>'}`}
+
+// ================================================================
+// REDE SOCIAUDIO v5.3.0 — STORIES REAIS (24 HORAS)
+// ================================================================
+let storyFile=null;
+let storyPreviewUrl='';
+let storyViewerIndex=0;
+let storyTimer=null;
+
+function storyInitial(user){
+  return esc((user?.name||'S').trim().slice(0,1).toUpperCase());
+}
+
+function clearStoryPreview(){
+  if(storyPreviewUrl){
+    try{URL.revokeObjectURL(storyPreviewUrl)}catch(_){}
+  }
+  storyPreviewUrl='';
+  storyFile=null;
+  const input=document.getElementById('storyFile');
+  if(input)input.value='';
+  const preview=document.getElementById('storyPreview');
+  if(preview){
+    preview.innerHTML=`
+      <div class="story-upload-empty">
+        ${icon('photo')}
+        <b>Adicionar foto ou vídeo</b>
+        <span>Fotos JPG/PNG ou vídeos MP4/WebM</span>
+      </div>`;
+  }
+}
+
+function openStoryDialog(){
+  const dlg=document.getElementById('storyDlg');
+  if(!dlg)return;
+  clearStoryPreview();
+  document.getElementById('storyCaption').value='';
+  document.getElementById('storyMsg').textContent='';
+  dlg.showModal();
+}
+
+function validateStoryVideo(file){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file);
+    const video=document.createElement('video');
+    video.preload='metadata';
+    video.onloadedmetadata=()=>{
+      const duration=Number(video.duration||0);
+      URL.revokeObjectURL(url);
+      if(duration>60){
+        reject(Error('O vídeo do story deve ter no máximo 60 segundos.'));
+      }else{
+        resolve(duration);
+      }
+    };
+    video.onerror=()=>{
+      URL.revokeObjectURL(url);
+      reject(Error('Não foi possível ler este vídeo.'));
+    };
+    video.src=url;
+  });
+}
+
+async function chooseStoryFile(file){
+  if(!file)return;
+  const msg=document.getElementById('storyMsg');
+  msg.textContent='';
+
+  if(!(file.type.startsWith('image/')||['video/mp4','video/webm'].includes(file.type))){
+    msg.textContent='Escolha uma foto ou vídeo MP4/WebM.';
+    return;
+  }
+
+  if(file.type.startsWith('image/') && file.size>5*1024*1024){
+    msg.textContent='A foto deve ter no máximo 5 MB.';
+    return;
+  }
+
+  if(file.type.startsWith('video/')){
+    try{
+      await validateStoryVideo(file);
+    }catch(error){
+      msg.textContent=error.message;
+      return;
+    }
+  }
+
+  clearStoryPreview();
+  storyFile=file;
+  storyPreviewUrl=URL.createObjectURL(file);
+
+  const preview=document.getElementById('storyPreview');
+  preview.innerHTML=file.type.startsWith('video/')
+    ?`<video src="${storyPreviewUrl}" controls muted playsinline></video>`
+    :`<img src="${storyPreviewUrl}" alt="Prévia do story">`;
+}
+
+async function publishStory(){
+  if(!storyFile){
+    document.getElementById('storyMsg').textContent='Escolha uma foto ou vídeo.';
+    return;
+  }
+
+  const btn=document.getElementById('storyPublish');
+  const msg=document.getElementById('storyMsg');
+  btn.disabled=true;
+  btn.textContent='Publicando...';
+  msg.textContent='';
+
+  try{
+    let mediaData='';
+    let mediaType=storyFile.type;
+
+    if(storyFile.type.startsWith('image/')){
+      mediaData=await fileToData(storyFile,1600);
+      mediaType='image/jpeg';
+    }else{
+      const uploaded=await uploadPendingVideo(storyFile);
+      mediaData=uploaded.media_data;
+      mediaType=uploaded.media_type;
+    }
+
+    await api('/api/stories',{
+      method:'POST',
+      body:JSON.stringify({
+        media_data:mediaData,
+        media_type:mediaType,
+        caption:document.getElementById('storyCaption').value.trim()
+      })
+    });
+
+    document.getElementById('storyDlg').close();
+    clearStoryPreview();
+    toast('Story publicado por 24 horas.');
+    stories=await api('/api/stories');
+    if(view==='feed')render();
+  }catch(error){
+    msg.textContent=error.message||'Não foi possível publicar o story.';
+  }finally{
+    btn.disabled=false;
+    btn.textContent='Compartilhar story';
+  }
+}
+
+function storyLatestByUser(){
+  const map=new Map();
+  for(const item of stories){
+    map.set(item.user_id,item);
+  }
+  return [...map.values()].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+}
+
+function desktopStoryStripHtml(){
+  const cards=storyLatestByUser();
+  return `<section class="story-strip">
+    <button class="story create-story" onclick="openStoryDialog()">
+      <span class="story-plus">${icon('plus')}</span>
+      <b>Criar story</b>
+    </button>
+    ${cards.map(s=>`
+      <button class="story real-story" onclick="openStoryViewerById(${s.id})"
+        style="${s.media_type.startsWith('image/')?`background-image:url('${s.media_data}')`:''}">
+        ${s.media_type.startsWith('video/')?`<video src="${esc(s.media_data)}" muted preload="metadata"></video>`:''}
+        <span class="story-user-avatar">
+          ${s.avatar?`<img src="${esc(s.avatar)}" alt="">`:`<i>${storyInitial(s)}</i>`}
+        </span>
+        <b>${esc(s.user_id===me.id?'Seu story':s.name)}</b>
+      </button>
+    `).join('')}
+  </section>`;
+}
+
+function mobileStoryStripHtml(){
+  const cards=storyLatestByUser();
+  return `
+    <button type="button" class="mobile-story-card-v523 mobile-story-create-v523" onclick="openStoryDialog()">
+      <div class="mobile-story-photo-v523">
+        ${me?.avatar?`<img src="${esc(me.avatar)}" alt="">`:`<span>${storyInitial(me)}</span>`}
+      </div>
+      <div class="mobile-story-plus-v523">+</div>
+      <b>Criar story</b>
+    </button>
+
+    ${cards.map(s=>`
+      <button type="button" class="mobile-story-card-v523 mobile-real-story-v530"
+              onclick="openStoryViewerById(${s.id})">
+        ${s.media_type.startsWith('image/')
+          ?`<img class="mobile-story-real-media-v530" src="${esc(s.media_data)}" alt="">`
+          :`<video class="mobile-story-real-media-v530" src="${esc(s.media_data)}" muted preload="metadata"></video>`}
+        <span class="mobile-story-user-ring-v530">
+          ${s.avatar?`<img src="${esc(s.avatar)}" alt="">`:`<i>${storyInitial(s)}</i>`}
+        </span>
+        <span>${esc(s.user_id===me.id?'Seu story':s.name)}</span>
+      </button>
+    `).join('')}
+  `;
+}
+
+function openStoryViewerById(id){
+  const index=stories.findIndex(s=>Number(s.id)===Number(id));
+  if(index<0)return;
+  openStoryViewer(index);
+}
+
+function openStoryViewer(index){
+  if(!stories.length)return;
+  storyViewerIndex=Math.max(0,Math.min(index,stories.length-1));
+  const dlg=document.getElementById('storyViewerDlg');
+  dlg.showModal();
+  renderStoryViewer();
+}
+
+function closeStoryViewer(){
+  clearTimeout(storyTimer);
+  storyTimer=null;
+  const dlg=document.getElementById('storyViewerDlg');
+  if(dlg?.open)dlg.close();
+}
+
+function storyNext(){
+  clearTimeout(storyTimer);
+  if(storyViewerIndex>=stories.length-1){
+    closeStoryViewer();
+    return;
+  }
+  storyViewerIndex++;
+  renderStoryViewer();
+}
+
+function storyPrev(){
+  clearTimeout(storyTimer);
+  if(storyViewerIndex<=0)return;
+  storyViewerIndex--;
+  renderStoryViewer();
+}
+
+function renderStoryViewer(){
+  clearTimeout(storyTimer);
+  const story=stories[storyViewerIndex];
+  if(!story)return closeStoryViewer();
+
+  const root=document.getElementById('storyViewerContent');
+  const bars=stories.map((_,i)=>`<span class="${i<storyViewerIndex?'done':i===storyViewerIndex?'active':''}"><i></i></span>`).join('');
+
+  root.innerHTML=`
+    <div class="story-viewer-progress">${bars}</div>
+    <div class="story-viewer-head">
+      <div class="story-viewer-user">
+        <span class="story-viewer-avatar">
+          ${story.avatar?`<img src="${esc(story.avatar)}" alt="">`:`<i>${storyInitial(story)}</i>`}
+        </span>
+        <div>
+          <b>${esc(story.name)}</b>
+          <small>${new Date(story.created_at).toLocaleString('pt-BR')}</small>
+        </div>
+      </div>
+      <div class="story-viewer-tools">
+        ${Number(story.user_id)===Number(me.id)||me.is_admin
+          ?`<button type="button" onclick="deleteStory(${story.id})" title="Excluir story">${icon('trash')}</button>`
+          :''}
+        <button type="button" onclick="closeStoryViewer()" title="Fechar">×</button>
+      </div>
+    </div>
+
+    <button class="story-nav story-nav-prev" onclick="storyPrev()" aria-label="Story anterior">‹</button>
+
+    <div class="story-viewer-media">
+      ${story.media_type.startsWith('video/')
+        ?`<video id="storyViewerVideo" src="${esc(story.media_data)}" autoplay playsinline controls></video>`
+        :`<img src="${esc(story.media_data)}" alt="Story de ${esc(story.name)}">`}
+    </div>
+
+    <button class="story-nav story-nav-next" onclick="storyNext()" aria-label="Próximo story">›</button>
+
+    ${story.caption?`<div class="story-viewer-caption">${esc(story.caption)}</div>`:''}
+  `;
+
+  if(story.media_type.startsWith('video/')){
+    const video=document.getElementById('storyViewerVideo');
+    video.onended=storyNext;
+    video.onerror=()=>{storyTimer=setTimeout(storyNext,3000)};
+  }else{
+    storyTimer=setTimeout(storyNext,5000);
+  }
+}
+
+async function deleteStory(id){
+  if(!confirm('Excluir este story?'))return;
+  try{
+    await api(`/api/stories/${id}`,{method:'DELETE'});
+    stories=stories.filter(s=>Number(s.id)!==Number(id));
+    toast('Story excluído.');
+    closeStoryViewer();
+    if(view==='feed')render();
+  }catch(error){
+    toast(error.message,true);
+  }
+}
+
+
+function renderFeed(saved=false){let list=posts.filter(p=>(!saved||p.bookmarked));content.innerHTML=`<section class="card composer"><div class="composer-main">${avatar(me)}<button onclick="openNewPost()">No que você está pensando, ${esc(me.name.split(' ')[0])}?</button></div><div class="composer-tools"><button onclick="openNewPost('video')">${icon('video')}<span>Vídeo</span></button><button onclick="openNewPost('photo')">${icon('photo')}<span>Foto</span></button><button onclick="openNewPost('audio')">${icon('audio')}<span>Áudio</span></button><button onclick="openNewPost('file')">${icon('file')}<span>Arquivo</span></button></div></section>${desktopStoryStripHtml()}${list.length?list.map(postCard).join(''):'<div class="empty">Nenhuma publicação encontrada.</div>'}`}
 function renderExperts(){content.innerHTML=`<div class="page-title"><h1>Profissionais</h1><p>Encontre especialistas, conheça seus serviços e faça contatos.</p></div><div class="people-grid">${users.map(u=>`<article class="card person"><div class="mini-cover" style="${u.cover?`background-image:url('${u.cover}')`:''}"></div>${avatar(u,'big')}<h3>${esc(u.name)}${u.is_admin?' ✓':''}</h3><b>${esc(u.role)}</b><p class="availability">● ${esc(u.availability||'Disponível para trabalhos')}</p><p class="meta">${icon('location')} ${esc(u.city||'Cidade não informada')}</p><div class="skills">${lines(u.specialties)}</div><div class="follow-stats"><span><b>${u.followers}</b> seguidores</span><span><b>${u.following}</b> seguindo</span></div><button class="secondary" onclick="openProfile(${u.id})">Ver perfil</button>${u.id!==me.id?`<button class="${u.is_following?'secondary':'primary'}" onclick="followUser(${u.id})">${u.is_following?'Deixar de seguir':'Seguir'}</button>`:''}</article>`).join('')}</div>`}
 
 
@@ -4444,39 +4745,7 @@ function buildMobileStoryStrip(){
   strip.id='mobileStoryStrip';
   strip.className='mobile-story-strip-v523';
 
-  strip.innerHTML=`
-    <button type="button" class="mobile-story-card-v523 mobile-story-create-v523">
-      <div class="mobile-story-photo-v523"></div>
-      <div class="mobile-story-plus-v523">+</div>
-      <b>Criar story</b>
-    </button>
-
-    <button type="button" class="mobile-story-card-v523">
-      <div class="mobile-story-gradient-v523 story-a"></div>
-      <span>Dicas de áudio</span>
-    </button>
-
-    <button type="button" class="mobile-story-card-v523">
-      <div class="mobile-story-gradient-v523 story-b"></div>
-      <span>Profissionais</span>
-    </button>
-
-    <button type="button" class="mobile-story-card-v523">
-      <div class="mobile-story-gradient-v523 story-c"></div>
-      <span>Equipamentos</span>
-    </button>
-  `;
-
-  const first=strip.querySelector('.mobile-story-photo-v523');
-  if(me?.avatar){
-    first.innerHTML=`<img src="${esc(me.avatar)}" alt="">`;
-  }else{
-    first.innerHTML=`<span>${esc((me?.name||'S').slice(0,1).toUpperCase())}</span>`;
-  }
-
-  strip.querySelector('.mobile-story-create-v523').onclick=()=>{
-    document.getElementById('newPostBtn')?.click();
-  };
+  strip.innerHTML=mobileStoryStripHtml();
 
   content.prepend(strip);
 }

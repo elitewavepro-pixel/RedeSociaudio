@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.2.5 — Acoes de Post Profissionais'
+APP_VERSION = 'v5.3.0 — Stories Reais'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -692,6 +692,17 @@ def init_db():
       image_url TEXT NOT NULL,
       caption TEXT DEFAULT '',
       created_at TEXT NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS stories(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      media_data TEXT NOT NULL,
+      media_type TEXT NOT NULL,
+      caption TEXT DEFAULT '',
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
     CREATE TABLE IF NOT EXISTS post_media(
@@ -1394,6 +1405,29 @@ class Handler(SimpleHTTPRequestHandler):
             try:u['gallery']=user_gallery(c,u['id'])
             finally:c.close()
             return self.send_json({'user':u})
+
+        if p == '/api/stories':
+            u=self.require_user()
+            if not u:return
+            cutoff=(datetime.now(timezone.utc)-timedelta(hours=24)).isoformat()
+            c=connect()
+            try:
+                c.execute("DELETE FROM stories WHERE expires_at<=?",(now(),))
+                c.commit()
+                rows=c.execute(
+                    '''SELECT s.id,s.user_id,s.media_data,s.media_type,s.caption,
+                              s.created_at,s.expires_at,
+                              u.name,u.avatar,u.role
+                       FROM stories s
+                       JOIN users u ON u.id=s.user_id
+                       WHERE s.expires_at>? AND s.created_at>=?
+                       ORDER BY s.created_at ASC,s.id ASC''',
+                    (now(),cutoff)
+                ).fetchall()
+                return self.send_json([dict(x) for x in rows])
+            finally:
+                c.close()
+
         if p == '/api/posts':
             u = self.require_user()
             if not u: return
@@ -1817,6 +1851,35 @@ class Handler(SimpleHTTPRequestHandler):
                 finally:
                     c.close()
             return self.send_json({'ok':True,'message':message,'details':details})
+
+        if p == '/api/stories':
+            u=self.require_user()
+            if not u:return
+            d=self.read_json()
+            media_data=(d.get('media_data') or '').strip()
+            media_type=(d.get('media_type') or '').strip().lower()[:100]
+            caption=(d.get('caption') or '').strip()[:220]
+
+            if not media_data:
+                return self.send_json({'error':'Escolha uma foto ou vídeo para o story.'},400)
+            if not (media_type.startswith('image/') or media_type in ('video/mp4','video/webm')):
+                return self.send_json({'error':'Story aceita somente foto ou vídeo.'},415)
+
+            created=now()
+            expires=(datetime.now(timezone.utc)+timedelta(hours=24)).isoformat()
+            c=connect()
+            try:
+                c.execute(
+                    '''INSERT INTO stories(user_id,media_data,media_type,caption,created_at,expires_at)
+                       VALUES(?,?,?,?,?,?)''',
+                    (u['id'],media_data,media_type,caption,created,expires)
+                )
+                story_id=c.execute('SELECT last_insert_rowid()').fetchone()[0]
+                c.commit()
+            finally:
+                c.close()
+            return self.send_json({'ok':True,'id':story_id,'expires_at':expires},201)
+
         if p == '/api/media/audio':
             u=self.require_user()
             if not u:return
@@ -2748,6 +2811,22 @@ class Handler(SimpleHTTPRequestHandler):
     def do_DELETE(self):
         p=urlparse(self.path).path; u=self.require_user()
         if not u:return
+
+        if p.startswith('/api/stories/'):
+            try: sid=int(p.split('/')[3])
+            except Exception:return self.send_json({'error':'Story inválido.'},400)
+            c=connect()
+            row=c.execute('SELECT user_id,media_data FROM stories WHERE id=?',(sid,)).fetchone()
+            if not row:
+                c.close(); return self.send_json({'error':'Story não encontrado.'},404)
+            if row['user_id']!=u['id'] and not u['is_admin']:
+                c.close(); return self.send_json({'error':'Você só pode excluir seu próprio story.'},403)
+            media=row['media_data'] or ''
+            c.execute('DELETE FROM stories WHERE id=?',(sid,))
+            c.commit(); c.close()
+            remove_media_file(media)
+            return self.send_json({'ok':True})
+
         if p.startswith('/api/posts/'):
             try: pid=int(p.split('/')[3])
             except Exception:return self.send_json({'error':'Publicação inválida.'},400)
