@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.2.3 Public';
+const SOCIAUDIO_VERSION='v5.2.5 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.2.3 PUBLIC</span>
+        <span class="beta-label">V5.2.5 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -334,6 +334,30 @@ function tab(w){login.hidden=w!=='login';register.hidden=w!=='register';msg.text
 async function boot(){
   await applyPlatformSettings();
 
+  // Quando a landing chama /app?cadastro=1, o cadastro tem prioridade
+  // absoluta sobre qualquer sessao antiga salva neste navegador.
+  const bootParams=new URLSearchParams(location.search);
+  const forceRegistration=bootParams.get('cadastro')==='1';
+
+  if(forceRegistration){
+    auth.hidden=false;
+    auth.style.display='grid';
+    app.hidden=true;
+    app.style.display='none';
+
+    try{
+      openCleanRegistration();
+    }catch(_){
+      try{
+        tab('register');
+        registerTab.classList.add('active');
+        loginTab.classList.remove('active');
+      }catch(__){}
+    }
+
+    return;
+  }
+
   if(token){
     try{
       me=(await api('/api/me')).user;
@@ -396,7 +420,22 @@ async function loadAll(){try{
   updateNotificationBadge();
   render();
 }catch(e){toast(e.message,true)}}
-loginTab.onclick=()=>{tab('login');loginTab.classList.add('active');registerTab.classList.remove('active')};registerTab.onclick=()=>{tab('register');registerTab.classList.add('active');loginTab.classList.remove('active')};
+loginTab.onclick=()=>{
+  tab('login');
+  loginTab.classList.add('active');
+  registerTab.classList.remove('active');
+  try{
+    const u=new URL(location.href);
+    u.searchParams.delete('cadastro');
+    history.replaceState({},'',u.pathname+(u.search||''));
+  }catch(_){}
+};
+registerTab.onclick=()=>{
+  tab('register');
+  registerTab.classList.add('active');
+  loginTab.classList.remove('active');
+  clearRegistrationForm();
+};
 login.onsubmit=async e=>{
   e.preventDefault();
   try{
@@ -452,6 +491,12 @@ register.onsubmit=async e=>{
     register.reset();
 
     // Voltar para a tela Entrar.
+    try{
+      const u=new URL(location.href);
+      u.searchParams.delete('cadastro');
+      history.replaceState({},'',u.pathname+(u.search||''));
+    }catch(_){}
+
     tab('login');
     loginTab.classList.add('active');
     registerTab.classList.remove('active');
@@ -1026,75 +1071,112 @@ async function joinCommunity(id){
 } async function followUser(id){await api(`/api/users/${id}/follow`,{method:'POST'});loadAll()}
 async function featurePost(id){await api(`/api/admin/posts/${id}/feature`,{method:'POST'});loadAll()} async function removePost(id){if(!confirm('Deseja realmente excluir esta publicação? Esta ação não poderá ser desfeita.'))return;try{await api(`/api/posts/${id}`,{method:'DELETE'});toast('Publicação excluída.');await loadAll()}catch(e){toast(e.message,true)}}
 function postGalleryCard(p){let items=(p.media_items||[]).filter(x=>x.media_type?.startsWith('image/'));if(!items.length)return'';let cls='count-'+Math.min(items.length,4);return `<div class="post-gallery ${cls}">${items.slice(0,6).map((x,i)=>`<button onclick="openImageViewer('${esc(x.media_url)}','${esc(p.title)}')"><img src="${esc(x.media_url)}" alt="Foto da publicação">${i===5&&items.length>6?`<span>+${items.length-6}</span>`:''}</button>`).join('')}</div>`}
-function safeLink(url){try{let u=new URL(url);return ['http:','https:'].includes(u.protocol)?u.href:''}catch{return ''}} function linkCard(url){let href=safeLink(url);if(!href)return '';let host='';try{host=new URL(href).hostname.replace(/^www\./,'')}catch{}return `<a class="post-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer"><span class="link-icon">${icon('link')}</span><span><b>${esc(host||'Abrir link')}</b><small>${esc(href)}</small></span><strong>Abrir</strong></a>`} function fileCard(md,mt,name,size){let ext=fileExt(name),pdf=ext==='.pdf';return `<div class="post-file-card"><span>${icon(ext==='.pdf'?'file':'file')}</span><div><b>${esc(name||'Arquivo')}</b><small>${esc(ext.replace('.','').toUpperCase()||'ARQUIVO')} · ${humanSize(Number(size||0))}</small></div>${pdf?`<a class="secondary btn" href="${esc(md)}" target="_blank" rel="noopener">Visualizar</a>`:''}<a class="primary btn" href="${esc(md)}" download="${esc(name||'arquivo')}">Baixar</a></div>`} function commentsBlock(p){if(!openCommentPosts.has(p.id))return '';return `<section class="comments-panel"><div class="comment-compose">${avatar(me)}<textarea id="comment-${p.id}" placeholder="Escreva um comentário..."></textarea><button class="primary" onclick="submitComment(${p.id})">Comentar</button></div>${p.answers.length?p.answers.map(a=>`<div class="answer"><b>${esc(a.name)}${a.is_admin?' ✓':''}</b><span class="meta"> ${esc(a.role)} · ${new Date(a.created_at).toLocaleString('pt-BR')}</span><p>${esc(a.body)}</p></div>`).join(''):'<p class="no-comments">Ainda não há comentários. Seja o primeiro a comentar.</p>'}</section>`} function postCard(p){let canEdit=p.user_id===me.id||me.is_admin;let edited=p.updated_at?` · <span class="edited">Editado em ${new Date(p.updated_at).toLocaleString('pt-BR')}</span>`:'';return `<article class="card post ${p.is_featured?'featured':''}"><div class="post-author">${avatar(p)}<div><button class="link-name" onclick="openProfile(${p.user_id})"><b>${esc(p.name)}${p.is_admin?' ✓':''}</b></button><div class="meta">${esc(p.role)} · ${new Date(p.created_at).toLocaleString('pt-BR')}${edited}</div></div>${p.is_featured?'<span class="featured-label">DESTAQUE</span>':''}</div><h2>${esc(p.title)}</h2><div><span class="tag">${esc(p.type)}</span><span class="tag muted">${esc(p.category)}</span></div><p class="post-body">${esc(p.body)}</p>${linkCard(p.link_url||'')}${postGalleryCard(p)||(()=>{let md=p.media_data||p.image_data||'',mt=p.media_type||(md.startsWith('data:image/')?'image/jpeg':'');if(!md)return '';return mt.startsWith('video/')?`<video class="post-video" src="${esc(md)}" controls preload="metadata" playsinline></video>`:mt.startsWith('audio/')?`<div class="post-audio-wrap"><div class="post-audio-head">${icon('audio')}<span><b>${esc(p.media_name||'Áudio')}</b><small>Publicação de áudio</small></span></div><audio class="post-audio" src="${esc(md)}" controls preload="metadata"></audio></div>`:mt.startsWith('image/')?`<img class="post-image" src="${md}" onclick="openImageViewer(this.src,'${esc(p.title)}')" alt="Mídia da publicação">`:fileCard(md,mt,p.media_name,p.media_size)})()}<div class="engagement-summary"><span>${p.likes} curtida(s)</span><span>${p.comments} comentário(s)</span></div><div class="actions"><button class="${p.liked?'active':''}" onclick="like(${p.id})">${icon('like')}<span>Curtir</span></button><button class="${openCommentPosts.has(p.id)?'active':''}" onclick="toggleComments(${p.id})">${icon('comment')}<span>Comentários</span></button><button onclick="navigator.clipboard?.writeText(location.href);toast('Link copiado.')">${icon('share')}<span>Compartilhar</span></button><button class="${p.bookmarked?'active':''}" onclick="bookmark(${p.id})">${icon('saved')}<span>${p.bookmarked?'Salvo':'Salvar'}</span></button>${canEdit?`<button onclick="editPost(${p.id})">${icon('edit')}<span>Editar</span></button><button class="danger-action" onclick="removePost(${p.id})">${icon('trash')}<span>Excluir</span></button>`:''}${me.is_admin?`<button class="post-more" onclick="featurePost(${p.id})" title="Destacar">${icon('more')}</button>`:''}</div>${commentsBlock(p)}</article>`}
+function safeLink(url){try{let u=new URL(url);return ['http:','https:'].includes(u.protocol)?u.href:''}catch{return ''}} function linkCard(url){let href=safeLink(url);if(!href)return '';let host='';try{host=new URL(href).hostname.replace(/^www\./,'')}catch{}return `<a class="post-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer"><span class="link-icon">${icon('link')}</span><span><b>${esc(host||'Abrir link')}</b><small>${esc(href)}</small></span><strong>Abrir</strong></a>`} function fileCard(md,mt,name,size){let ext=fileExt(name),pdf=ext==='.pdf';return `<div class="post-file-card"><span>${icon(ext==='.pdf'?'file':'file')}</span><div><b>${esc(name||'Arquivo')}</b><small>${esc(ext.replace('.','').toUpperCase()||'ARQUIVO')} · ${humanSize(Number(size||0))}</small></div>${pdf?`<a class="secondary btn" href="${esc(md)}" target="_blank" rel="noopener">Visualizar</a>`:''}<a class="primary btn" href="${esc(md)}" download="${esc(name||'arquivo')}">Baixar</a></div>`} function commentsBlock(p){if(!openCommentPosts.has(p.id))return '';return `<section class="comments-panel"><div class="comment-compose">${avatar(me)}<textarea id="comment-${p.id}" placeholder="Escreva um comentário..."></textarea><button class="primary" onclick="submitComment(${p.id})">Comentar</button></div>${p.answers.length?p.answers.map(a=>`<div class="answer"><b>${esc(a.name)}${a.is_admin?' ✓':''}</b><span class="meta"> ${esc(a.role)} · ${new Date(a.created_at).toLocaleString('pt-BR')}</span><p>${esc(a.body)}</p></div>`).join(''):'<p class="no-comments">Ainda não há comentários. Seja o primeiro a comentar.</p>'}</section>`} function postCard(p){
+  let canEdit=p.user_id===me.id||me.is_admin;
+  let edited=p.updated_at?` · <span class="edited">Editado em ${new Date(p.updated_at).toLocaleString('pt-BR')}</span>`:'';
 
-let globalSearchTimer=null;
+  const optionsMenu=`
+    <details class="post-options">
+      <summary class="post-options-trigger" title="Mais opções" aria-label="Mais opções">
+        ${icon('more')}
+      </summary>
+      <div class="post-options-menu">
+        <button class="${p.bookmarked?'active':''}" onclick="bookmark(${p.id});this.closest('details').removeAttribute('open')">
+          ${icon('saved')}
+          <span>${p.bookmarked?'Remover dos salvos':'Salvar publicação'}</span>
+        </button>
 
-function normalizeSearchText(value){
-  return String(value||'')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g,'')
-    .toLowerCase()
-    .trim();
-}
+        ${canEdit?`
+          <button onclick="editPost(${p.id});this.closest('details').removeAttribute('open')">
+            ${icon('edit')}
+            <span>Editar publicação</span>
+          </button>
+          <button class="danger-option" onclick="this.closest('details').removeAttribute('open');removePost(${p.id})">
+            ${icon('trash')}
+            <span>Excluir publicação</span>
+          </button>
+        `:''}
 
-function globalUserResult(user){
-  return `<article class="search-result-card search-person">
-    <button class="search-result-main" onclick="openProfile(${user.id})">
-      ${avatar(user)}
-      <span>
-        <b>${esc(user.name)}</b>
-        <small>${esc(user.professional_title||user.headline||user.role||'Usuário da Rede Sociaudio')}</small>
-        <em>${esc(user.city||'Localização não informada')}</em>
-      </span>
-    </button>
-    <div class="search-result-actions">
-      <button class="primary" onclick="openProfile(${user.id})">Ver perfil</button>
-      ${user.id!==me.id?`<button class="secondary" onclick="followUser(${user.id})">${user.is_following?'Deixar de seguir':'Seguir'}</button>`:''}
+        ${me.is_admin?`
+          <button onclick="featurePost(${p.id});this.closest('details').removeAttribute('open')">
+            ${icon('more')}
+            <span>${p.is_featured?'Remover destaque':'Destacar publicação'}</span>
+          </button>
+        `:''}
+      </div>
+    </details>`;
+
+  return `<article class="card post ${p.is_featured?'featured':''}">
+    <div class="post-author">
+      ${avatar(p)}
+      <div class="post-author-info">
+        <button class="link-name" onclick="openProfile(${p.user_id})">
+          <b>${esc(p.name)}${p.is_admin?' ✓':''}</b>
+        </button>
+        <div class="meta">${esc(p.role)} · ${new Date(p.created_at).toLocaleString('pt-BR')}${edited}</div>
+      </div>
+
+      <div class="post-head-actions">
+        ${p.is_featured?'<span class="featured-label">DESTAQUE</span>':''}
+        ${optionsMenu}
+      </div>
     </div>
+
+    <h2>${esc(p.title)}</h2>
+
+    <div>
+      <span class="tag">${esc(p.type)}</span>
+      <span class="tag muted">${esc(p.category)}</span>
+    </div>
+
+    <p class="post-body">${esc(p.body)}</p>
+
+    ${linkCard(p.link_url||'')}
+
+    ${postGalleryCard(p)||(()=>{
+      let md=p.media_data||p.image_data||'',
+          mt=p.media_type||(md.startsWith('data:image/')?'image/jpeg':'');
+      if(!md)return '';
+      return mt.startsWith('video/')
+        ?`<video class="post-video" src="${esc(md)}" controls preload="metadata" playsinline></video>`
+        :mt.startsWith('audio/')
+          ?`<div class="post-audio-wrap">
+              <div class="post-audio-head">
+                ${icon('audio')}
+                <span><b>${esc(p.media_name||'Áudio')}</b><small>Publicação de áudio</small></span>
+              </div>
+              <audio class="post-audio" src="${esc(md)}" controls preload="metadata"></audio>
+            </div>`
+          :mt.startsWith('image/')
+            ?`<img class="post-image" src="${md}" onclick="openImageViewer(this.src,'${esc(p.title)}')" alt="Mídia da publicação">`
+            :fileCard(md,mt,p.media_name,p.media_size)
+    })()}
+
+    <div class="engagement-summary">
+      <span>${p.likes} curtida(s)</span>
+      <span>${p.comments} comentário(s)</span>
+    </div>
+
+    <div class="post-primary-actions">
+      <button class="${p.liked?'active':''}" onclick="like(${p.id})">
+        ${icon('like')}
+        <span>${p.liked?'Curtido':'Curtir'}</span>
+      </button>
+
+      <button class="${openCommentPosts.has(p.id)?'active':''}" onclick="toggleComments(${p.id})">
+        ${icon('comment')}
+        <span>Comentar</span>
+      </button>
+
+      <button onclick="navigator.clipboard?.writeText(location.href);toast('Link copiado.')">
+        ${icon('share')}
+        <span>Compartilhar</span>
+      </button>
+    </div>
+
+    ${commentsBlock(p)}
   </article>`;
 }
-
-function globalPostResult(post){
-  return `<article class="search-result-card">
-    <button class="search-result-main" onclick="view='feed';search.value='${esc(post.title)}';renderFeed()">
-      ${avatar({name:post.name||'U',avatar:post.avatar||''})}
-      <span>
-        <b>${esc(post.title)}</b>
-        <small>Publicação de ${esc(post.name||'Usuário')}</small>
-        <em>${esc(post.category||'Geral')}</em>
-      </span>
-    </button>
-  </article>`;
-}
-
-function globalCommunityResult(community){
-  return `<article class="search-result-card">
-    <button class="search-result-main" onclick="view='communities';renderCommunities()">
-      <span class="search-result-icon">${esc(community.icon||'🎚️')}</span>
-      <span>
-        <b>${esc(community.name)}</b>
-        <small>${esc(community.description||'Comunidade da Rede Sociaudio')}</small>
-        <em>${Number(community.members||0)} membro(s)</em>
-      </span>
-    </button>
-  </article>`;
-}
-
-function globalCompanyResult(company){
-  return `<article class="search-result-card">
-    <button class="search-result-main" onclick="openCompany(${company.id})">
-      ${company.logo?`<img class="avatar" src="${esc(company.logo)}" alt="">`:`<span class="search-result-icon">${esc((company.name||'E').slice(0,1))}</span>`}
-      <span>
-        <b>${esc(company.name)}</b>
-        <small>${esc(company.category||'Empresa')}</small>
-        <em>${esc(company.city||'Localização não informada')}</em>
-      </span>
-    </button>
-    <div class="search-result-actions"><button class="primary" onclick="openCompany(${company.id})">Ver empresa</button></div>
-  </article>`;
-}
-
 async function performGlobalSearch(force=false){
   const query=String(search?.value||'').trim();
   if(!query){

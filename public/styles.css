@@ -6532,3 +6532,228 @@ body.admin-mode .app-shell{
     top:81px!important;
   }
 }
+
+
+/* ===============================================================
+   Rede Sociaudio v5.2.5 — Ações profissionais das publicações
+   =============================================================== */
+
+.post .post-author{
+  position:relative;
+}
+
+.post-author-info{
+  min-width:0;
+  flex:1 1 auto;
+}
+
+.post-head-actions{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+}
+
+.post-options{
+  position:relative;
+  z-index:25;
+}
+
+.post-options>summary{
+  list-style:none;
+}
+
+.post-options>summary::-webkit-details-marker{
+  display:none;
+}
+
+.post-options-trigger{
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:0;
+  border-radius:50%;
+  background:transparent;
+  color:#667085;
+  cursor:pointer;
+  transition:background .15s ease,color .15s ease;
+}
+
+.post-options-trigger:hover,
+.post-options[open] .post-options-trigger{
+  background:#f2f4f7;
+  color:#344054;
+}
+
+.post-options-trigger .sa-icon,
+.post-options-trigger svg{
+  width:21px;
+  height:21px;
+}
+
+.post-options-menu{
+  position:absolute;
+  top:43px;
+  right:0;
+  width:220px;
+  padding:7px;
+  border:1px solid #e3e8ef;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 16px 40px rgba(15,23,42,.16);
+  z-index:50;
+}
+
+.post-options-menu button{
+  width:100%;
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:9px 10px;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+  color:#344054;
+  font-size:11px;
+  font-weight:700;
+  text-align:left;
+  cursor:pointer;
+}
+
+.post-options-menu button:hover{
+  background:#f5f7fa;
+}
+
+.post-options-menu button .sa-icon,
+.post-options-menu button svg{
+  width:19px;
+  height:19px;
+  flex:0 0 19px;
+}
+
+.post-options-menu button.active{
+  color:#1769df;
+}
+
+.post-options-menu button.danger-option{
+  color:#d92d20;
+}
+
+.post-options-menu button.danger-option:hover{
+  background:#fff1f0;
+}
+
+/* Barra principal estilo rede social */
+.post-primary-actions{
+  width:100%;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:center;
+  gap:4px;
+  margin-top:0;
+  padding:5px 0;
+  border-top:1px solid #e8ecf1;
+  border-bottom:1px solid #e8ecf1;
+}
+
+.post-primary-actions button{
+  min-width:0;
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:8px 6px;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+  color:#667085;
+  font-size:11px;
+  line-height:1;
+  font-weight:750;
+  white-space:nowrap;
+  cursor:pointer;
+  transition:background .15s ease,color .15s ease;
+}
+
+.post-primary-actions button:hover{
+  background:#f5f7fa;
+  color:#344054;
+}
+
+.post-primary-actions button.active{
+  color:#1769df;
+}
+
+.post-primary-actions button .sa-icon,
+.post-primary-actions button svg{
+  width:20px;
+  height:20px;
+  flex:0 0 20px;
+}
+
+@media(max-width:760px){
+
+  .post-head-actions{
+    gap:5px;
+  }
+
+  .post-options-trigger{
+    width:34px!important;
+    height:34px!important;
+  }
+
+  .post-options-menu{
+    position:fixed!important;
+    left:10px!important;
+    right:10px!important;
+    top:auto!important;
+    bottom:78px!important;
+    width:auto!important;
+    max-width:none!important;
+    padding:8px!important;
+    border-radius:15px!important;
+    box-shadow:0 18px 55px rgba(15,23,42,.24)!important;
+  }
+
+  .post-options-menu button{
+    min-height:48px!important;
+    padding:11px 12px!important;
+    font-size:13px!important;
+  }
+
+  .post-primary-actions{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:0!important;
+    padding:4px 2px!important;
+  }
+
+  .post-primary-actions button{
+    min-height:46px!important;
+    gap:6px!important;
+    padding:7px 3px!important;
+    font-size:11px!important;
+  }
+
+  .post-primary-actions button .sa-icon,
+  .post-primary-actions button svg{
+    width:20px!important;
+    height:20px!important;
+  }
+
+  .engagement-summary{
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+}
+
+@media(max-width:360px){
+  .post-primary-actions button{
+    font-size:10px!important;
+    gap:4px!important;
+  }
+}
