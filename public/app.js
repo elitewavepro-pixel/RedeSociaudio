@@ -2,7 +2,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 
 let chatPoll=null;
 let chatConversationId=null;
-const SOCIAUDIO_VERSION='v4.0.4 Public';
+const SOCIAUDIO_VERSION='v4.0.5 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -156,7 +156,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.0.4 PUBLIC</span>
+        <span class="beta-label">V4.0.5 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -340,8 +340,19 @@ function resetPostDialog(){editingPostId=null;imageChanged=false;clearPostObject
 function openNewPost(kind=''){resetPostDialog();pimg.multiple=false;if(kind==='video'){pimg.accept='video/mp4,video/webm';postMediaLabel.textContent='Escolher vídeo';postMediaHelp.textContent=`Plano ${me?.plan_label||'Gratuito'}: vídeos MP4/WebM de até ${me?.video_limit_label||'250 MB'}.`;pt.value='Experiência'}else if(kind==='audio'){pimg.accept='audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/aac,audio/flac';postMediaLabel.textContent='Escolher áudio';postMediaHelp.textContent=`Plano ${me?.plan_label||'Gratuito'}: áudios MP3, WAV, OGG, M4A/AAC ou FLAC de até ${me?.audio_limit_label||'100 MB'}.`;pt.value='Experiência'}else if(kind==='photo'){pimg.accept='image/*';pimg.multiple=true;postMediaLabel.textContent='Escolher até 6 fotos';postMediaHelp.textContent='Selecione uma ou várias imagens para criar uma galeria.'}else if(kind==='file'){pimg.accept='.pdf,.doc,.docx,.odt,.rtf,.txt,.md,.xls,.xlsx,.ods,.csv,.ppt,.pptx,.odp,.zip,.rar,.7z,.xml,.json,.yaml,.yml,.rew,.mdat,.trace,.frd,.zma,.cal,.mic,.ssn,.scn,.scene,.show,.preset,.fxp,.fxb,.vstpreset,.ir,.syx,.mid,.midi,.cue,.rider';postMediaLabel.textContent='Escolher arquivo';postMediaHelp.textContent=`Documentos até ${me?.document_limit_label||'100 MB'}; compactados até ${me?.archive_limit_label||'500 MB'}; arquivos técnicos até ${me?.technical_file_limit_label||'250 MB'}.`}postDlg.showModal()}
 function editPost(id){let p=posts.find(x=>x.id===id);if(!p)return toast('Publicação não encontrada.',true);clearPostObjectUrl();pendingPostFile=null;editingPostId=id;imageChanged=false;pt.value=p.type;pc.value=p.category;pti.value=p.title;pb.value=p.body;purl.value=p.link_url||'';postImage=p.media_data||p.image_data||'';postMediaType=p.media_type||(postImage.startsWith('data:image/')?'image/jpeg':'');postMediaName=p.media_name||'';postMediaSize=Number(p.media_size||0);postGallery=(p.media_items||[]).map(x=>({media_url:x.media_url,name:x.media_name,size:x.media_size}));if(!postGallery.length&&postMediaType.startsWith('image/')&&postImage)postGallery=[{media_url:postImage,name:postMediaName,size:postMediaSize}];showPostMediaPreview();postDialogTitle.textContent='Editar publicação';postSubmit.textContent='Salvar alterações';postDlg.showModal()}
 postForm.onsubmit=async e=>{e.preventDefault();let btn=postSubmit;btn.disabled=true;btn.textContent=postMediaType.startsWith('audio/')?'Enviando áudio...':postMediaType.startsWith('video/')?'Enviando vídeo...':'Salvando...';try{let uploaded=null;if(pendingPostFile&&postMediaType.startsWith('audio/'))uploaded=await uploadPendingAudio(pendingPostFile);else if(pendingPostFile&&!postMediaType.startsWith('image/')&&!postMediaType.startsWith('video/'))uploaded=await uploadPendingFile(pendingPostFile);let payload={type:pt.value,category:pc.value,title:pti.value,body:pb.value,link_url:purl.value.trim()};if(!editingPostId||imageChanged){payload.media_data=uploaded?.media_data??(postGallery.length>1?'':postImage);payload.media_type=uploaded?.media_type??postMediaType;payload.media_name=uploaded?.media_name??postMediaName;payload.media_size=uploaded?.size??postMediaSize;payload.gallery_images=postGallery}await api(editingPostId?`/api/posts/${editingPostId}/edit`:'/api/posts',{method:'POST',body:JSON.stringify(payload)});let edited=!!editingPostId;postDlg.close();resetPostDialog();toast(edited?'Publicação atualizada.':'Publicação criada.');loadAll()}catch(e){toast(e.message,true)}finally{btn.disabled=false;btn.textContent=editingPostId?'Salvar alterações':'Publicar'}};
-async function like(id){await api(`/api/posts/${id}/like`,{method:'POST'});loadAll()} async function bookmark(id){await api(`/api/posts/${id}/bookmark`,{method:'POST'});loadAll()}
-function toggleComments(id){openCommentPosts.has(id)?openCommentPosts.delete(id):openCommentPosts.add(id);render()} async function submitComment(id){let el=document.getElementById(`comment-${id}`),body=(el?.value||'').trim();if(!body)return toast('Digite um comentário.',true);try{await api(`/api/posts/${id}/comments`,{method:'POST',body:JSON.stringify({body})});openCommentPosts.add(id);toast('Comentário publicado.');await loadAll()}catch(e){toast(e.message,true)}}
+async function like(id){
+  const result=await api(`/api/posts/${id}/like`,{method:'POST'});
+  if(typeof refreshBellRealtime==='function')refreshBellRealtime();
+  await loadAll();
+  return result;
+} async function bookmark(id){await api(`/api/posts/${id}/bookmark`,{method:'POST'});loadAll()}
+function toggleComments(id){openCommentPosts.has(id)?openCommentPosts.delete(id):openCommentPosts.add(id);render()} async function submitComment(id){let el=document.getElementById(`comment-${id}`),body=(el?.value||'').trim();if(!body)return toast('Digite um comentário.',true);try{
+  await api(`/api/posts/${id}/comments`,{method:'POST',body:JSON.stringify({body})});
+  openCommentPosts.add(id);
+  toast('Comentário publicado.');
+  if(typeof refreshBellRealtime==='function')refreshBellRealtime();
+  await loadAll()
+}catch(e){toast(e.message,true)}}
 
 
 async function fileToDataURL(file){

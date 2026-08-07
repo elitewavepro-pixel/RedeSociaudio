@@ -4,7 +4,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 
-APP_VERSION = 'v4.0.4 — Sino em tempo real'
+APP_VERSION = 'v4.0.5 — Notificações de interação'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -1798,20 +1798,111 @@ class Handler(SimpleHTTPRequestHandler):
                     c.rollback();c.close();return self.send_json({'error':str(exc)},400)
             c.commit(); c.close(); return self.send_json({'ok':True})
         if p.startswith('/api/posts/') and p.endswith('/comments'):
-            try:pid=int(p.split('/')[3])
-            except:return self.send_json({'error':'Publicação inválida.'},400)
-            body=d.get('body','').strip()
-            if len(body)<2:return self.send_json({'error':'Digite uma resposta.'},400)
-            c=connect(); c.execute('INSERT INTO comments(post_id,user_id,body,is_solution,created_at) VALUES(?,?,?,0,?)',(pid,u['id'],body,now())); owner=c.execute('SELECT user_id,title FROM posts WHERE id=?',(pid,)).fetchone();
-            if owner and owner['user_id']!=u['id']: c.execute("INSERT INTO notifications(user_id,actor_id,type,message,post_id,is_read,created_at) VALUES(?,?,'comment',?,?,0,?)",(owner['user_id'],u['id'],f"{u['name']} respondeu sua publicação: {owner['title']}",pid,now()))
-            c.commit(); c.close(); return self.send_json({'ok':True},201)
+            try:
+                pid=int(p.split('/')[3])
+            except Exception:
+                return self.send_json({'error':'Publicação inválida.'},400)
+
+            body=(d.get('body') or '').strip()
+            if len(body)<2:
+                return self.send_json({'error':'Digite uma resposta.'},400)
+
+            def create_comment(c):
+                post=c.execute(
+                    "SELECT id,user_id,title FROM posts WHERE id=? AND status='published'",
+                    (pid,)
+                ).fetchone()
+                if not post:
+                    return {'error':'Publicação não encontrada.'}
+
+                stamp=now()
+                c.execute(
+                    '''INSERT INTO comments(post_id,user_id,body,is_solution,created_at)
+                       VALUES(?,?,?,0,?)''',
+                    (pid,u['id'],body,stamp)
+                )
+                comment_id=c.execute('SELECT last_insert_rowid()').fetchone()[0]
+
+                notification_created=False
+                if int(post['user_id'])!=int(u['id']):
+                    create_notification(
+                        c,
+                        post['user_id'],
+                        u['id'],
+                        'comment',
+                        'Novo comentário',
+                        f"{u['name']} comentou em sua publicação: {post['title']}",
+                        'post',
+                        pid
+                    )
+                    notification_created=True
+
+                return {
+                    'ok':True,
+                    'comment_id':comment_id,
+                    'notification_created':notification_created
+                }
+
+            result=write_transaction(create_comment)
+            if result.get('error'):
+                return self.send_json(result,404)
+            return self.send_json(result,201)
+
         if p.startswith('/api/posts/') and p.endswith('/like'):
-            pid=int(p.split('/')[3]); c=connect(); ex=c.execute('SELECT 1 FROM likes WHERE user_id=? AND post_id=?',(u['id'],pid)).fetchone()
-            c.execute('DELETE FROM likes WHERE user_id=? AND post_id=?' if ex else 'INSERT INTO likes(user_id,post_id) VALUES(?,?)',(u['id'],pid));
-            if not ex:
-                owner=c.execute('SELECT user_id,title FROM posts WHERE id=?',(pid,)).fetchone()
-                if owner and owner['user_id']!=u['id']: c.execute("INSERT INTO notifications(user_id,actor_id,type,message,post_id,is_read,created_at) VALUES(?,?,'like',?,?,0,?)",(owner['user_id'],u['id'],f"{u['name']} curtiu sua publicação: {owner['title']}",pid,now()))
-            c.commit(); c.close(); return self.send_json({'liked':not bool(ex)})
+            try:
+                pid=int(p.split('/')[3])
+            except Exception:
+                return self.send_json({'error':'Publicação inválida.'},400)
+
+            def toggle_like(c):
+                post=c.execute(
+                    "SELECT id,user_id,title FROM posts WHERE id=? AND status='published'",
+                    (pid,)
+                ).fetchone()
+                if not post:
+                    return {'error':'Publicação não encontrada.'}
+
+                existing=c.execute(
+                    'SELECT 1 FROM likes WHERE user_id=? AND post_id=?',
+                    (u['id'],pid)
+                ).fetchone()
+
+                notification_created=False
+                if existing:
+                    c.execute(
+                        'DELETE FROM likes WHERE user_id=? AND post_id=?',
+                        (u['id'],pid)
+                    )
+                    liked=False
+                else:
+                    c.execute(
+                        'INSERT INTO likes(user_id,post_id) VALUES(?,?)',
+                        (u['id'],pid)
+                    )
+                    liked=True
+
+                    if int(post['user_id'])!=int(u['id']):
+                        create_notification(
+                            c,
+                            post['user_id'],
+                            u['id'],
+                            'like',
+                            'Nova curtida',
+                            f"{u['name']} curtiu sua publicação: {post['title']}",
+                            'post',
+                            pid
+                        )
+                        notification_created=True
+
+                return {
+                    'liked':liked,
+                    'notification_created':notification_created
+                }
+
+            result=write_transaction(toggle_like)
+            if result.get('error'):
+                return self.send_json(result,404)
+            return self.send_json(result)
         if p.startswith('/api/posts/') and p.endswith('/bookmark'):
             pid=int(p.split('/')[3]); c=connect(); ex=c.execute('SELECT 1 FROM bookmarks WHERE user_id=? AND post_id=?',(u['id'],pid)).fetchone()
             c.execute('DELETE FROM bookmarks WHERE user_id=? AND post_id=?' if ex else 'INSERT INTO bookmarks(user_id,post_id) VALUES(?,?)',(u['id'],pid)); c.commit(); c.close(); return self.send_json({'bookmarked':not bool(ex)})
