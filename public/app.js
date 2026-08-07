@@ -1,6 +1,6 @@
 let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
-const SOCIAUDIO_VERSION='Beta 3.2.4';
+const SOCIAUDIO_VERSION='Beta 3.2.5';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -343,6 +343,115 @@ function editPost(id){let p=posts.find(x=>x.id===id);if(!p)return toast('Publica
 postForm.onsubmit=async e=>{e.preventDefault();let btn=postSubmit;btn.disabled=true;btn.textContent=postMediaType.startsWith('audio/')?'Enviando áudio...':postMediaType.startsWith('video/')?'Enviando vídeo...':'Salvando...';try{let uploaded=null;if(pendingPostFile&&postMediaType.startsWith('audio/'))uploaded=await uploadPendingAudio(pendingPostFile);else if(pendingPostFile&&!postMediaType.startsWith('image/')&&!postMediaType.startsWith('video/'))uploaded=await uploadPendingFile(pendingPostFile);let payload={type:pt.value,category:pc.value,title:pti.value,body:pb.value,link_url:purl.value.trim()};if(!editingPostId||imageChanged){payload.media_data=uploaded?.media_data??(postGallery.length>1?'':postImage);payload.media_type=uploaded?.media_type??postMediaType;payload.media_name=uploaded?.media_name??postMediaName;payload.media_size=uploaded?.size??postMediaSize;payload.gallery_images=postGallery}await api(editingPostId?`/api/posts/${editingPostId}/edit`:'/api/posts',{method:'POST',body:JSON.stringify(payload)});let edited=!!editingPostId;postDlg.close();resetPostDialog();toast(edited?'Publicação atualizada.':'Publicação criada.');loadAll()}catch(e){toast(e.message,true)}finally{btn.disabled=false;btn.textContent=editingPostId?'Salvar alterações':'Publicar'}};
 async function like(id){await api(`/api/posts/${id}/like`,{method:'POST'});loadAll()} async function bookmark(id){await api(`/api/posts/${id}/bookmark`,{method:'POST'});loadAll()}
 function toggleComments(id){openCommentPosts.has(id)?openCommentPosts.delete(id):openCommentPosts.add(id);render()} async function submitComment(id){let el=document.getElementById(`comment-${id}`),body=(el?.value||'').trim();if(!body)return toast('Digite um comentário.',true);try{await api(`/api/posts/${id}/comments`,{method:'POST',body:JSON.stringify({body})});openCommentPosts.add(id);toast('Comentário publicado.');await loadAll()}catch(e){toast(e.message,true)}}
+
+
+function renderCompanies(){
+  const items=(Array.isArray(users)?users:[]).filter(u=>
+    String(u.profile_type||'').toLowerCase()==='company' ||
+    String(u.role||'').toLowerCase().includes('empresa') ||
+    String(u.company||'').trim()
+  );
+
+  const cities=[...new Set(items.map(x=>x.city).filter(Boolean))].length;
+  const verified=items.filter(x=>x.verified_badge||x.verification_status==='verified').length;
+
+  content.innerHTML=`<section class="companies-page">
+    <div class="companies-hero card">
+      <div>
+        <span class="companies-kicker">EMPRESAS SOCIAUDIO</span>
+        <h1>Empresas que movimentam o mercado de áudio</h1>
+        <p>Encontre locadoras, integradores, estúdios, igrejas, fabricantes, assistências técnicas e prestadores de serviço.</p>
+      </div>
+
+      <div class="companies-summary">
+        <div><b>${items.length}</b><span>Empresas</span></div>
+        <div><b>${cities}</b><span>Cidades</span></div>
+        <div><b>${verified}</b><span>Verificadas</span></div>
+      </div>
+    </div>
+
+    <div class="companies-toolbar">
+      <div>
+        <h2>Empresas cadastradas</h2>
+        <p>Pesquise por nome, cidade, serviço ou segmento.</p>
+      </div>
+
+      <label class="companies-search">
+        <span>🔎</span>
+        <input id="companySearchInput" type="search" placeholder="Pesquisar empresa">
+      </label>
+    </div>
+
+    <div id="companiesGrid" class="companies-grid">
+      ${items.length?items.map(companyCardMarkup).join(''):`<div class="card companies-empty">
+        <div>🏢</div>
+        <h2>Nenhuma empresa cadastrada</h2>
+        <p>Os perfis empresariais aparecerão aqui.</p>
+      </div>`}
+    </div>
+  </section>`;
+
+  const input=document.getElementById('companySearchInput');
+  if(input){
+    input.oninput=()=>{
+      const term=input.value.trim().toLowerCase();
+      const filtered=items.filter(c=>
+        String(c.name||'').toLowerCase().includes(term)||
+        String(c.company||'').toLowerCase().includes(term)||
+        String(c.city||'').toLowerCase().includes(term)||
+        String(c.role||'').toLowerCase().includes(term)||
+        String(c.services||'').toLowerCase().includes(term)||
+        String(c.specialties||'').toLowerCase().includes(term)
+      );
+      const grid=document.getElementById('companiesGrid');
+      if(grid){
+        grid.innerHTML=filtered.length
+          ?filtered.map(companyCardMarkup).join('')
+          :`<div class="card companies-empty"><div>🔍</div><h2>Nenhuma empresa encontrada</h2><p>Tente outro nome, cidade ou serviço.</p></div>`;
+      }
+    };
+  }
+}
+
+function companyCardMarkup(c){
+  const verified=c.verified_badge||c.verification_status==='verified';
+  const companyName=esc(c.company||c.name||'Empresa');
+  const description=esc(c.bio||c.services||'Empresa cadastrada na Rede Sociaudio.');
+  const location=[c.city,c.state].filter(Boolean).join(' - ')||'Localização não informada';
+
+  return `<article class="card company-card">
+    <div class="company-card-cover" style="${c.cover?`background-image:url('${esc(c.cover)}')`:''}">
+      <div class="company-card-cover-overlay"></div>
+    </div>
+
+    <div class="company-card-body">
+      <div class="company-logo-wrap">
+        ${c.avatar?`<img class="company-logo" src="${esc(c.avatar)}" alt="">`:`<span class="company-logo fallback">${esc(companyName.slice(0,1).toUpperCase())}</span>`}
+        ${verified?'<span class="company-verified" title="Empresa verificada">✓</span>':''}
+      </div>
+
+      <div class="company-title-row">
+        <div>
+          <h2>${companyName}</h2>
+          <p>${esc(c.role||c.professional_title||'Empresa de áudio')}</p>
+        </div>
+        ${verified?'<span class="company-verified-label">Verificada</span>':''}
+      </div>
+
+      <p class="company-location">📍 ${esc(location)}</p>
+      <p class="company-description">${description}</p>
+
+      <div class="company-tags">
+        ${(c.specialties||c.services||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean).slice(0,4).map(x=>`<span>${esc(x)}</span>`).join('')}
+      </div>
+    </div>
+
+    <div class="company-card-footer">
+      <button class="secondary" onclick="openProfile(${Number(c.id)})">Ver empresa</button>
+      ${c.whatsapp?`<a class="primary btn" target="_blank" href="https://wa.me/${String(c.whatsapp).replace(/\D/g,'')}">WhatsApp</a>`:''}
+    </div>
+  </article>`;
+}
 
 function renderCommunities(){
   const items=Array.isArray(communities)?communities:[];
