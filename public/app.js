@@ -1,6 +1,6 @@
 let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
-const SOCIAUDIO_VERSION='Beta 3.1';
+const SOCIAUDIO_VERSION='Beta 3.2.3';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -151,12 +151,15 @@ function mountProfessionalSidebar(){
   if(sidebar.firstElementChild!==brand)sidebar.prepend(brand);
   if(brand.nextElementSibling!==userCard)brand.after(userCard);
 
-  brand.innerHTML=`
-    <div class="sidebar-brand-row">
-      <span class="beta-label">BETA 3.2.2</span>
-      <span id="betaHealth" class="beta-health ok">Sistema online</span>
-    </div>
-    <strong>Marketplace Inteligente<br>de Áudio</strong>`;
+  if(brand.dataset.mounted!=='1'){
+    brand.innerHTML=`
+      <div class="sidebar-brand-row">
+        <span class="beta-label">BETA 3.2.3</span>
+        <span id="betaHealth" class="beta-health ok">Sistema online</span>
+      </div>
+      <strong>Marketplace Inteligente<br>de Áudio</strong>`;
+    brand.dataset.mounted='1';
+  }
 
   [
     ['display','flex'],['flex-direction','column'],['align-items','stretch'],
@@ -237,11 +240,8 @@ function mountProfessionalSidebar(){
     .forEach(([p,v])=>setImportantStyle(userInfo,p,v));
 }
 
-const sidebarObserver=new MutationObserver(()=>mountProfessionalSidebar());
 window.addEventListener('DOMContentLoaded',()=>{
   mountProfessionalSidebar();
-  const sidebar=document.getElementById('mainSidebar');
-  if(sidebar)sidebarObserver.observe(sidebar,{childList:true,subtree:true});
 });
 
 async function api(path,opt={}){opt.headers={'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(opt.headers||{})};let r;try{r=await fetch(path,opt)}catch{throw Error('Não foi possível conectar ao servidor. Mantenha a janela preta aberta.')}let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Erro inesperado');return d}
@@ -1529,7 +1529,7 @@ function showBetaNotice(){
   if(sessionStorage.getItem('sociaudio_beta_notice'))return;
   sessionStorage.setItem('sociaudio_beta_notice','1');
   setTimeout(()=>{
-    toast('Rede Sociaudio Beta 3.1: interface profissional atualizada.');
+    toast('Rede Sociaudio Beta 3.2.3: estabilidade da sidebar corrigida.');
   },900);
 }
 showBetaNotice();
