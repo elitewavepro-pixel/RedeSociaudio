@@ -2,7 +2,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 
 let chatPoll=null;
 let chatConversationId=null;
-const SOCIAUDIO_VERSION='v4.0 Public';
+const SOCIAUDIO_VERSION='v4.0.1 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -156,7 +156,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.0 PUBLIC</span>
+        <span class="beta-label">V4.0.1 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -2034,6 +2034,271 @@ async function refreshChatMessages(id){
 }
 
 
+
+// ================================================================
+// REDE SOCIAUDIO v4.0.1 — CENTRAL DE NOTIFICAÇÕES ISOLADA
+// ================================================================
+var publicNotificationState = {
+  items: [],
+  unread: 0,
+  filter: 'all',
+  loading: false
+};
+
+function publicNotificationTitle(type){
+  var titles={
+    follow:'Novo seguidor',
+    like:'Nova curtida',
+    comment:'Novo comentário',
+    message:'Nova mensagem',
+    community:'Comunidade',
+    quote:'Solicitação de orçamento',
+    review:'Nova avaliação',
+    job_apply:'Nova candidatura',
+    job_status:'Atualização de candidatura',
+    system:'Rede Sociaudio'
+  };
+  return titles[type]||'Nova notificação';
+}
+
+function publicNotificationIcon(type){
+  var icons={
+    follow:'👤',
+    like:'👍',
+    comment:'💬',
+    message:'✉️',
+    community:'👥',
+    quote:'💼',
+    review:'⭐',
+    job_apply:'📄',
+    job_status:'📌',
+    system:'🔔'
+  };
+  return icons[type]||'🔔';
+}
+
+function publicNotificationTime(value){
+  if(!value)return '';
+  try{
+    var date=new Date(value);
+    var diff=Math.max(0,Date.now()-date.getTime());
+    var minutes=Math.floor(diff/60000);
+    if(minutes<1)return 'agora';
+    if(minutes<60)return 'há '+minutes+' min';
+    var hours=Math.floor(minutes/60);
+    if(hours<24)return 'há '+hours+' h';
+    var days=Math.floor(hours/24);
+    if(days<7)return 'há '+days+' dia'+(days>1?'s':'');
+    return date.toLocaleDateString('pt-BR');
+  }catch(error){
+    return '';
+  }
+}
+
+function publicNotificationCard(item){
+  var id=Number(item.id||0);
+  var read=Number(item.is_read||0)===1;
+  var title=item.title||publicNotificationTitle(item.type);
+  var message=item.message||item.description||'Nova atividade na sua conta.';
+  var actor=item.actor_name||'Rede Sociaudio';
+  var initial=esc(String(actor).slice(0,1).toUpperCase());
+
+  return '<article class="public-notification-card '+(read?'is-read':'is-unread')+'" data-notification-id="'+id+'">'+
+    '<button class="public-notification-main" type="button" onclick="openPublicNotification('+id+')">'+
+      '<span class="public-notification-avatar">'+
+        (item.actor_avatar
+          ?'<img src="'+esc(item.actor_avatar)+'" alt="">'
+          :'<b>'+initial+'</b>')+
+        '<i>'+publicNotificationIcon(item.type)+'</i>'+
+      '</span>'+
+      '<span class="public-notification-copy">'+
+        '<span class="public-notification-heading">'+
+          '<strong>'+esc(title)+'</strong>'+
+          (!read?'<em></em>':'')+
+        '</span>'+
+        '<span class="public-notification-message">'+esc(message)+'</span>'+
+        '<small>'+publicNotificationTime(item.created_at)+'</small>'+
+      '</span>'+
+    '</button>'+
+    '<button class="public-notification-remove" type="button" title="Excluir" onclick="removePublicNotification('+id+',event)">×</button>'+
+  '</article>';
+}
+
+function drawPublicNotifications(){
+  var all=publicNotificationState.items||[];
+  var unread=all.filter(function(item){return Number(item.is_read||0)!==1;});
+  var list=publicNotificationState.filter==='unread'?unread:all;
+
+  content.innerHTML=
+    '<section class="public-notifications-page">'+
+      '<header class="public-notifications-header">'+
+        '<div>'+
+          '<span class="public-notifications-kicker">CENTRAL DE ATIVIDADES</span>'+
+          '<h1>Notificações</h1>'+
+          '<p>Acompanhe mensagens, conexões e atividades da sua conta.</p>'+
+        '</div>'+
+        (all.length
+          ?'<button class="secondary" type="button" onclick="markAllPublicNotificationsRead()" '+(unread.length?'':'disabled')+'>Marcar todas como lidas</button>'
+          :'')+
+      '</header>'+
+
+      '<div class="public-notification-filters">'+
+        '<button class="'+(publicNotificationState.filter==='all'?'active':'')+'" type="button" onclick="setPublicNotificationFilter(\'all\')">Todas <span>'+all.length+'</span></button>'+
+        '<button class="'+(publicNotificationState.filter==='unread'?'active':'')+'" type="button" onclick="setPublicNotificationFilter(\'unread\')">Não lidas <span>'+unread.length+'</span></button>'+
+      '</div>'+
+
+      '<div class="public-notification-list">'+
+        (list.length
+          ?list.map(publicNotificationCard).join('')
+          :'<div class="public-notification-empty">'+
+              '<span>'+(publicNotificationState.filter==='unread'?'✅':'🔔')+'</span>'+
+              '<h2>'+(publicNotificationState.filter==='unread'?'Tudo em dia':'Nenhuma notificação')+'</h2>'+
+              '<p>'+(publicNotificationState.filter==='unread'
+                    ?'Você não possui notificações não lidas.'
+                    :'As novas atividades aparecerão aqui.')+'</p>'+
+            '</div>')+
+      '</div>'+
+    '</section>';
+}
+
+function setPublicNotificationFilter(filter){
+  publicNotificationState.filter=filter==='unread'?'unread':'all';
+  drawPublicNotifications();
+}
+
+async function renderPublicNotifications(){
+  view='notifications';
+  publicNotificationState.loading=true;
+
+  content.innerHTML=
+    '<section class="public-notifications-page">'+
+      '<div class="public-notification-loading">'+
+        '<span></span>'+
+        '<h2>Carregando notificações...</h2>'+
+      '</div>'+
+    '</section>';
+
+  try{
+    var result=await Promise.race([
+      api('/api/notifications'),
+      new Promise(function(_,reject){
+        setTimeout(function(){
+          reject(new Error('O servidor demorou para responder.'));
+        },12000);
+      })
+    ]);
+
+    var items=result&&Array.isArray(result.items)?result.items:[];
+    publicNotificationState.items=items;
+    publicNotificationState.unread=Number(
+      result&&result.unread!==undefined
+        ?result.unread
+        :items.filter(function(item){return Number(item.is_read||0)!==1;}).length
+    );
+    publicNotificationState.loading=false;
+
+    notificationItems=items;
+    notificationUnread=publicNotificationState.unread;
+    updateNotificationBadge();
+    drawPublicNotifications();
+  }catch(error){
+    publicNotificationState.loading=false;
+    console.error('[Rede Sociaudio] Falha em Notificações:',error);
+
+    content.innerHTML=
+      '<section class="public-notifications-page">'+
+        '<div class="public-notification-error">'+
+          '<span>⚠️</span>'+
+          '<h2>Não foi possível carregar as notificações</h2>'+
+          '<p>'+esc(error&&error.message?error.message:'Tente novamente.')+'</p>'+
+          '<button class="primary" type="button" onclick="renderPublicNotifications()">Tentar novamente</button>'+
+        '</div>'+
+      '</section>';
+  }
+}
+
+async function markAllPublicNotificationsRead(){
+  try{
+    await api('/api/notifications/read-all',{method:'POST',body:'{}'});
+    publicNotificationState.items.forEach(function(item){item.is_read=1;});
+    publicNotificationState.unread=0;
+    notificationItems=publicNotificationState.items;
+    notificationUnread=0;
+    updateNotificationBadge();
+    drawPublicNotifications();
+    toast('Todas as notificações foram marcadas como lidas.');
+  }catch(error){
+    toast(error.message||'Não foi possível atualizar.',true);
+  }
+}
+
+async function removePublicNotification(id,event){
+  if(event){
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  try{
+    await api('/api/notifications/'+id+'/delete',{method:'POST',body:'{}'});
+    publicNotificationState.items=publicNotificationState.items.filter(function(item){
+      return Number(item.id)!==Number(id);
+    });
+    publicNotificationState.unread=publicNotificationState.items.filter(function(item){
+      return Number(item.is_read||0)!==1;
+    }).length;
+    notificationItems=publicNotificationState.items;
+    notificationUnread=publicNotificationState.unread;
+    updateNotificationBadge();
+    drawPublicNotifications();
+  }catch(error){
+    toast(error.message||'Não foi possível excluir.',true);
+  }
+}
+
+async function openPublicNotification(id){
+  var item=publicNotificationState.items.find(function(entry){
+    return Number(entry.id)===Number(id);
+  });
+  if(!item)return;
+
+  if(Number(item.is_read||0)!==1){
+    try{
+      await api('/api/notifications/'+id+'/read',{method:'POST',body:'{}'});
+      item.is_read=1;
+      publicNotificationState.unread=Math.max(0,publicNotificationState.unread-1);
+      notificationUnread=publicNotificationState.unread;
+      updateNotificationBadge();
+    }catch(error){}
+  }
+
+  if(item.target_type==='message'||item.type==='message'){
+    view='messages';
+    render();
+    return;
+  }
+  if(item.target_type==='quote'){
+    view='requests';
+    render();
+    return;
+  }
+  if(item.target_type==='community'){
+    view='communities';
+    render();
+    return;
+  }
+  if(item.target_type==='profile'&&item.target_id){
+    openProfile(item.target_id);
+    return;
+  }
+  if(item.target_type==='post'){
+    view='feed';
+    render();
+    return;
+  }
+
+  drawPublicNotifications();
+}
+
+
 function bindViewNavigation(){
   document.querySelectorAll('[data-view]').forEach(button=>{
     button.onclick=()=>{
@@ -2062,7 +2327,7 @@ function render(){
   if(view==='chat'||view==='messages')return renderChat();
   if(view==='communities')return renderCommunities();
   if(view==='profile')return renderProfile();
-  if(view==='notifications')return loadNotifications(true);
+  if(view==='notifications')return renderPublicNotifications();
   if(view==='about')return renderAbout();
   if(view==='hire')return renderHire();
   if(view==='requests')return renderRequests();
@@ -2128,10 +2393,9 @@ async function askAudioAI(e){e.preventDefault();let q=aiQuestion.value.trim(),sy
 async function loadAiSession(id,rerender=true){aiSessionId=id;if(rerender){renderAudioAI();return}try{let d=await api(`/api/audio-ai/session/${id}`),box=aiMessages;box.innerHTML=d.messages.map(m=>{if(m.role==='user')return `<div class="ai-message user"><div><b>Você</b><p>${esc(m.body)}</p></div></div>`;let ans;try{ans=JSON.parse(m.body)}catch{ans={title:'Resposta',actions:[m.body],likely:[],checks:[]}}return `<div class="ai-message assistant">${aiAnswerHtml(ans)}</div>`}).join('')||aiWelcome();box.scrollTop=box.scrollHeight;hydrateIcons(box)}catch(e){toast(e.message,true)}}
 
 
-document.querySelectorAll('[data-view="notifications"],#notificationBtn,.notification-button').forEach(el=>{
-  el.onclick=async()=>{
-    view='notifications';
-    await loadNotifications(true);
+document.querySelectorAll('[data-view="notifications"],#notificationBtn,.notification-button').forEach(function(el){
+  el.onclick=function(){
+    renderPublicNotifications();
   };
 });
 loadNotifications();
