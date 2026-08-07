@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.2.3 Public';
+const SOCIAUDIO_VERSION='v5.1.2 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.2.3 PUBLIC</span>
+        <span class="beta-label">V5.1.2 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -2892,7 +2892,6 @@ function bindViewNavigation(){
   document.querySelectorAll('[data-view]').forEach(button=>{
     button.onclick=()=>{
       view=button.dataset.view;
-  if(view==='professional-profile')return openProfessionalProfile(currentProfileId||me?.id);
       if(view==='notifications'){
         renderStableNotifications();
         return;
@@ -3408,304 +3407,6 @@ async function renderAdminSystem(workspace){
 }
 
 
-
-// ================================================================
-// REDE SOCIAUDIO v5.2.0 — PERFIL PROFISSIONAL
-// ================================================================
-let currentProfileId=null;
-
-function profileList(value){
-  return String(value||'')
-    .split(/[,;\n]/)
-    .map(x=>x.trim())
-    .filter(Boolean);
-}
-
-function safeExternalUrl(value){
-  const v=String(value||'').trim();
-  if(!v)return '';
-  if(/^https?:\/\//i.test(v))return v;
-  return 'https://'+v.replace(/^\/+/,'');
-}
-
-function profileSocialLink(label,url,icon){
-  if(!url)return '';
-  return `<a class="pro-profile-social" href="${esc(safeExternalUrl(url))}" target="_blank" rel="noopener">${icon} ${esc(label)}</a>`;
-}
-
-function profilePortfolioCards(value){
-  const items=profileList(value);
-  if(!items.length)return '<p class="pro-profile-muted">Nenhum item de portfólio adicionado ainda.</p>';
-  return `<div class="pro-profile-portfolio-grid">${
-    items.map(item=>{
-      const url=safeExternalUrl(item);
-      return `<a href="${esc(url)}" target="_blank" rel="noopener">
-        <span>↗</span>
-        <b>${esc(item.replace(/^https?:\/\//i,''))}</b>
-      </a>`;
-    }).join('')
-  }</div>`;
-}
-
-async function openProfessionalProfile(userId){
-  currentProfileId=Number(userId||me?.id||0);
-  view='professional-profile';
-
-  content.innerHTML=`
-    <section class="pro-profile-loading">
-      <span></span>
-      <h2>Carregando perfil profissional...</h2>
-    </section>`;
-
-  try{
-    const result=await api(`/api/profile/${currentProfileId}`);
-    renderProfessionalProfile(result.profile);
-  }catch(error){
-    content.innerHTML=`
-      <section class="pro-profile-error">
-        <span>⚠️</span>
-        <h2>Não foi possível carregar este perfil</h2>
-        <p>${esc(error.message||'Tente novamente.')}</p>
-        <button class="primary" onclick="openProfessionalProfile(${currentProfileId})">Tentar novamente</button>
-      </section>`;
-  }
-}
-
-function renderProfessionalProfile(profile){
-  const own=Number(profile.id)===Number(me?.id);
-  const specialties=profileList(profile.specialties);
-  const equipment=profileList(profile.equipment);
-  const availability=profile.availability||'Disponibilidade não informada';
-  const role=profile.role||'Profissional de áudio';
-  const city=profile.city||'Local não informado';
-
-  content.innerHTML=`
-    <section class="pro-profile-page">
-      <div class="pro-profile-hero">
-        <div class="pro-profile-cover" style="${profile.cover?`background-image:url('${esc(profile.cover)}')`:''}">
-          ${!profile.cover?'<div class="pro-profile-cover-pattern"></div>':''}
-        </div>
-
-        <div class="pro-profile-maincard">
-          <div class="pro-profile-avatar-wrap">
-            <div class="pro-profile-avatar">
-              ${profile.avatar
-                ?`<img src="${esc(profile.avatar)}" alt="">`
-                :`<span>${esc((profile.name||'U').slice(0,1).toUpperCase())}</span>`}
-            </div>
-          </div>
-
-          <div class="pro-profile-summary">
-            <div class="pro-profile-name-row">
-              <div>
-                <h1>${esc(profile.name||'Profissional')}</h1>
-                <p class="pro-profile-headline">${esc(profile.headline||role)}</p>
-              </div>
-              <span class="pro-profile-status">${esc(profile.status||'active')}</span>
-            </div>
-
-            <div class="pro-profile-meta">
-              <span>📍 ${esc(city)}</span>
-              <span>🎚️ ${esc(role)}</span>
-              <span>🕒 ${esc(availability)}</span>
-            </div>
-
-            <div class="pro-profile-actions">
-              ${own
-                ?`<button class="primary" onclick="openEditProfessionalProfile()">Editar perfil</button>`
-                :`<button class="primary" onclick="startConversationWithProfile(${profile.id})">Entrar em contato</button>`}
-              ${profile.whatsapp && !own
-                ?`<a class="secondary button" href="https://wa.me/${esc(profile.whatsapp.replace(/\D/g,''))}" target="_blank" rel="noopener">WhatsApp</a>`
-                :''}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="pro-profile-layout">
-        <main class="pro-profile-content">
-          <section class="pro-profile-section">
-            <h2>Sobre</h2>
-            <p>${esc(profile.bio||'Este profissional ainda não adicionou uma apresentação.')}</p>
-          </section>
-
-          <section class="pro-profile-section">
-            <div class="pro-profile-section-head">
-              <h2>Especialidades</h2>
-            </div>
-            <div class="pro-profile-chips">
-              ${specialties.length
-                ?specialties.map(x=>`<span>${esc(x)}</span>`).join('')
-                :'<span class="muted-chip">Nenhuma especialidade cadastrada</span>'}
-            </div>
-          </section>
-
-          <section class="pro-profile-section">
-            <h2>Experiência profissional</h2>
-            <p class="pro-profile-preline">${esc(profile.experience||'Experiência ainda não informada.')}</p>
-          </section>
-
-          <section class="pro-profile-section">
-            <h2>Equipamentos e consoles</h2>
-            <div class="pro-profile-chips equipment">
-              ${equipment.length
-                ?equipment.map(x=>`<span>${esc(x)}</span>`).join('')
-                :'<span class="muted-chip">Nenhum equipamento informado</span>'}
-            </div>
-          </section>
-
-          <section class="pro-profile-section">
-            <h2>Portfólio</h2>
-            ${profilePortfolioCards(profile.portfolio)}
-          </section>
-
-          <section class="pro-profile-section">
-            <div class="pro-profile-section-head">
-              <h2>Publicações recentes</h2>
-              <span>${(profile.posts||[]).length} publicações</span>
-            </div>
-            <div class="pro-profile-posts">
-              ${(profile.posts||[]).length
-                ?profile.posts.slice(0,8).map(p=>`
-                  <article>
-                    <div>
-                      <strong>${esc(p.title||'Publicação')}</strong>
-                      <small>${esc(p.created_at||'')}</small>
-                    </div>
-                    ${p.body?`<p>${esc(p.body.slice(0,220))}</p>`:''}
-                    ${p.media_type?.startsWith('image/') && p.media_data
-                      ?`<img src="${esc(p.media_data)}" alt="">`
-                      :''}
-                    ${p.media_type?.startsWith('video/') && p.media_data
-                      ?`<video src="${esc(p.media_data)}" controls preload="metadata"></video>`
-                      :''}
-                  </article>`).join('')
-                :'<p class="pro-profile-muted">Nenhuma publicação ainda.</p>'}
-            </div>
-          </section>
-        </main>
-
-        <aside class="pro-profile-side">
-          <section class="pro-profile-section compact">
-            <h3>Informações profissionais</h3>
-            <div class="pro-profile-info-list">
-              <div><span>Atuação</span><b>${esc(role)}</b></div>
-              <div><span>Cidade</span><b>${esc(city)}</b></div>
-              <div><span>Disponibilidade</span><b>${esc(availability)}</b></div>
-            </div>
-          </section>
-
-          <section class="pro-profile-section compact">
-            <h3>Links</h3>
-            <div class="pro-profile-socials">
-              ${profileSocialLink('Instagram',profile.instagram,'◎')}
-              ${profileSocialLink('LinkedIn',profile.linkedin,'in')}
-              ${profileSocialLink('YouTube',profile.youtube,'▶')}
-              ${profileSocialLink('Site',profile.website,'🌐')}
-              ${(!profile.instagram&&!profile.linkedin&&!profile.youtube&&!profile.website)
-                ?'<p class="pro-profile-muted">Nenhum link adicionado.</p>':''}
-            </div>
-          </section>
-        </aside>
-      </div>
-    </section>`;
-}
-
-async function startConversationWithProfile(userId){
-  try{
-    const result=await api('/api/conversations/start',{
-      method:'POST',
-      body:JSON.stringify({user_id:Number(userId)})
-    });
-    view='messages';
-    render();
-    if(result?.conversation_id){
-      setTimeout(()=>openConversation(result.conversation_id),100);
-    }
-  }catch(error){
-    toast(error.message||'Não foi possível iniciar a conversa.',true);
-  }
-}
-
-function openEditProfessionalProfile(){
-  if(!me)return;
-
-  const dlg=document.getElementById('professionalProfileDlg');
-  if(!dlg)return;
-
-  const map={
-    epHeadline:'headline',
-    epBio:'bio',
-    epSpecialties:'specialties',
-    epExperience:'experience',
-    epEquipment:'equipment',
-    epPortfolio:'portfolio',
-    epInstagram:'instagram',
-    epLinkedin:'linkedin',
-    epYoutube:'youtube',
-    epWebsite:'website',
-    epWhatsapp:'whatsapp',
-    epAvailability:'availability',
-    epCity:'city',
-    epRole:'role',
-    epCover:'cover'
-  };
-
-  Object.entries(map).forEach(([id,key])=>{
-    const el=document.getElementById(id);
-    if(el)el.value=me[key]||'';
-  });
-
-  dlg.showModal();
-}
-
-async function saveProfessionalProfile(){
-  const button=document.getElementById('epSave');
-  const msgEl=document.getElementById('epMsg');
-
-  const value=id=>(document.getElementById(id)?.value||'').trim();
-
-  const payload={
-    headline:value('epHeadline'),
-    bio:value('epBio'),
-    specialties:value('epSpecialties'),
-    experience:value('epExperience'),
-    equipment:value('epEquipment'),
-    portfolio:value('epPortfolio'),
-    instagram:value('epInstagram'),
-    linkedin:value('epLinkedin'),
-    youtube:value('epYoutube'),
-    website:value('epWebsite'),
-    whatsapp:value('epWhatsapp'),
-    availability:value('epAvailability'),
-    city:value('epCity'),
-    role:value('epRole'),
-    cover:value('epCover')
-  };
-
-  button.disabled=true;
-  button.textContent='Salvando...';
-  msgEl.textContent='';
-
-  try{
-    const result=await api('/api/profile/update',{
-      method:'POST',
-      body:JSON.stringify(payload)
-    });
-    me={...me,...result.user};
-    renderSidebarIdentity();
-    document.getElementById('professionalProfileDlg').close();
-    toast('Perfil profissional atualizado.');
-    await openProfessionalProfile(me.id);
-  }catch(error){
-    msgEl.textContent=error.message||'Não foi possível salvar.';
-  }finally{
-    button.disabled=false;
-    button.textContent='Salvar perfil';
-  }
-}
-
-
 function render(){
   setTimeout(enforceAdminMenuSecurity,0);
   if(isAdminUser() && !window.__allowAdminNormalView){
@@ -3770,59 +3471,61 @@ if(window.marketImage)marketImage.onchange=async()=>{let f=marketImage.files[0];
 function openMarketDialog(){marketForm.reset();marketCity.value=me.city||'';marketPhone.value=me.whatsapp||'';marketImageData='';marketPreview.hidden=true;marketDlg.showModal()}
 marketForm.onsubmit=async e=>{e.preventDefault();try{await api('/api/marketplace',{method:'POST',body:JSON.stringify({title:marketTitle.value,listing_type:marketType.value,category:marketCategory.value,price:marketPrice.value,item_condition:marketCondition.value,city:marketCity.value,contact_phone:marketPhone.value,description:marketDescription.value,image_data:marketImageData})});marketDlg.close();toast('Anúncio publicado com sucesso.');renderMarketplace()}catch(err){toast(err.message,true)}};
 function marketCard(m){
-  let phone=(m.contact_phone||'').replace(/\D/g,'');
-  let image=m.image_data
-    ?`<div class="market-v523-image"><img src="${m.image_data}" alt="${esc(m.title)}"></div>`
-    :`<div class="market-v523-image placeholder">${icon('store')}</div>`;
+  const phone=(m.contact_phone||'').replace(/\D/g,'');
+  const locationText=m.city||m.seller_city||'Local não informado';
+
+  const imageHtml=m.image_data
+    ? `<div class="market-fixed-image"><img src="${m.image_data}" alt="${esc(m.title||'Anúncio')}"></div>`
+    : `<div class="market-fixed-image placeholder">${icon('store')}</div>`;
 
   return `
-    <article class="card market-v523-card">
-      ${image}
+    <article class="card market-fixed-card">
+      ${imageHtml}
 
-      <div class="market-v523-content">
-        <div class="market-v523-badges">
-          <span class="tag">${esc(m.listing_type)}</span>
-          <span class="tag muted">${esc(m.category)}</span>
-          <span class="market-condition">${esc(m.item_condition)}</span>
+      <div class="market-fixed-body">
+        <div class="market-fixed-badges">
+          <span class="tag">${esc(m.listing_type||'Anúncio')}</span>
+          <span class="tag muted">${esc(m.category||'Outros')}</span>
+          ${m.item_condition?`<span class="market-condition">${esc(m.item_condition)}</span>`:''}
         </div>
 
-        <h2 class="market-v523-title">${esc(m.title)}</h2>
-        <div class="market-v523-price">${esc(m.price||'Valor a combinar')}</div>
+        <h3 class="market-fixed-title">${esc(m.title||'Sem título')}</h3>
+        <div class="market-fixed-price">${esc(m.price||'Valor a combinar')}</div>
 
         ${m.description
-          ?`<p class="market-v523-description">${esc(m.description)}</p>`
-          :''}
+          ? `<p class="market-fixed-description">${esc(m.description)}</p>`
+          : ''}
 
-        <div class="market-v523-location">
+        <div class="market-fixed-location">
           ${icon('location')}
-          <span>${esc(m.city||m.seller_city||'Local não informado')}</span>
+          <span>${esc(locationText)}</span>
         </div>
 
-        <div class="market-v523-seller">
+        <div class="market-fixed-seller">
           ${avatar({avatar:m.seller_avatar,name:m.seller_name})}
           <div>
-            <b>${esc(m.seller_name)}</b>
+            <b>${esc(m.seller_name||'Anunciante')}</b>
             <small>Anunciante</small>
           </div>
         </div>
 
-        <div class="market-v523-actions">
+        <div class="market-fixed-actions">
           ${phone
-            ?`<a class="primary btn" target="_blank" rel="noopener"
-                href="https://wa.me/${phone}?text=${encodeURIComponent('Olá! Vi seu anúncio na Rede Sociaudio: '+m.title)}">
-                Falar no WhatsApp
-              </a>`
-            :''}
+            ? `<a class="primary btn" target="_blank" rel="noopener"
+                 href="https://wa.me/${phone}?text=${encodeURIComponent('Olá! Vi seu anúncio na Rede Sociaudio: '+(m.title||''))}">
+                 Falar no WhatsApp
+               </a>`
+            : ''}
 
           ${m.can_manage
-            ?`<button class="danger-light" onclick="closeMarket(${m.id})">Encerrar anúncio</button>`
-            :''}
+            ? `<button class="danger-light" onclick="closeMarket(${m.id})">Encerrar anúncio</button>`
+            : ''}
         </div>
       </div>
     </article>`;
 }
 
-async function renderMarketplace(){let items=await api('/api/marketplace');content.innerHTML=`<section class="market-hero card"><div><span class="eyebrow">NEGÓCIOS ENTRE PROFISSIONAIS</span><h1>Marketplace do áudio</h1><p>Compre, venda, troque ou alugue equipamentos dentro da comunidade especializada.</p><button class="primary" onclick="openMarketDialog()">${icon('plus')} Publicar anúncio</button></div><div class="market-hero-icon">${icon('store')}</div></section><div class="market-toolbar"><input id="marketSearch" placeholder="Buscar equipamentos, marcas ou cidades..."><select id="marketFilter"><option value="">Todas as categorias</option>${['Mesas digitais','Microfones','Caixas e PA','Monitores e In-ear','Interfaces e estúdio','Cabos e conectores','Cases e acessórios','Iluminação','Instrumentos','Outros'].map(x=>`<option>${x}</option>`).join('')}</select><select id="marketTypeFilter"><option value="">Venda, troca ou locação</option><option>Venda</option><option>Troca</option><option>Locação</option></select></div><div id="marketGrid" class="market-grid market-v523-grid"></div>`;let draw=()=>{let q=marketSearch.value.toLowerCase(),cat=marketFilter.value,typ=marketTypeFilter.value;let filtered=items.filter(x=>(!q||[x.title,x.description,x.city,x.seller_name].join(' ').toLowerCase().includes(q))&&(!cat||x.category===cat)&&(!typ||x.listing_type===typ));marketGrid.innerHTML=filtered.length?filtered.map(marketCard).join(''):'<div class="card empty market-empty">Nenhum anúncio encontrado.</div>';hydrateIcons(marketGrid)};marketSearch.oninput=draw;marketFilter.onchange=draw;marketTypeFilter.onchange=draw;draw();hydrateIcons(content)}
+async function renderMarketplace(){let items=await api('/api/marketplace');content.innerHTML=`<section class="market-hero card"><div><span class="eyebrow">NEGÓCIOS ENTRE PROFISSIONAIS</span><h1>Marketplace do áudio</h1><p>Compre, venda, troque ou alugue equipamentos dentro da comunidade especializada.</p><button class="primary" onclick="openMarketDialog()">${icon('plus')} Publicar anúncio</button></div><div class="market-hero-icon">${icon('store')}</div></section><div class="market-toolbar"><input id="marketSearch" placeholder="Buscar equipamentos, marcas ou cidades..."><select id="marketFilter"><option value="">Todas as categorias</option>${['Mesas digitais','Microfones','Caixas e PA','Monitores e In-ear','Interfaces e estúdio','Cabos e conectores','Cases e acessórios','Iluminação','Instrumentos','Outros'].map(x=>`<option>${x}</option>`).join('')}</select><select id="marketTypeFilter"><option value="">Venda, troca ou locação</option><option>Venda</option><option>Troca</option><option>Locação</option></select></div><div id="marketGrid" class="market-grid market-fixed-grid"></div>`;let draw=()=>{let q=marketSearch.value.toLowerCase(),cat=marketFilter.value,typ=marketTypeFilter.value;let filtered=items.filter(x=>(!q||[x.title,x.description,x.city,x.seller_name].join(' ').toLowerCase().includes(q))&&(!cat||x.category===cat)&&(!typ||x.listing_type===typ));marketGrid.innerHTML=filtered.length?filtered.map(marketCard).join(''):'<div class="card empty market-empty">Nenhum anúncio encontrado.</div>';hydrateIcons(marketGrid)};marketSearch.oninput=draw;marketFilter.onchange=draw;marketTypeFilter.onchange=draw;draw();hydrateIcons(content)}
 async function closeMarket(id){if(!confirm('Encerrar este anúncio?'))return;try{await api(`/api/marketplace/${id}/close`,{method:'POST'});toast('Anúncio encerrado.');renderMarketplace()}catch(e){toast(e.message,true)}}
 
 
@@ -4330,20 +4033,4 @@ window.addEventListener('DOMContentLoaded',()=>{
     bindSimplePostButtons();
   });
   simplePostObserver.observe(document.body,{childList:true,subtree:true});
-});
-
-
-window.addEventListener('DOMContentLoaded',()=>{
-  document.addEventListener('click',event=>{
-    const target=event.target.closest('[data-open-profile],.sidebar-profile,.profile-summary,#profileCard');
-    if(!target)return;
-
-    if(target.closest('button,a') && !target.matches('[data-open-profile]'))return;
-
-    const uid=Number(target.dataset.userId||me?.id||0);
-    if(uid){
-      event.preventDefault();
-      openProfessionalProfile(uid);
-    }
-  });
 });
