@@ -6,7 +6,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.4.0 — Editor Stories Texto Emojis'
+APP_VERSION = 'v5.4.1 — Editor Stories Corrigido'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -692,7 +692,6 @@ def init_db():
       user_id INTEGER NOT NULL,
       image_url TEXT NOT NULL,
       caption TEXT DEFAULT '',
-      overlay_json TEXT DEFAULT '[]',
       created_at TEXT NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -703,19 +702,11 @@ def init_db():
       media_data TEXT NOT NULL,
       media_type TEXT NOT NULL,
       caption TEXT DEFAULT '',
+      overlay_json TEXT DEFAULT '[]',
       created_at TEXT NOT NULL,
       expires_at TEXT NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
-
-    try:
-        cols=[r['name'] for r in c.execute("PRAGMA table_info(stories)").fetchall()]
-        if 'overlay_json' not in cols:
-            c.execute("ALTER TABLE stories ADD COLUMN overlay_json TEXT DEFAULT '[]'")
-            c.commit()
-    except Exception:
-        pass
-
     CREATE TABLE IF NOT EXISTS post_media(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       post_id INTEGER NOT NULL,
@@ -788,6 +779,17 @@ def init_db():
       FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
     );
     ''')
+
+    # v5.4.1 - migração segura para stories existentes
+    try:
+        story_cols=[r['name'] for r in c.execute("PRAGMA table_info(stories)").fetchall()]
+        if 'overlay_json' not in story_cols:
+            c.execute("ALTER TABLE stories ADD COLUMN overlay_json TEXT DEFAULT '[]'")
+            c.commit()
+    except Exception as migration_error:
+        print('[STORIES MIGRATION WARNING]', migration_error)
+
+
 
 
 
