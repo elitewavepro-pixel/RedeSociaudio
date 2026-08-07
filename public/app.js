@@ -2,7 +2,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 
 let chatPoll=null;
 let chatConversationId=null;
-const SOCIAUDIO_VERSION='v4.0.2 Public';
+const SOCIAUDIO_VERSION='v4.0.3 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -77,7 +77,7 @@ async function applyPlatformSettings(){
   }catch{}
 }
 
-function toast(t,b=false){toastEl.textContent=t;toastEl.className=b?'show bad':'show';setTimeout(()=>toastEl.className='',2800)}
+function toast(t,b=false){const el=document.getElementById('toast');if(!el){console.log('[Rede Sociaudio]',t);return}el.textContent=t;el.className=b?'show bad':'show';setTimeout(()=>el.className='',2800)}
 
 function sidebarPlanLabel(plan){
   const labels={free:'FREE',pro:'PRO',company:'EMPRESA',admin:'ADMIN'};
@@ -156,7 +156,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.0.2 PUBLIC</span>
+        <span class="beta-label">V4.0.3 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -344,8 +344,7 @@ async function like(id){await api(`/api/posts/${id}/like`,{method:'POST'});loadA
 function toggleComments(id){openCommentPosts.has(id)?openCommentPosts.delete(id):openCommentPosts.add(id);render()} async function submitComment(id){let el=document.getElementById(`comment-${id}`),body=(el?.value||'').trim();if(!body)return toast('Digite um comentário.',true);try{await api(`/api/posts/${id}/comments`,{method:'POST',body:JSON.stringify({body})});openCommentPosts.add(id);toast('Comentário publicado.');await loadAll()}catch(e){toast(e.message,true)}}
 
 
-async 
-function fileToDataURL(file){
+async function fileToDataURL(file){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
     reader.onload=()=>resolve(String(reader.result||''));
