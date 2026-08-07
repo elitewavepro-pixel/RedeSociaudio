@@ -3809,3 +3809,36 @@ header .sidebar-brand-panel{
 @keyframes safeModuleSpin{
   to{transform:rotate(360deg)}
 }
+
+
+/* Rede Sociaudio Beta 3.2.12 — balão das mensagens enviadas */
+.chat-message.mine > div{
+  background:linear-gradient(135deg,#dcf8c6 0%,#cdeed7 100%)!important;
+  color:#1f2937!important;
+  border:1px solid #b7e4c7!important;
+  border-radius:18px 18px 5px 18px!important;
+  box-shadow:0 3px 10px rgba(16,185,129,.10)!important;
+}
+
+.chat-message.mine > div p,
+.chat-message.mine > div .chat-message-body{
+  color:#1f2937!important;
+}
+
+.chat-message.mine .chat-message-meta,
+.chat-message.mine small{
+  color:#667085!important;
+}
+
+.chat-message.mine .chat-receipt.sent{
+  color:#667085!important;
+}
+
+.chat-message.mine .chat-receipt.seen{
+  color:#079455!important;
+}
+
+.chat-message.mine a{
+  color:#067647!important;
+}
+
