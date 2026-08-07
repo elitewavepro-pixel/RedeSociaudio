@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v4.2.2 — Menu Admin corrigido'
+APP_VERSION = 'v5.0 — Persistencia Real'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -19,12 +19,20 @@ except ValueError:
     PORT = 8000
 WRITE_LOCK = threading.RLock()
 
-# A partir da V9, os dados ficam fora da pasta do programa.
-# Assim, substituir a versão do aplicativo não apaga perfis, posts ou imagens.
+# Rede Sociaudio v5.0 — armazenamento persistente.
+# Em produção no Render, configure SOCIAUDIO_DATA_ROOT=/var/data e
+# monte um Persistent Disk exatamente nesse caminho.
 def persistent_root():
     configured = os.environ.get('SOCIAUDIO_DATA_ROOT', '').strip()
     if configured:
         return os.path.abspath(configured)
+
+    # Se um disco Render já estiver montado em /var/data, usa automaticamente.
+    render_disk = '/var/data'
+    if os.path.isdir(render_disk) and os.access(render_disk, os.W_OK):
+        return render_disk
+
+    # Desenvolvimento local: mantém dados fora da pasta do código.
     base = os.environ.get('LOCALAPPDATA')
     if not base:
         base = os.path.join(os.path.expanduser('~'), '.local', 'share')
@@ -40,6 +48,76 @@ AUDIO_DIR = os.path.join(UPLOAD_ROOT, 'audio')
 FILE_DIR = os.path.join(UPLOAD_ROOT, 'files')
 DB = os.path.join(DATA_DIR, 'sociaudio.db')
 MIGRATION_MARKER = os.path.join(DATA_ROOT, '.v9_storage_ready')
+
+
+def storage_mode():
+    root=os.path.abspath(DATA_ROOT)
+    configured=os.environ.get('SOCIAUDIO_DATA_ROOT','').strip()
+    render_env=bool(os.environ.get('RENDER') or os.environ.get('RENDER_SERVICE_ID'))
+    if configured and root.startswith('/var/data'):
+        return 'persistent_disk'
+    if root.startswith('/var/data'):
+        return 'persistent_disk'
+    if render_env:
+        return 'ephemeral'
+    return 'local_persistent'
+
+def storage_is_persistent():
+    return storage_mode() in ('persistent_disk','local_persistent')
+
+def storage_status():
+    try:
+        db_exists=os.path.exists(DB)
+        db_size=os.path.getsize(DB) if db_exists else 0
+    except OSError:
+        db_exists=False
+        db_size=0
+
+    upload_files=0
+    upload_bytes=0
+    if os.path.isdir(UPLOAD_ROOT):
+        for dirpath,_,filenames in os.walk(UPLOAD_ROOT):
+            for filename in filenames:
+                full=os.path.join(dirpath,filename)
+                try:
+                    upload_files+=1
+                    upload_bytes+=os.path.getsize(full)
+                except OSError:
+                    pass
+
+    return {
+        'mode':storage_mode(),
+        'persistent':storage_is_persistent(),
+        'data_root':DATA_ROOT,
+        'database':DB,
+        'database_exists':db_exists,
+        'database_bytes':db_size,
+        'upload_root':UPLOAD_ROOT,
+        'upload_files':upload_files,
+        'upload_bytes':upload_bytes,
+        'render':bool(os.environ.get('RENDER') or os.environ.get('RENDER_SERVICE_ID')),
+    }
+
+def copy_tree_missing(source,destination):
+    """Copia arquivos legados sem sobrescrever arquivos que já existem."""
+    if not os.path.isdir(source):
+        return 0
+    copied=0
+    for dirpath,_,filenames in os.walk(source):
+        rel=os.path.relpath(dirpath,source)
+        target_dir=destination if rel=='.' else os.path.join(destination,rel)
+        os.makedirs(target_dir,exist_ok=True)
+        for filename in filenames:
+            source_file=os.path.join(dirpath,filename)
+            target_file=os.path.join(target_dir,filename)
+            if os.path.exists(target_file):
+                continue
+            try:
+                shutil.copy2(source_file,target_file)
+                copied+=1
+            except OSError:
+                pass
+    return copied
 
 def candidate_databases():
     candidates = []
@@ -94,11 +172,42 @@ def prepare_persistent_storage():
                 shutil.copy2(DB, backup)
             except OSError:
                 pass
+    # Migra uploads legados para o armazenamento persistente.
+    legacy_upload_candidates=[
+        os.path.join(ROOT,'uploads'),
+        os.path.join(ROOT,'data','uploads'),
+    ]
+    migrated_uploads=0
+    for legacy_uploads in legacy_upload_candidates:
+        if os.path.abspath(legacy_uploads)==os.path.abspath(UPLOAD_ROOT):
+            continue
+        migrated_uploads+=copy_tree_missing(legacy_uploads,UPLOAD_ROOT)
+
     try:
         Path = __import__('pathlib').Path
-        Path(MIGRATION_MARKER).write_text('Rede Sociaudio V20.2 - Busca de contatos aprimorada', encoding='utf-8')
+        Path(MIGRATION_MARKER).write_text(
+            'Rede Sociaudio v5.0 - Persistencia Real\n'
+            f'mode={storage_mode()}\n'
+            f'data_root={DATA_ROOT}\n'
+            f'migrated_uploads={migrated_uploads}\n',
+            encoding='utf-8'
+        )
     except Exception:
         pass
+
+    status=storage_status()
+    print(
+        '[STORAGE] mode={mode} persistent={persistent} root={data_root} '
+        'db_bytes={database_bytes} uploads={upload_files}'.format(**status),
+        flush=True
+    )
+    if status['render'] and not status['persistent']:
+        print(
+            '[STORAGE WARNING] Render esta usando filesystem efemero. '
+            'Anexe um Persistent Disk em /var/data e configure '
+            'SOCIAUDIO_DATA_ROOT=/var/data antes de receber usuarios reais.',
+            flush=True
+        )
 
 
 def connect():
@@ -1619,6 +1728,25 @@ class Handler(SimpleHTTPRequestHandler):
                 'comments':c.execute('SELECT COUNT(*) FROM comments').fetchone()[0],
                 'communities':c.execute('SELECT COUNT(*) FROM communities').fetchone()[0]
             }; c.close(); return self.send_json(data)
+
+        if p == '/api/storage/status':
+            u=self.require_user()
+            if not u:return
+            if not u.get('is_admin'):
+                return self.send_json({'error':'Acesso restrito ao administrador.'},403)
+            status=storage_status()
+            c=connect()
+            try:
+                counts={}
+                for table in ('users','posts','comments','companies','jobs','conversations','chat_messages'):
+                    try:
+                        counts[table]=c.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]
+                    except sqlite3.Error:
+                        counts[table]=0
+            finally:
+                c.close()
+            status['counts']=counts
+            return self.send_json(status)
 
         if p == '/':
             path='landing.html'

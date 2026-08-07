@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v4.2.2 Public';
+const SOCIAUDIO_VERSION='v5.0 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.2.2 PUBLIC</span>
+        <span class="beta-label">V5.0 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -2855,6 +2855,9 @@ function renderAdminShell(){
           <button data-admin-section="system" class="${adminSection==='system'?'active':''}">
             <span>⚙️</span><b>Sistema</b>
           </button>
+          <button data-admin-section="storage" class="${adminSection==='storage'?'active':''}">
+            <span>💾</span><b>Armazenamento</b>
+          </button>
         </nav>
 
         <div class="admin-sidebar-footer">
@@ -2954,7 +2957,8 @@ async function loadAdminSection(force=false){
     companies:'Empresas',
     content:'Conteúdo',
     opportunities:'Oportunidades',
-    system:'Sistema'
+    system:'Sistema',
+    storage:'Armazenamento'
   };
   const title=document.getElementById('adminPageTitle');
   if(title)title.textContent=titles[adminSection]||'Painel Administrativo';
@@ -2968,6 +2972,7 @@ async function loadAdminSection(force=false){
     if(adminSection==='content')return await renderAdminContent(workspace);
     if(adminSection==='opportunities')return await renderAdminOpportunities(workspace);
     if(adminSection==='system')return await renderAdminSystem(workspace);
+    if(adminSection==='storage')return await renderAdminStorage(workspace);
   }catch(error){
     console.error('[Admin]',error);
     workspace.innerHTML=`
@@ -3147,6 +3152,56 @@ async function renderAdminOpportunities(workspace){
             <small>${esc(j.city||'')} ${j.status?`• ${esc(j.status)}`:''}</small>
           </article>`).join('')||adminEmpty('Nenhuma oportunidade','Não há oportunidades cadastradas.')}
       </div>
+    </section>`;
+}
+
+
+async function renderAdminStorage(workspace){
+  const status=await adminApi('/api/storage/status');
+  const persistent=Boolean(status.persistent);
+
+  workspace.innerHTML=`
+    <section class="admin-dashboard-grid">
+      <article class="admin-panel">
+        <div class="admin-panel-head">
+          <div>
+            <h2>Persistência de dados</h2>
+            <p>Confirme onde a Rede Sociaudio está armazenando os dados dos usuários.</p>
+          </div>
+        </div>
+
+        <div class="admin-health-list">
+          <div><span>Status</span><b class="${persistent?'ok':''}">${persistent?'Persistente':'EFÊMERO — risco de perda'}</b></div>
+          <div><span>Modo</span><b>${esc(status.mode||'')}</b></div>
+          <div><span>Banco de dados</span><b>${Math.round(Number(status.database_bytes||0)/1024).toLocaleString('pt-BR')} KB</b></div>
+          <div><span>Arquivos enviados</span><b>${Number(status.upload_files||0).toLocaleString('pt-BR')}</b></div>
+          <div><span>Dados</span><b>${esc(status.data_root||'')}</b></div>
+        </div>
+
+        ${persistent
+          ?`<div class="admin-storage-good">
+              <strong>✓ Armazenamento persistente ativo</strong>
+              <p>Posts, usuários, mensagens e arquivos permanecem após novos deploys e reinicializações.</p>
+            </div>`
+          :`<div class="admin-storage-danger">
+              <strong>⚠ Armazenamento ainda efêmero</strong>
+              <p>Não lance a plataforma ao público antes de anexar o Persistent Disk no Render.</p>
+            </div>`}
+      </article>
+
+      <article class="admin-panel">
+        <div class="admin-panel-head">
+          <div><h2>Conteúdo protegido</h2><p>Itens mantidos no armazenamento da v5.0.</p></div>
+        </div>
+        <div class="admin-security-list">
+          <div>✓ Contas e perfis de usuários</div>
+          <div>✓ Publicações, curtidas e comentários</div>
+          <div>✓ Mensagens e notificações</div>
+          <div>✓ Empresas e oportunidades</div>
+          <div>✓ Fotos, vídeos, áudios e documentos</div>
+          <div>✓ Backups do banco SQLite</div>
+        </div>
+      </article>
     </section>`;
 }
 

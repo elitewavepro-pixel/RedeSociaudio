@@ -2,7 +2,16 @@ services:
   - type: web
     name: redesociaudio
     runtime: python
-    plan: free
-    buildCommand: echo "Nenhuma dependência externa"
+    plan: starter
+    buildCommand: echo "Rede Sociaudio v5.0 - sem build externo"
     startCommand: python server.py
     healthCheckPath: /api/health
+    envVars:
+      - key: SOCIAUDIO_DATA_ROOT
+        value: /var/data
+      - key: PUBLIC_BASE_URL
+        value: https://redesociaudio.com.br
+    disk:
+      name: sociaudio-data
+      mountPath: /var/data
+      sizeGB: 1
