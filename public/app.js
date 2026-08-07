@@ -1,6 +1,6 @@
 let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
-const SOCIAUDIO_VERSION='Beta 3.2.5';
+const SOCIAUDIO_VERSION='Beta 3.2.6';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -345,78 +345,103 @@ async function like(id){await api(`/api/posts/${id}/like`,{method:'POST'});loadA
 function toggleComments(id){openCommentPosts.has(id)?openCommentPosts.delete(id):openCommentPosts.add(id);render()} async function submitComment(id){let el=document.getElementById(`comment-${id}`),body=(el?.value||'').trim();if(!body)return toast('Digite um comentário.',true);try{await api(`/api/posts/${id}/comments`,{method:'POST',body:JSON.stringify({body})});openCommentPosts.add(id);toast('Comentário publicado.');await loadAll()}catch(e){toast(e.message,true)}}
 
 
-function renderCompanies(){
-  const items=(Array.isArray(users)?users:[]).filter(u=>
-    String(u.profile_type||'').toLowerCase()==='company' ||
-    String(u.role||'').toLowerCase().includes('empresa') ||
-    String(u.company||'').trim()
-  );
+async 
+function fileToDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(String(reader.result||''));
+    reader.onerror=()=>reject(new Error('Não foi possível ler a imagem.'));
+    reader.readAsDataURL(file);
+  });
+}
 
-  const cities=[...new Set(items.map(x=>x.city).filter(Boolean))].length;
-  const verified=items.filter(x=>x.verified_badge||x.verification_status==='verified').length;
-
+async function renderCompanies(){
   content.innerHTML=`<section class="companies-page">
-    <div class="companies-hero card">
-      <div>
-        <span class="companies-kicker">EMPRESAS SOCIAUDIO</span>
-        <h1>Empresas que movimentam o mercado de áudio</h1>
-        <p>Encontre locadoras, integradores, estúdios, igrejas, fabricantes, assistências técnicas e prestadores de serviço.</p>
-      </div>
-
-      <div class="companies-summary">
-        <div><b>${items.length}</b><span>Empresas</span></div>
-        <div><b>${cities}</b><span>Cidades</span></div>
-        <div><b>${verified}</b><span>Verificadas</span></div>
-      </div>
-    </div>
-
-    <div class="companies-toolbar">
-      <div>
-        <h2>Empresas cadastradas</h2>
-        <p>Pesquise por nome, cidade, serviço ou segmento.</p>
-      </div>
-
-      <label class="companies-search">
-        <span>🔎</span>
-        <input id="companySearchInput" type="search" placeholder="Pesquisar empresa">
-      </label>
-    </div>
-
-    <div id="companiesGrid" class="companies-grid">
-      ${items.length?items.map(companyCardMarkup).join(''):`<div class="card companies-empty">
-        <div>🏢</div>
-        <h2>Nenhuma empresa cadastrada</h2>
-        <p>Os perfis empresariais aparecerão aqui.</p>
-      </div>`}
-    </div>
+    <div class="companies-loading card"><span></span><p>Carregando empresas...</p></div>
   </section>`;
 
-  const input=document.getElementById('companySearchInput');
-  if(input){
-    input.oninput=()=>{
-      const term=input.value.trim().toLowerCase();
-      const filtered=items.filter(c=>
-        String(c.name||'').toLowerCase().includes(term)||
-        String(c.company||'').toLowerCase().includes(term)||
-        String(c.city||'').toLowerCase().includes(term)||
-        String(c.role||'').toLowerCase().includes(term)||
-        String(c.services||'').toLowerCase().includes(term)||
-        String(c.specialties||'').toLowerCase().includes(term)
-      );
-      const grid=document.getElementById('companiesGrid');
-      if(grid){
-        grid.innerHTML=filtered.length
-          ?filtered.map(companyCardMarkup).join('')
-          :`<div class="card companies-empty"><div>🔍</div><h2>Nenhuma empresa encontrada</h2><p>Tente outro nome, cidade ou serviço.</p></div>`;
-      }
-    };
+  try{
+    const [items,mine]=await Promise.all([
+      api('/api/companies'),
+      api('/api/companies/mine')
+    ]);
+
+    const companies=Array.isArray(items)?items:[];
+    const cities=[...new Set(companies.map(x=>x.city).filter(Boolean))].length;
+    const verified=companies.filter(x=>Number(x.verified)===1).length;
+
+    content.innerHTML=`<section class="companies-page">
+      <div class="companies-hero card">
+        <div>
+          <span class="companies-kicker">EMPRESAS SOCIAUDIO</span>
+          <h1>Empresas que movimentam o mercado de áudio</h1>
+          <p>Cadastre sua empresa ou encontre locadoras, estúdios, integradores, igrejas, assistências e prestadores de serviço.</p>
+          <div class="companies-hero-actions">
+            <button class="companies-create-button" onclick="openCompanyForm()">
+              ${mine?'Editar minha empresa':'Cadastrar minha empresa'}
+            </button>
+            ${mine?`<button class="companies-view-button" onclick="openCompanyDetails(${mine.id})">Ver meu perfil empresarial</button>`:''}
+          </div>
+        </div>
+
+        <div class="companies-summary">
+          <div><b>${companies.length}</b><span>Empresas</span></div>
+          <div><b>${cities}</b><span>Cidades</span></div>
+          <div><b>${verified}</b><span>Verificadas</span></div>
+        </div>
+      </div>
+
+      <div class="companies-toolbar">
+        <div>
+          <h2>Empresas cadastradas</h2>
+          <p>Pesquise por nome, cidade, serviço ou segmento.</p>
+        </div>
+
+        <label class="companies-search">
+          <span>🔎</span>
+          <input id="companySearchInput" type="search" placeholder="Pesquisar empresa">
+        </label>
+      </div>
+
+      <div id="companiesGrid" class="companies-grid">
+        ${companies.length?companies.map(companyCardMarkup).join(''):`<div class="card companies-empty">
+          <div>🏢</div>
+          <h2>Nenhuma empresa cadastrada</h2>
+          <p>Seja a primeira empresa a criar um perfil profissional.</p>
+          <button class="primary" onclick="openCompanyForm()">Cadastrar empresa</button>
+        </div>`}
+      </div>
+    </section>`;
+
+    const input=document.getElementById('companySearchInput');
+    if(input){
+      input.oninput=()=>{
+        const term=input.value.trim().toLowerCase();
+        const filtered=companies.filter(c=>
+          String(c.name||'').toLowerCase().includes(term)||
+          String(c.legal_name||'').toLowerCase().includes(term)||
+          String(c.city||'').toLowerCase().includes(term)||
+          String(c.segment||'').toLowerCase().includes(term)||
+          String(c.services||'').toLowerCase().includes(term)||
+          String(c.specialties||'').toLowerCase().includes(term)
+        );
+        const grid=document.getElementById('companiesGrid');
+        if(grid){
+          grid.innerHTML=filtered.length
+            ?filtered.map(companyCardMarkup).join('')
+            :`<div class="card companies-empty"><div>🔍</div><h2>Nenhuma empresa encontrada</h2><p>Tente outro nome, cidade ou serviço.</p></div>`;
+        }
+      };
+    }
+  }catch(e){
+    content.innerHTML=`<div class="card companies-empty"><div>⚠️</div><h2>Não foi possível carregar Empresas</h2><p>${esc(e.message)}</p></div>`;
   }
 }
 
 function companyCardMarkup(c){
-  const verified=c.verified_badge||c.verification_status==='verified';
-  const companyName=esc(c.company||c.name||'Empresa');
-  const description=esc(c.bio||c.services||'Empresa cadastrada na Rede Sociaudio.');
+  const verified=Number(c.verified)===1;
+  const companyName=esc(c.name||'Empresa');
+  const description=esc(c.description||c.services||'Empresa cadastrada na Rede Sociaudio.');
   const location=[c.city,c.state].filter(Boolean).join(' - ')||'Localização não informada';
 
   return `<article class="card company-card">
@@ -426,14 +451,14 @@ function companyCardMarkup(c){
 
     <div class="company-card-body">
       <div class="company-logo-wrap">
-        ${c.avatar?`<img class="company-logo" src="${esc(c.avatar)}" alt="">`:`<span class="company-logo fallback">${esc(companyName.slice(0,1).toUpperCase())}</span>`}
+        ${c.logo?`<img class="company-logo" src="${esc(c.logo)}" alt="">`:`<span class="company-logo fallback">${esc(companyName.slice(0,1).toUpperCase())}</span>`}
         ${verified?'<span class="company-verified" title="Empresa verificada">✓</span>':''}
       </div>
 
       <div class="company-title-row">
         <div>
           <h2>${companyName}</h2>
-          <p>${esc(c.role||c.professional_title||'Empresa de áudio')}</p>
+          <p>${esc(c.segment||'Empresa de áudio')}</p>
         </div>
         ${verified?'<span class="company-verified-label">Verificada</span>':''}
       </div>
@@ -447,10 +472,230 @@ function companyCardMarkup(c){
     </div>
 
     <div class="company-card-footer">
-      <button class="secondary" onclick="openProfile(${Number(c.id)})">Ver empresa</button>
+      <button class="secondary" onclick="openCompanyDetails(${Number(c.id)})">Ver empresa</button>
       ${c.whatsapp?`<a class="primary btn" target="_blank" href="https://wa.me/${String(c.whatsapp).replace(/\D/g,'')}">WhatsApp</a>`:''}
     </div>
   </article>`;
+}
+
+async function openCompanyForm(){
+  try{
+    const company=await api('/api/companies/mine')||{};
+
+    content.innerHTML=`<section class="company-form-page">
+      <div class="company-form-header card">
+        <div>
+          <span class="companies-kicker">PERFIL EMPRESARIAL</span>
+          <h1>${company.id?'Editar minha empresa':'Cadastrar minha empresa'}</h1>
+          <p>Crie uma vitrine profissional com logo, capa, serviços, contatos e área de atuação.</p>
+        </div>
+        <button class="secondary" onclick="view='companies';renderCompanies()">Voltar para Empresas</button>
+      </div>
+
+      <form id="companyForm" class="company-form card">
+        <section class="company-form-section">
+          <div class="company-form-section-title">
+            <span>1</span>
+            <div><h2>Identidade da empresa</h2><p>Nome, segmento, logo e capa.</p></div>
+          </div>
+
+          <div class="company-media-editor">
+            <div id="companyCoverPreview" class="company-cover-preview" style="${company.cover?`background-image:url('${esc(company.cover)}')`:''}">
+              <label class="company-cover-button">Alterar capa<input id="companyCoverFile" type="file" accept="image/*" hidden></label>
+            </div>
+
+            <div class="company-logo-editor">
+              <div id="companyLogoPreview" class="company-logo-preview">
+                ${company.logo?`<img src="${esc(company.logo)}" alt="">`:`<span>${esc((company.name||'E').slice(0,1).toUpperCase())}</span>`}
+              </div>
+              <label class="secondary btn">Selecionar logo<input id="companyLogoFile" type="file" accept="image/*" hidden></label>
+              <small>Recomendado: imagem quadrada, até 3 MB.</small>
+            </div>
+          </div>
+
+          <div class="company-form-grid">
+            <label>Nome da empresa<input id="companyName" required value="${esc(company.name||'')}"></label>
+            <label>Razão social<input id="companyLegalName" value="${esc(company.legal_name||'')}"></label>
+            <label>Segmento
+              <select id="companySegment">
+                ${['','Locadora de áudio','Igreja','Estúdio','Integradora audiovisual','Assistência técnica','Fabricante','Produtora de eventos','Escola ou curso','Empresa de iluminação','Outro'].map(x=>`<option ${company.segment===x?'selected':''}>${esc(x||'Selecione')}</option>`).join('')}
+              </select>
+            </label>
+            <label>CNPJ<input id="companyCnpj" value="${esc(company.cnpj||'')}" placeholder="Opcional"></label>
+          </div>
+        </section>
+
+        <section class="company-form-section">
+          <div class="company-form-section-title">
+            <span>2</span>
+            <div><h2>Apresentação e serviços</h2><p>Explique o que a empresa faz e quais serviços oferece.</p></div>
+          </div>
+
+          <label>Descrição da empresa<textarea id="companyDescription" maxlength="2500" rows="6" placeholder="Conte a história, experiência e diferenciais da empresa.">${esc(company.description||'')}</textarea></label>
+          <label>Serviços oferecidos<textarea id="companyServices" rows="4" placeholder="Locação de som, instalação, operação técnica, manutenção...">${esc(company.services||'')}</textarea></label>
+          <label>Especialidades<textarea id="companySpecialties" rows="3" placeholder="Separe por vírgulas: eventos corporativos, igrejas, shows, streaming...">${esc(company.specialties||'')}</textarea></label>
+        </section>
+
+        <section class="company-form-section">
+          <div class="company-form-section-title">
+            <span>3</span>
+            <div><h2>Localização e atendimento</h2><p>Informe onde a empresa está e quais regiões atende.</p></div>
+          </div>
+
+          <div class="company-form-grid">
+            <label>Cidade<input id="companyCity" value="${esc(company.city||'')}"></label>
+            <label>Estado<input id="companyState" value="${esc(company.state||'')}" placeholder="Ex.: SC"></label>
+            <label class="wide">Endereço<input id="companyAddress" value="${esc(company.address||'')}"></label>
+            <label class="wide">Região de atendimento<input id="companyServiceRegion" value="${esc(company.service_region||'')}" placeholder="Ex.: Joinville e região Norte de SC"></label>
+          </div>
+        </section>
+
+        <section class="company-form-section">
+          <div class="company-form-section-title">
+            <span>4</span>
+            <div><h2>Contatos</h2><p>Adicione os canais para clientes entrarem em contato.</p></div>
+          </div>
+
+          <div class="company-form-grid">
+            <label>WhatsApp<input id="companyWhatsapp" value="${esc(company.whatsapp||'')}"></label>
+            <label>Telefone<input id="companyPhone" value="${esc(company.phone||'')}"></label>
+            <label>E-mail<input id="companyEmail" type="email" value="${esc(company.email||'')}"></label>
+            <label>Site<input id="companyWebsite" value="${esc(company.website||'')}"></label>
+            <label>Instagram<input id="companyInstagram" value="${esc(company.instagram||'')}"></label>
+          </div>
+        </section>
+
+        <div class="company-form-actions">
+          <button type="button" class="secondary" onclick="view='companies';renderCompanies()">Cancelar</button>
+          <button type="submit" class="primary">${company.id?'Salvar alterações':'Cadastrar empresa'}</button>
+        </div>
+      </form>
+    </section>`;
+
+    let logoData=company.logo||'';
+    let coverData=company.cover||'';
+
+    companyLogoFile.onchange=async()=>{
+      const file=companyLogoFile.files[0];
+      if(!file)return;
+      if(file.size>3*1024*1024)return toast('A logo deve ter até 3 MB.',true);
+      logoData=await fileToDataURL(file);
+      companyLogoPreview.innerHTML=`<img src="${logoData}" alt="">`;
+    };
+
+    companyCoverFile.onchange=async()=>{
+      const file=companyCoverFile.files[0];
+      if(!file)return;
+      if(file.size>5*1024*1024)return toast('A capa deve ter até 5 MB.',true);
+      coverData=await fileToDataURL(file);
+      companyCoverPreview.style.backgroundImage=`url('${coverData}')`;
+    };
+
+    companyForm.onsubmit=async event=>{
+      event.preventDefault();
+      const button=companyForm.querySelector('button[type="submit"]');
+
+      try{
+        button.disabled=true;
+        button.textContent='Salvando...';
+
+        const result=await api('/api/companies/save',{
+          method:'POST',
+          body:JSON.stringify({
+            name:companyName.value,
+            legal_name:companyLegalName.value,
+            segment:companySegment.value==='Selecione'?'':companySegment.value,
+            cnpj:companyCnpj.value,
+            description:companyDescription.value,
+            services:companyServices.value,
+            specialties:companySpecialties.value,
+            city:companyCity.value,
+            state:companyState.value,
+            address:companyAddress.value,
+            service_region:companyServiceRegion.value,
+            whatsapp:companyWhatsapp.value,
+            phone:companyPhone.value,
+            email:companyEmail.value,
+            website:companyWebsite.value,
+            instagram:companyInstagram.value,
+            logo:logoData,
+            cover:coverData
+          })
+        });
+
+        toast(company.id?'Empresa atualizada.':'Empresa cadastrada.');
+        openCompanyDetails(result.id);
+      }catch(e){
+        toast(e.message,true);
+        button.disabled=false;
+        button.textContent=company.id?'Salvar alterações':'Cadastrar empresa';
+      }
+    };
+  }catch(e){
+    toast(e.message,true);
+  }
+}
+
+async function openCompanyDetails(id){
+  try{
+    const c=await api(`/api/companies/${id}`);
+    const tags=(c.specialties||c.services||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
+
+    content.innerHTML=`<section class="company-profile-page">
+      <article class="company-profile-hero card">
+        <div class="company-profile-cover" style="${c.cover?`background-image:url('${esc(c.cover)}')`:''}"></div>
+        <div class="company-profile-main">
+          <div class="company-profile-logo">
+            ${c.logo?`<img src="${esc(c.logo)}" alt="">`:`<span>${esc((c.name||'E').slice(0,1).toUpperCase())}</span>`}
+          </div>
+
+          <div class="company-profile-info">
+            <h1>${esc(c.name)}</h1>
+            <h2>${esc(c.segment||'Empresa de áudio')}</h2>
+            <p>📍 ${esc([c.city,c.state].filter(Boolean).join(' - ')||'Localização não informada')}</p>
+          </div>
+
+          <div class="company-profile-actions">
+            ${Number(c.owner_id)===Number(me.id)?`<button class="secondary" onclick="openCompanyForm()">Editar empresa</button>`:''}
+            ${c.whatsapp?`<a class="primary btn" target="_blank" href="https://wa.me/${String(c.whatsapp).replace(/\D/g,'')}">Falar no WhatsApp</a>`:''}
+          </div>
+        </div>
+      </article>
+
+      <div class="company-profile-columns">
+        <main>
+          <section class="card company-profile-section">
+            <h2>Sobre a empresa</h2>
+            <p>${esc(c.description||'Esta empresa ainda não adicionou uma apresentação.')}</p>
+          </section>
+
+          <section class="card company-profile-section">
+            <h2>Serviços oferecidos</h2>
+            <p>${esc(c.services||'Não informado.')}</p>
+          </section>
+
+          <section class="card company-profile-section">
+            <h2>Especialidades</h2>
+            <div class="company-profile-tags">${tags.length?tags.map(x=>`<span>${esc(x)}</span>`).join(''):'<p>Nenhuma especialidade cadastrada.</p>'}</div>
+          </section>
+        </main>
+
+        <aside>
+          <section class="card company-profile-contact">
+            <h2>Contato</h2>
+            ${c.whatsapp?`<div><b>WhatsApp</b><span>${esc(c.whatsapp)}</span></div>`:''}
+            ${c.phone?`<div><b>Telefone</b><span>${esc(c.phone)}</span></div>`:''}
+            ${c.email?`<div><b>E-mail</b><span>${esc(c.email)}</span></div>`:''}
+            ${c.website?`<a target="_blank" href="${esc(safeLink(c.website))}"><b>Site</b><span>${esc(c.website)}</span></a>`:''}
+            ${c.instagram?`<a target="_blank" href="${esc(safeLink(c.instagram.startsWith('http')?c.instagram:'https://instagram.com/'+c.instagram.replace('@','')))}"><b>Instagram</b><span>${esc(c.instagram)}</span></a>`:''}
+            ${c.service_region?`<div><b>Região atendida</b><span>${esc(c.service_region)}</span></div>`:''}
+          </section>
+        </aside>
+      </div>
+    </section>`;
+  }catch(e){
+    toast(e.message,true);
+  }
 }
 
 function renderCommunities(){

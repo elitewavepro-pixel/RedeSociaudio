@@ -3225,3 +3225,446 @@ header .sidebar-brand-panel{
     grid-template-columns:repeat(3,1fr);
   }
 }
+
+
+/* Rede Sociaudio Beta 3.2.6 — Cadastro de Empresas */
+.companies-hero-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+  margin-top:20px;
+}
+
+.companies-create-button,
+.companies-view-button{
+  min-height:43px;
+  padding:0 16px;
+  border-radius:10px;
+  font-weight:850;
+}
+
+.companies-create-button{
+  border:1px solid #fff;
+  background:#fff;
+  color:#175cd3;
+}
+
+.companies-view-button{
+  border:1px solid rgba(255,255,255,.28);
+  background:rgba(255,255,255,.12);
+  color:#fff;
+}
+
+.companies-loading{
+  display:grid;
+  place-items:center;
+  min-height:280px;
+}
+
+.companies-loading span{
+  width:34px;
+  height:34px;
+  border:4px solid #dce7f8;
+  border-top-color:#1769e0;
+  border-radius:50%;
+  animation:companySpin .8s linear infinite;
+}
+
+@keyframes companySpin{
+  to{transform:rotate(360deg)}
+}
+
+.company-form-page{
+  display:grid;
+  gap:16px;
+}
+
+.company-form-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:24px!important;
+}
+
+.company-form-header h1,
+.company-form-header p{
+  margin:0;
+}
+
+.company-form-header h1{
+  margin-top:8px;
+  font-size:27px;
+}
+
+.company-form-header p{
+  margin-top:5px;
+  color:#667085;
+}
+
+.company-form{
+  display:grid;
+  gap:0;
+  padding:0!important;
+  overflow:hidden;
+}
+
+.company-form-section{
+  padding:24px;
+  border-bottom:1px solid #e6eaf0;
+}
+
+.company-form-section-title{
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  gap:12px;
+  align-items:center;
+  margin-bottom:18px;
+}
+
+.company-form-section-title>span{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  background:#eef4ff;
+  color:#175cd3;
+  font-weight:900;
+}
+
+.company-form-section-title h2,
+.company-form-section-title p{
+  margin:0;
+}
+
+.company-form-section-title h2{
+  font-size:18px;
+}
+
+.company-form-section-title p{
+  margin-top:3px;
+  color:#667085;
+  font-size:11px;
+}
+
+.company-form-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:13px;
+}
+
+.company-form-grid .wide{
+  grid-column:1/-1;
+}
+
+.company-form label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  color:#344054;
+  font-size:11px;
+  font-weight:800;
+}
+
+.company-form input,
+.company-form select,
+.company-form textarea{
+  width:100%;
+  box-sizing:border-box;
+}
+
+.company-media-editor{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 190px;
+  gap:18px;
+  align-items:end;
+  margin-bottom:19px;
+}
+
+.company-cover-preview{
+  position:relative;
+  height:190px;
+  border-radius:14px;
+  background:
+    linear-gradient(135deg,rgba(9,38,84,.86),rgba(23,105,224,.72)),
+    #174d95;
+  background-size:cover;
+  background-position:center;
+  overflow:hidden;
+}
+
+.company-cover-button{
+  position:absolute;
+  right:12px;
+  bottom:12px;
+  display:inline-flex!important;
+  width:auto!important;
+  min-height:38px;
+  padding:0 13px;
+  align-items:center;
+  justify-content:center;
+  border-radius:9px;
+  background:rgba(255,255,255,.94);
+  color:#175cd3!important;
+  cursor:pointer;
+}
+
+.company-logo-editor{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:9px;
+}
+
+.company-logo-preview{
+  width:112px;
+  height:112px;
+  display:grid;
+  place-items:center;
+  border-radius:22px;
+  border:5px solid #fff;
+  background:#eef4ff;
+  box-shadow:0 10px 25px rgba(16,24,40,.14);
+  overflow:hidden;
+}
+
+.company-logo-preview img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.company-logo-preview span{
+  color:#1769e0;
+  font-size:37px;
+  font-weight:900;
+}
+
+.company-logo-editor small{
+  max-width:170px;
+  color:#667085;
+  text-align:center;
+  font-size:9px;
+}
+
+.company-form-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:9px;
+  padding:18px 24px;
+  background:#f8fafc;
+}
+
+.company-profile-page{
+  display:grid;
+  gap:16px;
+}
+
+.company-profile-hero{
+  padding:0!important;
+  overflow:hidden;
+}
+
+.company-profile-cover{
+  height:240px;
+  background:linear-gradient(135deg,#0a2858,#1769e0);
+  background-size:cover;
+  background-position:center;
+}
+
+.company-profile-main{
+  display:grid;
+  grid-template-columns:150px minmax(0,1fr) auto;
+  gap:18px;
+  align-items:end;
+  padding:0 24px 22px;
+  margin-top:-60px;
+}
+
+.company-profile-logo{
+  width:130px;
+  height:130px;
+  display:grid;
+  place-items:center;
+  border-radius:24px;
+  border:6px solid #fff;
+  background:#eef4ff;
+  overflow:hidden;
+  box-shadow:0 12px 28px rgba(16,24,40,.18);
+}
+
+.company-profile-logo img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.company-profile-logo span{
+  color:#1769e0;
+  font-size:42px;
+  font-weight:900;
+}
+
+.company-profile-info{
+  padding-top:66px;
+}
+
+.company-profile-info h1,
+.company-profile-info h2,
+.company-profile-info p{
+  margin:0;
+}
+
+.company-profile-info h1{
+  font-size:29px;
+}
+
+.company-profile-info h2{
+  margin-top:4px;
+  color:#475467;
+  font-size:16px;
+}
+
+.company-profile-info p{
+  margin-top:7px;
+  color:#667085;
+}
+
+.company-profile-actions{
+  display:flex;
+  gap:8px;
+  padding-top:66px;
+}
+
+.company-profile-columns{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 300px;
+  gap:16px;
+  align-items:start;
+}
+
+.company-profile-columns main{
+  display:grid;
+  gap:16px;
+}
+
+.company-profile-section{
+  padding:21px;
+}
+
+.company-profile-section h2{
+  margin-top:0;
+}
+
+.company-profile-section p{
+  white-space:pre-wrap;
+  line-height:1.6;
+}
+
+.company-profile-tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+}
+
+.company-profile-tags span{
+  padding:7px 10px;
+  border-radius:999px;
+  background:#eef4ff;
+  color:#175cd3;
+  border:1px solid #d3e2ff;
+  font-size:10px;
+  font-weight:800;
+}
+
+.company-profile-contact{
+  padding:18px;
+}
+
+.company-profile-contact h2{
+  margin-top:0;
+}
+
+.company-profile-contact>div,
+.company-profile-contact>a{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  padding:10px 0;
+  border-bottom:1px solid #eaecf0;
+  text-decoration:none;
+}
+
+.company-profile-contact span{
+  color:#667085;
+  font-size:11px;
+  overflow-wrap:anywhere;
+}
+
+@media(max-width:900px){
+  .company-media-editor{
+    grid-template-columns:1fr;
+  }
+
+  .company-logo-editor{
+    align-items:flex-start;
+  }
+
+  .company-profile-main{
+    grid-template-columns:130px minmax(0,1fr);
+  }
+
+  .company-profile-actions{
+    grid-column:1/-1;
+    padding-top:0;
+  }
+
+  .company-profile-columns{
+    grid-template-columns:1fr;
+  }
+}
+
+@media(max-width:650px){
+  .company-form-header{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .company-form-grid{
+    grid-template-columns:1fr;
+  }
+
+  .company-form-grid .wide{
+    grid-column:auto;
+  }
+
+  .company-cover-preview{
+    height:150px;
+  }
+
+  .company-profile-cover{
+    height:175px;
+  }
+
+  .company-profile-main{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    margin-top:-48px;
+    padding:0 16px 18px;
+  }
+
+  .company-profile-logo{
+    width:105px;
+    height:105px;
+  }
+
+  .company-profile-info{
+    padding-top:0;
+  }
+
+  .company-profile-actions{
+    width:100%;
+  }
+}

@@ -4,7 +4,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 
-APP_VERSION = 'Beta 3.2.5 — Empresas corrigidas'
+APP_VERSION = 'Beta 3.2.6 — Cadastro de Empresas'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -2200,6 +2200,85 @@ class Handler(SimpleHTTPRequestHandler):
             c.execute('DELETE FROM profile_gallery WHERE id=? AND user_id=?',(gid,u['id']));c.commit();c.close()
             remove_media_file(row['image_url'])
             return self.send_json({'ok':True})
+        if p == '/api/companies/save':
+            name=(d.get('name') or '').strip()
+            if len(name)<2:
+                return self.send_json({'error':'Informe o nome da empresa.'},400)
+
+            fields={
+              'legal_name':(d.get('legal_name') or '').strip(),
+              'segment':(d.get('segment') or '').strip(),
+              'description':(d.get('description') or '').strip(),
+              'services':(d.get('services') or '').strip(),
+              'specialties':(d.get('specialties') or '').strip(),
+              'logo':(d.get('logo') or '')[:1200000],
+              'cover':(d.get('cover') or '')[:1800000],
+              'gallery':(d.get('gallery') or '')[:3500000],
+              'city':(d.get('city') or '').strip(),
+              'state':(d.get('state') or '').strip(),
+              'address':(d.get('address') or '').strip(),
+              'service_region':(d.get('service_region') or '').strip(),
+              'whatsapp':(d.get('whatsapp') or '').strip(),
+              'phone':(d.get('phone') or '').strip(),
+              'email':(d.get('email') or '').strip(),
+              'website':(d.get('website') or '').strip(),
+              'instagram':(d.get('instagram') or '').strip(),
+              'cnpj':(d.get('cnpj') or '').strip()
+            }
+
+            if len(fields['description'])>2500:
+                return self.send_json({'error':'A descrição deve ter até 2.500 caracteres.'},400)
+
+            c=connect()
+            current=c.execute(
+                'SELECT id FROM companies WHERE owner_id=?',
+                (u['id'],)
+            ).fetchone()
+
+            if current:
+                c.execute(
+                    '''UPDATE companies SET
+                       name=?,legal_name=?,segment=?,description=?,services=?,
+                       specialties=?,logo=?,cover=?,gallery=?,city=?,state=?,
+                       address=?,service_region=?,whatsapp=?,phone=?,email=?,
+                       website=?,instagram=?,cnpj=?,updated_at=?
+                       WHERE owner_id=?''',
+                    (
+                      name,fields['legal_name'],fields['segment'],
+                      fields['description'],fields['services'],
+                      fields['specialties'],fields['logo'],fields['cover'],
+                      fields['gallery'],fields['city'],fields['state'],
+                      fields['address'],fields['service_region'],
+                      fields['whatsapp'],fields['phone'],fields['email'],
+                      fields['website'],fields['instagram'],fields['cnpj'],
+                      now(),u['id']
+                    )
+                )
+                company_id=current['id']
+            else:
+                c.execute(
+                    '''INSERT INTO companies(
+                       owner_id,name,legal_name,segment,description,services,
+                       specialties,logo,cover,gallery,city,state,address,
+                       service_region,whatsapp,phone,email,website,instagram,
+                       cnpj,verified,created_at,updated_at
+                       ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)''',
+                    (
+                      u['id'],name,fields['legal_name'],fields['segment'],
+                      fields['description'],fields['services'],
+                      fields['specialties'],fields['logo'],fields['cover'],
+                      fields['gallery'],fields['city'],fields['state'],
+                      fields['address'],fields['service_region'],
+                      fields['whatsapp'],fields['phone'],fields['email'],
+                      fields['website'],fields['instagram'],fields['cnpj'],
+                      now(),now()
+                    )
+                )
+                company_id=c.execute('SELECT last_insert_rowid()').fetchone()[0]
+
+            c.commit();c.close()
+            return self.send_json({'ok':True,'id':company_id})
+
         if p == '/api/profile/availability':
             date_value=(d.get('available_date') or '').strip()
             start=(d.get('start_time') or '').strip()
