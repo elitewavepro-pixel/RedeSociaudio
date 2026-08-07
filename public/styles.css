@@ -5235,3 +5235,147 @@ body.admin-mode .app-shell{
   .market-fixed-title{font-size:20px !important;}
   .market-fixed-price{font-size:24px !important;}
 }
+
+/* v5.1.3 — Centro de Conhecimento premium */
+.knowledge-hero.knowledge-hero-premium{
+  position:relative;
+  isolation:isolate;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 250px;
+  align-items:center;
+  gap:28px;
+  min-height:270px;
+  padding:38px 40px;
+  margin-bottom:22px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:20px;
+  background:
+    radial-gradient(circle at 88% 20%,rgba(70,160,255,.32),transparent 31%),
+    radial-gradient(circle at 72% 115%,rgba(0,206,255,.18),transparent 35%),
+    linear-gradient(135deg,#071f43 0%,#0b3976 48%,#1769df 100%);
+  box-shadow:0 18px 45px rgba(15,54,105,.18);
+  color:#fff;
+  overflow:hidden;
+}
+.knowledge-hero.knowledge-hero-premium:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  opacity:.16;
+  background-image:linear-gradient(rgba(255,255,255,.11) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.11) 1px,transparent 1px);
+  background-size:42px 42px;
+  mask-image:linear-gradient(90deg,transparent 25%,#000 100%);
+}
+.knowledge-hero-copy{position:relative;z-index:2;min-width:0}
+.knowledge-hero.knowledge-hero-premium .eyebrow{
+  display:inline-flex;
+  align-items:center;
+  padding:7px 11px;
+  margin:0 0 8px;
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:999px;
+  background:rgba(255,255,255,.1);
+  color:#bcd9ff;
+  font-size:11px;
+  font-weight:850;
+  letter-spacing:.13em;
+}
+.knowledge-hero.knowledge-hero-premium h1{
+  margin:5px 0 10px;
+  max-width:650px;
+  color:#fff;
+  font-size:38px;
+  line-height:1.08;
+  letter-spacing:-1.2px;
+}
+.knowledge-hero.knowledge-hero-premium p{
+  max-width:650px;
+  margin:0;
+  color:#d8e9ff;
+  font-size:15px;
+  line-height:1.65;
+}
+.knowledge-hero-actions{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:14px;
+  margin-top:22px;
+}
+.knowledge-publish-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:48px;
+  padding:0 20px;
+  border:1px solid rgba(255,255,255,.72);
+  border-radius:12px;
+  background:#fff;
+  color:#105fc9;
+  font-size:14px;
+  font-weight:850;
+  box-shadow:0 9px 22px rgba(0,0,0,.14);
+  cursor:pointer;
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.knowledge-publish-btn:hover{transform:translateY(-2px);box-shadow:0 13px 26px rgba(0,0,0,.2)}
+.knowledge-publish-btn .sa-icon{width:18px;height:18px}
+.knowledge-hero-note{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  color:#bcd5f6;
+  font-size:11px;
+  font-weight:650;
+}
+.knowledge-hero-note .sa-icon{width:16px;height:16px}
+.knowledge-hero-visual{
+  position:relative;
+  min-height:190px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:15px;
+}
+.knowledge-hero-visual .knowledge-hero-icon{
+  position:relative;
+  z-index:2;
+  width:118px;
+  height:118px;
+  border:1px solid rgba(255,255,255,.24);
+  border-radius:30px;
+  background:linear-gradient(145deg,rgba(255,255,255,.22),rgba(255,255,255,.08));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 18px 38px rgba(0,0,0,.14);
+  backdrop-filter:blur(8px);
+}
+.knowledge-hero-visual .knowledge-hero-icon .sa-icon{width:56px;height:56px}
+.knowledge-hero-visual>span{
+  position:relative;
+  z-index:2;
+  color:#d8e9ff;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.12em;
+  text-align:center;
+}
+.knowledge-hero-ring{
+  position:absolute;
+  border:1px solid rgba(255,255,255,.13);
+  border-radius:50%;
+}
+.knowledge-hero-ring.ring-a{width:205px;height:205px}
+.knowledge-hero-ring.ring-b{width:165px;height:165px;border-style:dashed}
+@media(max-width:850px){
+  .knowledge-hero.knowledge-hero-premium{grid-template-columns:1fr;padding:30px;min-height:0}
+  .knowledge-hero-visual{display:none}
+}
+@media(max-width:520px){
+  .knowledge-hero.knowledge-hero-premium{padding:24px 20px;border-radius:16px}
+  .knowledge-hero.knowledge-hero-premium h1{font-size:30px}
+  .knowledge-hero-actions{align-items:stretch;flex-direction:column}
+  .knowledge-publish-btn{width:100%}
+  .knowledge-hero-note{justify-content:center;text-align:center}
+}
