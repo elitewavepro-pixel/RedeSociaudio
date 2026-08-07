@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.2.2 Public';
+const SOCIAUDIO_VERSION='v5.2.3 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.2.2 PUBLIC</span>
+        <span class="beta-label">V5.2.3 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -3769,8 +3769,60 @@ if(window.marketClose)marketClose.onclick=()=>marketDlg.close();
 if(window.marketImage)marketImage.onchange=async()=>{let f=marketImage.files[0];marketImageData=f?await fileToData(f,1400):'';marketPreview.hidden=!marketImageData;marketPreview.src=marketImageData||''};
 function openMarketDialog(){marketForm.reset();marketCity.value=me.city||'';marketPhone.value=me.whatsapp||'';marketImageData='';marketPreview.hidden=true;marketDlg.showModal()}
 marketForm.onsubmit=async e=>{e.preventDefault();try{await api('/api/marketplace',{method:'POST',body:JSON.stringify({title:marketTitle.value,listing_type:marketType.value,category:marketCategory.value,price:marketPrice.value,item_condition:marketCondition.value,city:marketCity.value,contact_phone:marketPhone.value,description:marketDescription.value,image_data:marketImageData})});marketDlg.close();toast('Anúncio publicado com sucesso.');renderMarketplace()}catch(err){toast(err.message,true)}};
-function marketCard(m){let phone=(m.contact_phone||'').replace(/\D/g,'');return `<article class="card market-card">${m.image_data?`<div class="market-image"><img src="${m.image_data}" alt="${esc(m.title)}"></div>`:`<div class="market-image placeholder">${icon('store')}</div>`}<div class="market-card-body"><div class="market-badges"><span class="tag">${esc(m.listing_type)}</span><span class="tag muted">${esc(m.category)}</span><span class="market-condition">${esc(m.item_condition)}</span></div><h2>${esc(m.title)}</h2><div class="market-price">${esc(m.price||'Valor a combinar')}</div><p>${esc(m.description)}</p><div class="market-location">${icon('location')} ${esc(m.city||m.seller_city||'Local não informado')}</div><div class="market-seller">${avatar({avatar:m.seller_avatar,name:m.seller_name})}<div><b>${esc(m.seller_name)}</b><small>Anunciante</small></div></div><div class="market-actions">${phone?`<a class="primary btn" target="_blank" rel="noopener" href="https://wa.me/${phone}?text=${encodeURIComponent('Olá! Vi seu anúncio na Rede Sociaudio: '+m.title)}">Falar no WhatsApp</a>`:''}${m.can_manage?`<button class="danger-light" onclick="closeMarket(${m.id})">Encerrar anúncio</button>`:''}</div></div></article>`}
-async function renderMarketplace(){let items=await api('/api/marketplace');content.innerHTML=`<section class="market-hero card"><div><span class="eyebrow">NEGÓCIOS ENTRE PROFISSIONAIS</span><h1>Marketplace do áudio</h1><p>Compre, venda, troque ou alugue equipamentos dentro da comunidade especializada.</p><button class="primary" onclick="openMarketDialog()">${icon('plus')} Publicar anúncio</button></div><div class="market-hero-icon">${icon('store')}</div></section><div class="market-toolbar"><input id="marketSearch" placeholder="Buscar equipamentos, marcas ou cidades..."><select id="marketFilter"><option value="">Todas as categorias</option>${['Mesas digitais','Microfones','Caixas e PA','Monitores e In-ear','Interfaces e estúdio','Cabos e conectores','Cases e acessórios','Iluminação','Instrumentos','Outros'].map(x=>`<option>${x}</option>`).join('')}</select><select id="marketTypeFilter"><option value="">Venda, troca ou locação</option><option>Venda</option><option>Troca</option><option>Locação</option></select></div><div id="marketGrid" class="market-grid"></div>`;let draw=()=>{let q=marketSearch.value.toLowerCase(),cat=marketFilter.value,typ=marketTypeFilter.value;let filtered=items.filter(x=>(!q||[x.title,x.description,x.city,x.seller_name].join(' ').toLowerCase().includes(q))&&(!cat||x.category===cat)&&(!typ||x.listing_type===typ));marketGrid.innerHTML=filtered.length?filtered.map(marketCard).join(''):'<div class="card empty market-empty">Nenhum anúncio encontrado.</div>';hydrateIcons(marketGrid)};marketSearch.oninput=draw;marketFilter.onchange=draw;marketTypeFilter.onchange=draw;draw();hydrateIcons(content)}
+function marketCard(m){
+  let phone=(m.contact_phone||'').replace(/\D/g,'');
+  let image=m.image_data
+    ?`<div class="market-v523-image"><img src="${m.image_data}" alt="${esc(m.title)}"></div>`
+    :`<div class="market-v523-image placeholder">${icon('store')}</div>`;
+
+  return `
+    <article class="card market-v523-card">
+      ${image}
+
+      <div class="market-v523-content">
+        <div class="market-v523-badges">
+          <span class="tag">${esc(m.listing_type)}</span>
+          <span class="tag muted">${esc(m.category)}</span>
+          <span class="market-condition">${esc(m.item_condition)}</span>
+        </div>
+
+        <h2 class="market-v523-title">${esc(m.title)}</h2>
+        <div class="market-v523-price">${esc(m.price||'Valor a combinar')}</div>
+
+        ${m.description
+          ?`<p class="market-v523-description">${esc(m.description)}</p>`
+          :''}
+
+        <div class="market-v523-location">
+          ${icon('location')}
+          <span>${esc(m.city||m.seller_city||'Local não informado')}</span>
+        </div>
+
+        <div class="market-v523-seller">
+          ${avatar({avatar:m.seller_avatar,name:m.seller_name})}
+          <div>
+            <b>${esc(m.seller_name)}</b>
+            <small>Anunciante</small>
+          </div>
+        </div>
+
+        <div class="market-v523-actions">
+          ${phone
+            ?`<a class="primary btn" target="_blank" rel="noopener"
+                href="https://wa.me/${phone}?text=${encodeURIComponent('Olá! Vi seu anúncio na Rede Sociaudio: '+m.title)}">
+                Falar no WhatsApp
+              </a>`
+            :''}
+
+          ${m.can_manage
+            ?`<button class="danger-light" onclick="closeMarket(${m.id})">Encerrar anúncio</button>`
+            :''}
+        </div>
+      </div>
+    </article>`;
+}
+
+async function renderMarketplace(){let items=await api('/api/marketplace');content.innerHTML=`<section class="market-hero card"><div><span class="eyebrow">NEGÓCIOS ENTRE PROFISSIONAIS</span><h1>Marketplace do áudio</h1><p>Compre, venda, troque ou alugue equipamentos dentro da comunidade especializada.</p><button class="primary" onclick="openMarketDialog()">${icon('plus')} Publicar anúncio</button></div><div class="market-hero-icon">${icon('store')}</div></section><div class="market-toolbar"><input id="marketSearch" placeholder="Buscar equipamentos, marcas ou cidades..."><select id="marketFilter"><option value="">Todas as categorias</option>${['Mesas digitais','Microfones','Caixas e PA','Monitores e In-ear','Interfaces e estúdio','Cabos e conectores','Cases e acessórios','Iluminação','Instrumentos','Outros'].map(x=>`<option>${x}</option>`).join('')}</select><select id="marketTypeFilter"><option value="">Venda, troca ou locação</option><option>Venda</option><option>Troca</option><option>Locação</option></select></div><div id="marketGrid" class="market-grid market-v523-grid"></div>`;let draw=()=>{let q=marketSearch.value.toLowerCase(),cat=marketFilter.value,typ=marketTypeFilter.value;let filtered=items.filter(x=>(!q||[x.title,x.description,x.city,x.seller_name].join(' ').toLowerCase().includes(q))&&(!cat||x.category===cat)&&(!typ||x.listing_type===typ));marketGrid.innerHTML=filtered.length?filtered.map(marketCard).join(''):'<div class="card empty market-empty">Nenhum anúncio encontrado.</div>';hydrateIcons(marketGrid)};marketSearch.oninput=draw;marketFilter.onchange=draw;marketTypeFilter.onchange=draw;draw();hydrateIcons(content)}
 async function closeMarket(id){if(!confirm('Encerrar este anúncio?'))return;try{await api(`/api/marketplace/${id}/close`,{method:'POST'});toast('Anúncio encerrado.');renderMarketplace()}catch(e){toast(e.message,true)}}
 
 
