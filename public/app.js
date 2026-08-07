@@ -2,7 +2,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 
 let chatPoll=null;
 let chatConversationId=null;
-const SOCIAUDIO_VERSION='v4.0.1 Public';
+const SOCIAUDIO_VERSION='v4.0.2 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -156,7 +156,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.0.1 PUBLIC</span>
+        <span class="beta-label">V4.0.2 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -326,10 +326,7 @@ loginTab.onclick=()=>{tab('login');loginTab.classList.add('active');registerTab.
 login.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/login',{method:'POST',body:JSON.stringify({email:le.value,password:lp.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
 register.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/register',{method:'POST',body:JSON.stringify({name:rn.value,email:re.value,password:rp.value,role:rr.value,city:rc.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
 logoutBtn.onclick=async()=>{try{await api('/api/logout',{method:'POST'})}catch{}localStorage.removeItem('sociaudio_token');location.reload()};
-bindViewNavigation();bellBtn.onclick=async()=>{
-  view='notifications';
-  await loadNotifications(true);
-};
+bindViewNavigation();bellBtn.onclick=()=>renderStableNotifications();
 newPostBtn.onclick=()=>openNewPost();closePost.onclick=()=>{postDlg.close();resetPostDialog()};
 pimg.onchange=async()=>{try{
   let selected=[...pimg.files];
@@ -2299,10 +2296,301 @@ async function openPublicNotification(id){
 }
 
 
+
+// ================================================================
+// REDE SOCIAUDIO v4.0.2 — NOTIFICAÇÕES ESTÁVEIS
+// Renderiza primeiro; consulta a API depois.
+// ================================================================
+function getStableNotificationRoot(){
+  return document.getElementById('content');
+}
+
+function stableNotificationEscape(value){
+  if(typeof esc==='function')return esc(String(value??''));
+  return String(value??'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
+}
+
+function stableNotificationTitle(type){
+  const map={
+    follow:'Novo seguidor',
+    like:'Nova curtida',
+    comment:'Novo comentário',
+    message:'Nova mensagem',
+    community:'Comunidade',
+    quote:'Solicitação de orçamento',
+    review:'Nova avaliação',
+    job_apply:'Nova candidatura',
+    job_status:'Atualização de candidatura'
+  };
+  return map[type]||'Nova notificação';
+}
+
+function stableNotificationIcon(type){
+  const map={
+    follow:'👤',like:'👍',comment:'💬',message:'✉️',
+    community:'👥',quote:'💼',review:'⭐',
+    job_apply:'📄',job_status:'📌'
+  };
+  return map[type]||'🔔';
+}
+
+function stableNotificationTime(value){
+  if(!value)return '';
+  try{
+    const date=new Date(value);
+    const diff=Math.max(0,Date.now()-date.getTime());
+    const minutes=Math.floor(diff/60000);
+    if(minutes<1)return 'agora';
+    if(minutes<60)return `há ${minutes} min`;
+    const hours=Math.floor(minutes/60);
+    if(hours<24)return `há ${hours} h`;
+    const days=Math.floor(hours/24);
+    if(days<7)return `há ${days} dia${days>1?'s':''}`;
+    return date.toLocaleDateString('pt-BR');
+  }catch(_){
+    return '';
+  }
+}
+
+let stableNotifications=[];
+let stableNotificationFilter='all';
+
+function stableNotificationShell(){
+  const root=getStableNotificationRoot();
+  if(!root)return;
+
+  root.innerHTML=`
+    <section class="stable-notifications">
+      <header class="stable-notifications-header">
+        <div>
+          <span>CENTRAL DE ATIVIDADES</span>
+          <h1>Notificações</h1>
+          <p>Acompanhe as atividades da sua conta.</p>
+        </div>
+        <button id="stableMarkAll" class="secondary" type="button" disabled>
+          Marcar todas como lidas
+        </button>
+      </header>
+
+      <div class="stable-notifications-tabs">
+        <button id="stableTabAll" class="active" type="button">
+          Todas <b id="stableAllCount">0</b>
+        </button>
+        <button id="stableTabUnread" type="button">
+          Não lidas <b id="stableUnreadCount">0</b>
+        </button>
+      </div>
+
+      <div id="stableNotificationBody" class="stable-notifications-body">
+        <div class="stable-notifications-loading">
+          <i></i>
+          <h2>Carregando notificações...</h2>
+        </div>
+      </div>
+    </section>`;
+
+  document.getElementById('stableTabAll').onclick=()=>{
+    stableNotificationFilter='all';
+    drawStableNotifications();
+  };
+  document.getElementById('stableTabUnread').onclick=()=>{
+    stableNotificationFilter='unread';
+    drawStableNotifications();
+  };
+  document.getElementById('stableMarkAll').onclick=markAllStableNotifications;
+}
+
+function stableNotificationCard(item){
+  const id=Number(item.id||0);
+  const read=Number(item.is_read||0)===1;
+  const title=item.title||stableNotificationTitle(item.type);
+  const message=item.message||item.description||'Nova atividade na sua conta.';
+  const actor=item.actor_name||'Rede Sociaudio';
+  const initial=stableNotificationEscape(actor.slice(0,1).toUpperCase());
+
+  return `
+    <article class="stable-notification-card ${read?'read':'unread'}">
+      <button class="stable-notification-open" type="button"
+              onclick="openStableNotification(${id})">
+        <span class="stable-notification-avatar">
+          ${item.actor_avatar
+            ?`<img src="${stableNotificationEscape(item.actor_avatar)}" alt="">`
+            :`<strong>${initial}</strong>`}
+          <em>${stableNotificationIcon(item.type)}</em>
+        </span>
+
+        <span class="stable-notification-copy">
+          <span class="stable-notification-title">
+            <strong>${stableNotificationEscape(title)}</strong>
+            ${read?'':'<i></i>'}
+          </span>
+          <span class="stable-notification-message">
+            ${stableNotificationEscape(message)}
+          </span>
+          <small>${stableNotificationTime(item.created_at)}</small>
+        </span>
+      </button>
+
+      <button class="stable-notification-delete" type="button"
+              onclick="deleteStableNotification(${id},event)"
+              title="Excluir">×</button>
+    </article>`;
+}
+
+function drawStableNotifications(){
+  const body=document.getElementById('stableNotificationBody');
+  if(!body)return;
+
+  const unread=stableNotifications.filter(item=>Number(item.is_read||0)!==1);
+  const visible=stableNotificationFilter==='unread'?unread:stableNotifications;
+
+  document.getElementById('stableAllCount').textContent=stableNotifications.length;
+  document.getElementById('stableUnreadCount').textContent=unread.length;
+  document.getElementById('stableTabAll').classList.toggle('active',stableNotificationFilter==='all');
+  document.getElementById('stableTabUnread').classList.toggle('active',stableNotificationFilter==='unread');
+
+  const markButton=document.getElementById('stableMarkAll');
+  markButton.disabled=unread.length===0;
+
+  if(!visible.length){
+    body.innerHTML=`
+      <div class="stable-notifications-empty">
+        <span>${stableNotificationFilter==='unread'?'✅':'🔔'}</span>
+        <h2>${stableNotificationFilter==='unread'?'Tudo em dia':'Nenhuma notificação'}</h2>
+        <p>${stableNotificationFilter==='unread'
+          ?'Você não possui notificações não lidas.'
+          :'As novas atividades aparecerão aqui.'}</p>
+      </div>`;
+    return;
+  }
+
+  body.innerHTML=visible.map(stableNotificationCard).join('');
+}
+
+async function loadStableNotifications(){
+  try{
+    const result=await Promise.race([
+      api('/api/notifications'),
+      new Promise((_,reject)=>{
+        setTimeout(()=>reject(new Error('O servidor demorou para responder.')),12000);
+      })
+    ]);
+
+    stableNotifications=result&&Array.isArray(result.items)?result.items:[];
+    notificationItems=stableNotifications;
+    notificationUnread=Number(
+      result&&result.unread!==undefined
+        ?result.unread
+        :stableNotifications.filter(item=>Number(item.is_read||0)!==1).length
+    );
+
+    if(typeof updateNotificationBadge==='function')updateNotificationBadge();
+    drawStableNotifications();
+  }catch(error){
+    const body=document.getElementById('stableNotificationBody');
+    if(!body)return;
+
+    body.innerHTML=`
+      <div class="stable-notifications-error">
+        <span>⚠️</span>
+        <h2>Não foi possível carregar as notificações</h2>
+        <p>${stableNotificationEscape(error?.message||'Tente novamente.')}</p>
+        <button class="primary" type="button" onclick="loadStableNotifications()">
+          Tentar novamente
+        </button>
+      </div>`;
+  }
+}
+
+function renderStableNotifications(){
+  view='notifications';
+  stableNotificationFilter='all';
+  stableNotificationShell();
+  setTimeout(loadStableNotifications,0);
+}
+
+async function markAllStableNotifications(){
+  try{
+    await api('/api/notifications/read-all',{method:'POST',body:'{}'});
+    stableNotifications.forEach(item=>item.is_read=1);
+    notificationItems=stableNotifications;
+    notificationUnread=0;
+    if(typeof updateNotificationBadge==='function')updateNotificationBadge();
+    drawStableNotifications();
+    if(typeof toast==='function')toast('Todas as notificações foram marcadas como lidas.');
+  }catch(error){
+    if(typeof toast==='function')toast(error.message||'Não foi possível atualizar.',true);
+  }
+}
+
+async function deleteStableNotification(id,event){
+  if(event){
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  try{
+    await api(`/api/notifications/${id}/delete`,{method:'POST',body:'{}'});
+    stableNotifications=stableNotifications.filter(item=>Number(item.id)!==Number(id));
+    notificationItems=stableNotifications;
+    notificationUnread=stableNotifications.filter(item=>Number(item.is_read||0)!==1).length;
+    if(typeof updateNotificationBadge==='function')updateNotificationBadge();
+    drawStableNotifications();
+  }catch(error){
+    if(typeof toast==='function')toast(error.message||'Não foi possível excluir.',true);
+  }
+}
+
+async function openStableNotification(id){
+  const item=stableNotifications.find(entry=>Number(entry.id)===Number(id));
+  if(!item)return;
+
+  if(Number(item.is_read||0)!==1){
+    try{
+      await api(`/api/notifications/${id}/read`,{method:'POST',body:'{}'});
+      item.is_read=1;
+      notificationUnread=Math.max(0,Number(notificationUnread||0)-1);
+      if(typeof updateNotificationBadge==='function')updateNotificationBadge();
+    }catch(_){}
+  }
+
+  if(item.type==='message'||item.target_type==='message'){
+    view='messages';
+    render();
+    return;
+  }
+  if(item.target_type==='community'){
+    view='communities';
+    render();
+    return;
+  }
+  if(item.target_type==='quote'){
+    view='requests';
+    render();
+    return;
+  }
+  if(item.target_type==='profile'&&item.target_id&&typeof openProfile==='function'){
+    openProfile(item.target_id);
+    return;
+  }
+
+  drawStableNotifications();
+}
+
+
 function bindViewNavigation(){
   document.querySelectorAll('[data-view]').forEach(button=>{
     button.onclick=()=>{
       view=button.dataset.view;
+      if(view==='notifications'){
+        renderStableNotifications();
+        return;
+      }
       render();
     };
   });
@@ -2327,7 +2615,7 @@ function render(){
   if(view==='chat'||view==='messages')return renderChat();
   if(view==='communities')return renderCommunities();
   if(view==='profile')return renderProfile();
-  if(view==='notifications')return renderPublicNotifications();
+  if(view==='notifications')return renderStableNotifications();
   if(view==='about')return renderAbout();
   if(view==='hire')return renderHire();
   if(view==='requests')return renderRequests();
@@ -2393,10 +2681,8 @@ async function askAudioAI(e){e.preventDefault();let q=aiQuestion.value.trim(),sy
 async function loadAiSession(id,rerender=true){aiSessionId=id;if(rerender){renderAudioAI();return}try{let d=await api(`/api/audio-ai/session/${id}`),box=aiMessages;box.innerHTML=d.messages.map(m=>{if(m.role==='user')return `<div class="ai-message user"><div><b>Você</b><p>${esc(m.body)}</p></div></div>`;let ans;try{ans=JSON.parse(m.body)}catch{ans={title:'Resposta',actions:[m.body],likely:[],checks:[]}}return `<div class="ai-message assistant">${aiAnswerHtml(ans)}</div>`}).join('')||aiWelcome();box.scrollTop=box.scrollHeight;hydrateIcons(box)}catch(e){toast(e.message,true)}}
 
 
-document.querySelectorAll('[data-view="notifications"],#notificationBtn,.notification-button').forEach(function(el){
-  el.onclick=function(){
-    renderPublicNotifications();
-  };
+document.querySelectorAll('[data-view="notifications"],#notificationBtn,.notification-button').forEach(el=>{
+  el.onclick=()=>renderStableNotifications();
 });
 loadNotifications();
 notificationPoll=setInterval(()=>loadNotifications(view==='notifications'),5000);
