@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v4.2.1 Public';
+const SOCIAUDIO_VERSION='v4.2.2 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -118,6 +118,7 @@ function setIdentityAvatar(container,user,header=false){
 }
 
 function renderSidebarIdentity(){
+  setTimeout(enforceAdminMenuSecurity,0);
   setTimeout(updateAdminMenuVisibility,0);
   if(typeof me==='undefined'||!me)return;
   const name=document.getElementById('sidebarName');
@@ -158,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.2.1 PUBLIC</span>
+        <span class="beta-label">V4.2.2 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -312,6 +313,7 @@ function lines(v){return esc(v||'').split(/[,\n]/).filter(Boolean).map(x=>`<span
 function tab(w){login.hidden=w!=='login';register.hidden=w!=='register';msg.textContent=''}
 async function boot(){await applyPlatformSettings();if(token){try{me=(await api('/api/me')).user;renderSidebarIdentity();showApp();return}catch{localStorage.removeItem('sociaudio_token');token=''}}auth.hidden=false;auth.style.display='grid';app.hidden=true}
 function showApp(){
+  setTimeout(enforceAdminMenuSecurity,0);
   setTimeout(updateAdminMenuVisibility,0);
   if(isAdminUser()){
     document.getElementById('auth').classList.add('hidden');
@@ -2752,6 +2754,38 @@ function isAdminUser(){
 // ================================================================
 // REDE SOCIAUDIO v4.2.1 — VISIBILIDADE DO MENU ADMIN
 // ================================================================
+
+// ================================================================
+// REDE SOCIAUDIO v4.2.2 — REMOCAO DEFINITIVA DO MENU ADMIN PARA USUARIO COMUM
+// ================================================================
+function enforceAdminMenuSecurity(){
+  const allowed=isAdminUser();
+
+  document.querySelectorAll(
+    '[data-view="admin"],#adminNavItem,.admin-nav-item,[data-admin-entry]'
+  ).forEach(el=>{
+    if(!allowed){
+      el.remove();
+    }
+  });
+
+  if(!allowed){
+    // Segurança extra: remove qualquer item de menu cujo texto seja Administração.
+    document.querySelectorAll(
+      '.sidebar button,.sidebar a,#sidebar button,#sidebar a,aside button,aside a'
+    ).forEach(el=>{
+      const label=(el.textContent||'').trim().toLowerCase();
+      if(label==='administração' || label==='administracao'){
+        el.remove();
+      }
+    });
+
+    if(view==='admin'){
+      view='feed';
+    }
+  }
+}
+
 function updateAdminMenuVisibility(){
   const adminItem=document.getElementById('adminNavItem');
   if(!adminItem)return;
@@ -3153,6 +3187,7 @@ async function renderAdminSystem(workspace){
 
 
 function render(){
+  setTimeout(enforceAdminMenuSecurity,0);
   if(isAdminUser() && !window.__allowAdminNormalView){
     showAdminApp();
     return;
@@ -3469,4 +3504,19 @@ window.addEventListener('DOMContentLoaded',()=>{
 
 window.addEventListener('DOMContentLoaded',()=>{
   setTimeout(updateAdminMenuVisibility,100);
+});
+
+
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(enforceAdminMenuSecurity,50);
+  setTimeout(enforceAdminMenuSecurity,300);
+
+  const adminMenuObserver=new MutationObserver(()=>{
+    enforceAdminMenuSecurity();
+  });
+
+  adminMenuObserver.observe(document.body,{
+    childList:true,
+    subtree:true
+  });
 });

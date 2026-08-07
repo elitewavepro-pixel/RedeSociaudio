@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v4.2.1 — Menu Administração restrito'
+APP_VERSION = 'v4.2.2 — Menu Admin corrigido'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
