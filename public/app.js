@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v4.1.0 Public';
+const SOCIAUDIO_VERSION='v4.2.0 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -157,7 +157,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.1.0 PUBLIC</span>
+        <span class="beta-label">V4.2.0 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -310,7 +310,14 @@ function avatar(u,cls=''){return u.avatar?`<img class="avatar ${cls}" src="${u.a
 function lines(v){return esc(v||'').split(/[,\n]/).filter(Boolean).map(x=>`<span class="skill">${x.trim()}</span>`).join('')}
 function tab(w){login.hidden=w!=='login';register.hidden=w!=='register';msg.textContent=''}
 async function boot(){await applyPlatformSettings();if(token){try{me=(await api('/api/me')).user;renderSidebarIdentity();showApp();return}catch{localStorage.removeItem('sociaudio_token');token=''}}auth.hidden=false;auth.style.display='grid';app.hidden=true}
-function showApp(){mountProfessionalSidebar();auth.hidden=true;auth.style.display='none';app.hidden=false;app.style.display='block';headerName.textContent=me.name;renderSidebarIdentity();if(window.sidebarRole)sidebarRole.textContent=`${me.role} · ${me.plan_label||'Gratuito'}`;adminNav.hidden=!me.is_admin;hydrateIcons();loadAll().finally(()=>startBellRealtime())}
+function showApp(){
+  if(isAdminUser()){
+    document.getElementById('auth').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    showAdminApp();
+    return;
+  }
+mountProfessionalSidebar();auth.hidden=true;auth.style.display='none';app.hidden=false;app.style.display='block';headerName.textContent=me.name;renderSidebarIdentity();if(window.sidebarRole)sidebarRole.textContent=`${me.role} · ${me.plan_label||'Gratuito'}`;adminNav.hidden=!me.is_admin;hydrateIcons();loadAll().finally(()=>startBellRealtime())}
 async function loadAll(){try{
   [posts,users,communities,notifications]=await Promise.all([
     api('/api/posts'),
@@ -2724,7 +2731,413 @@ function bindViewNavigation(){
   });
 }
 
+
+// ================================================================
+// REDE SOCIAUDIO v4.2.0 — PAINEL ADMINISTRATIVO EXCLUSIVO
+// ================================================================
+let adminSection='overview';
+
+function isAdminUser(){
+  try{
+    const role=String(me?.role||'').toLowerCase();
+    return role==='admin'||role==='administrator'||role==='adm';
+  }catch(_){
+    return false;
+  }
+}
+
+function showAdminApp(){
+  document.body.classList.add('admin-mode');
+  document.body.classList.remove('chat-page');
+
+  const normalSidebar=document.querySelector('.sidebar,aside.sidebar,#sidebar');
+  if(normalSidebar)normalSidebar.style.display='none';
+
+  const topbar=document.querySelector('.topbar,.app-topbar,#topbar');
+  if(topbar)topbar.classList.add('admin-topbar');
+
+  renderAdminShell();
+}
+
+function renderAdminShell(){
+  const root=document.getElementById('content');
+  if(!root)return;
+
+  root.innerHTML=`
+    <section class="admin-shell">
+      <aside class="admin-sidebar">
+        <div class="admin-brand">
+          <span class="admin-brand-mark">S</span>
+          <div>
+            <strong>Rede Sociaudio</strong>
+            <small>Painel Administrativo</small>
+          </div>
+        </div>
+
+        <div class="admin-profile">
+          <div class="admin-avatar">${esc((me?.name||'A').slice(0,1).toUpperCase())}</div>
+          <div>
+            <strong>${esc(me?.name||'Administrador')}</strong>
+            <small>Administrador da plataforma</small>
+          </div>
+        </div>
+
+        <nav class="admin-nav">
+          <button data-admin-section="overview" class="${adminSection==='overview'?'active':''}">
+            <span>⌂</span><b>Visão geral</b>
+          </button>
+          <button data-admin-section="users" class="${adminSection==='users'?'active':''}">
+            <span>👥</span><b>Usuários</b>
+          </button>
+          <button data-admin-section="companies" class="${adminSection==='companies'?'active':''}">
+            <span>🏢</span><b>Empresas</b>
+          </button>
+          <button data-admin-section="content" class="${adminSection==='content'?'active':''}">
+            <span>📝</span><b>Conteúdo</b>
+          </button>
+          <button data-admin-section="opportunities" class="${adminSection==='opportunities'?'active':''}">
+            <span>💼</span><b>Oportunidades</b>
+          </button>
+          <button data-admin-section="system" class="${adminSection==='system'?'active':''}">
+            <span>⚙️</span><b>Sistema</b>
+          </button>
+        </nav>
+
+        <div class="admin-sidebar-footer">
+          <button id="adminOpenPlatform" class="admin-secondary-action">Abrir plataforma</button>
+          <button id="adminLogout" class="admin-logout">Sair</button>
+        </div>
+      </aside>
+
+      <main class="admin-main">
+        <header class="admin-header">
+          <div>
+            <span class="admin-eyebrow">ADMINISTRAÇÃO</span>
+            <h1 id="adminPageTitle">Painel Administrativo</h1>
+          </div>
+          <div class="admin-header-actions">
+            <button id="adminRefresh" class="secondary">Atualizar dados</button>
+          </div>
+        </header>
+
+        <div id="adminWorkspace" class="admin-workspace">
+          <div class="admin-loading">
+            <span></span>
+            <p>Carregando painel...</p>
+          </div>
+        </div>
+      </main>
+    </section>`;
+
+  document.querySelectorAll('[data-admin-section]').forEach(btn=>{
+    btn.onclick=()=>{
+      adminSection=btn.dataset.adminSection;
+      renderAdminShell();
+      loadAdminSection();
+    };
+  });
+
+  const refresh=document.getElementById('adminRefresh');
+  if(refresh)refresh.onclick=()=>loadAdminSection(true);
+
+  const logout=document.getElementById('adminLogout');
+  if(logout)logout.onclick=()=>{
+    localStorage.removeItem('sociaudio_token');
+    token='';
+    me=null;
+    location.href='/app';
+  };
+
+  const openPlatform=document.getElementById('adminOpenPlatform');
+  if(openPlatform)openPlatform.onclick=()=>{
+    document.body.classList.remove('admin-mode');
+    window.__allowAdminNormalView=true;
+    const normalSidebar=document.querySelector('.sidebar,aside.sidebar,#sidebar');
+    if(normalSidebar)normalSidebar.style.display='';
+    view='feed';
+    render();
+  };
+
+  loadAdminSection();
+}
+
+async function adminApi(path,options){
+  try{
+    return await api(path,options);
+  }catch(error){
+    throw error;
+  }
+}
+
+function adminMetricCard(label,value,caption,icon){
+  return `
+    <article class="admin-metric-card">
+      <div class="admin-metric-icon">${icon}</div>
+      <div>
+        <span>${esc(label)}</span>
+        <strong>${Number(value||0).toLocaleString('pt-BR')}</strong>
+        <small>${esc(caption||'')}</small>
+      </div>
+    </article>`;
+}
+
+function adminEmpty(title,text){
+  return `
+    <div class="admin-empty">
+      <span>✓</span>
+      <h3>${esc(title)}</h3>
+      <p>${esc(text)}</p>
+    </div>`;
+}
+
+async function loadAdminSection(force=false){
+  const workspace=document.getElementById('adminWorkspace');
+  if(!workspace)return;
+
+  const titles={
+    overview:'Visão geral',
+    users:'Usuários',
+    companies:'Empresas',
+    content:'Conteúdo',
+    opportunities:'Oportunidades',
+    system:'Sistema'
+  };
+  const title=document.getElementById('adminPageTitle');
+  if(title)title.textContent=titles[adminSection]||'Painel Administrativo';
+
+  workspace.innerHTML=`<div class="admin-loading"><span></span><p>Carregando dados...</p></div>`;
+
+  try{
+    if(adminSection==='overview')return await renderAdminOverview(workspace);
+    if(adminSection==='users')return await renderAdminUsers(workspace);
+    if(adminSection==='companies')return await renderAdminCompanies(workspace);
+    if(adminSection==='content')return await renderAdminContent(workspace);
+    if(adminSection==='opportunities')return await renderAdminOpportunities(workspace);
+    if(adminSection==='system')return await renderAdminSystem(workspace);
+  }catch(error){
+    console.error('[Admin]',error);
+    workspace.innerHTML=`
+      <div class="admin-error">
+        <span>⚠️</span>
+        <h2>Não foi possível carregar esta área</h2>
+        <p>${esc(error?.message||'Tente novamente.')}</p>
+        <button class="primary" onclick="loadAdminSection(true)">Tentar novamente</button>
+      </div>`;
+  }
+}
+
+async function renderAdminOverview(workspace){
+  let users=[],companies=[],posts=[],jobs=[];
+  try{users=await adminApi('/api/admin/users')}catch(_){}
+  try{companies=await adminApi('/api/companies')}catch(_){}
+  try{posts=await adminApi('/api/posts')}catch(_){}
+  try{jobs=await adminApi('/api/jobs')}catch(_){}
+
+  users=Array.isArray(users)?users:(users?.items||[]);
+  companies=Array.isArray(companies)?companies:(companies?.items||[]);
+  posts=Array.isArray(posts)?posts:(posts?.items||[]);
+  jobs=Array.isArray(jobs)?jobs:(jobs?.items||[]);
+
+  const activeUsers=users.filter(u=>String(u.status||'active')==='active').length;
+  const verifiedCompanies=companies.filter(c=>Number(c.verified||0)===1).length;
+
+  workspace.innerHTML=`
+    <section class="admin-metrics-grid">
+      ${adminMetricCard('Usuários',users.length,'contas cadastradas','👥')}
+      ${adminMetricCard('Usuários ativos',activeUsers,'contas em situação ativa','✓')}
+      ${adminMetricCard('Empresas',companies.length,`${verifiedCompanies} verificadas`,'🏢')}
+      ${adminMetricCard('Publicações',posts.length,'conteúdos na rede','📝')}
+      ${adminMetricCard('Oportunidades',jobs.length,'vagas e oportunidades','💼')}
+    </section>
+
+    <section class="admin-dashboard-grid">
+      <article class="admin-panel">
+        <div class="admin-panel-head">
+          <div><h2>Atalhos de gestão</h2><p>Acesse rapidamente as áreas principais.</p></div>
+        </div>
+        <div class="admin-quick-grid">
+          <button onclick="adminSection='users';renderAdminShell()">Gerenciar usuários</button>
+          <button onclick="adminSection='companies';renderAdminShell()">Gerenciar empresas</button>
+          <button onclick="adminSection='content';renderAdminShell()">Revisar conteúdo</button>
+          <button onclick="adminSection='opportunities';renderAdminShell()">Ver oportunidades</button>
+        </div>
+      </article>
+
+      <article class="admin-panel">
+        <div class="admin-panel-head">
+          <div><h2>Status da plataforma</h2><p>Resumo operacional.</p></div>
+        </div>
+        <div class="admin-health-list">
+          <div><span>Aplicação</span><b class="ok">Online</b></div>
+          <div><span>Domínio</span><b class="ok">redesociaudio.com.br</b></div>
+          <div><span>Versão</span><b>v4.2.0 Public</b></div>
+          <div><span>Ambiente</span><b>Produção</b></div>
+        </div>
+      </article>
+    </section>`;
+}
+
+async function renderAdminUsers(workspace){
+  let data=await adminApi('/api/admin/users');
+  const users=Array.isArray(data)?data:(data?.items||[]);
+
+  workspace.innerHTML=`
+    <section class="admin-panel">
+      <div class="admin-panel-head admin-panel-head-row">
+        <div>
+          <h2>Usuários cadastrados</h2>
+          <p>Consulte e gerencie as contas da plataforma.</p>
+        </div>
+        <input id="adminUserSearch" class="admin-search" placeholder="Buscar usuário">
+      </div>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>Atuação</th>
+              <th>Cidade</th>
+              <th>Status</th>
+              <th>Tipo</th>
+            </tr>
+          </thead>
+          <tbody id="adminUsersBody">
+            ${users.length?users.map(u=>`
+              <tr>
+                <td>
+                  <div class="admin-user-cell">
+                    <span>${esc((u.name||'U').slice(0,1).toUpperCase())}</span>
+                    <div><b>${esc(u.name||'Usuário')}</b><small>${esc(u.email||'')}</small></div>
+                  </div>
+                </td>
+                <td>${esc(u.role||'Não informado')}</td>
+                <td>${esc(u.city||'—')}</td>
+                <td><span class="admin-status ${String(u.status||'active')==='active'?'active':'inactive'}">${esc(u.status||'active')}</span></td>
+                <td>${['admin','administrator','adm'].includes(String(u.role||'').toLowerCase())?'<b>Administrador</b>':'Usuário'}</td>
+              </tr>`).join(''):`
+              <tr><td colspan="5">${adminEmpty('Nenhum usuário','Ainda não há usuários para exibir.')}</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </section>`;
+
+  const input=document.getElementById('adminUserSearch');
+  if(input){
+    input.oninput=()=>{
+      const q=input.value.toLowerCase();
+      document.querySelectorAll('#adminUsersBody tr').forEach(row=>{
+        row.hidden=!row.textContent.toLowerCase().includes(q);
+      });
+    };
+  }
+}
+
+async function renderAdminCompanies(workspace){
+  const data=await adminApi('/api/companies');
+  const companies=Array.isArray(data)?data:(data?.items||[]);
+
+  workspace.innerHTML=`
+    <section class="admin-panel">
+      <div class="admin-panel-head">
+        <div><h2>Empresas cadastradas</h2><p>Visualize as empresas presentes na plataforma.</p></div>
+      </div>
+      <div class="admin-card-grid">
+        ${companies.length?companies.map(c=>`
+          <article class="admin-company-card">
+            <div class="admin-company-logo">${c.logo?`<img src="${esc(c.logo)}" alt="">`:`<span>${esc((c.name||'E').slice(0,1))}</span>`}</div>
+            <div><h3>${esc(c.name||'Empresa')}</h3><p>${esc(c.category||'Empresa de áudio')}</p><small>${esc(c.city||'Local não informado')}</small></div>
+            ${Number(c.verified||0)===1?'<b class="admin-verified">Verificada</b>':''}
+          </article>`).join(''):adminEmpty('Nenhuma empresa','Ainda não há empresas cadastradas.')}
+      </div>
+    </section>`;
+}
+
+async function renderAdminContent(workspace){
+  const data=await adminApi('/api/posts');
+  const posts=Array.isArray(data)?data:(data?.items||[]);
+
+  workspace.innerHTML=`
+    <section class="admin-panel">
+      <div class="admin-panel-head">
+        <div><h2>Conteúdo da plataforma</h2><p>Visão administrativa das publicações recentes.</p></div>
+      </div>
+      <div class="admin-content-list">
+        ${posts.slice(0,50).map(p=>`
+          <article>
+            <div>
+              <b>${esc(p.title||'Publicação')}</b>
+              <span>${esc(p.author_name||p.user_name||'Usuário')}</span>
+            </div>
+            <p>${esc((p.body||p.content||'').slice(0,180))}</p>
+            <small>${esc(p.created_at||'')}</small>
+          </article>`).join('')||adminEmpty('Nenhum conteúdo','Não há publicações disponíveis.')}
+      </div>
+    </section>`;
+}
+
+async function renderAdminOpportunities(workspace){
+  let data=await adminApi('/api/jobs');
+  const jobs=Array.isArray(data)?data:(data?.items||[]);
+
+  workspace.innerHTML=`
+    <section class="admin-panel">
+      <div class="admin-panel-head">
+        <div><h2>Oportunidades</h2><p>Acompanhe vagas e oportunidades publicadas.</p></div>
+      </div>
+      <div class="admin-content-list">
+        ${jobs.map(j=>`
+          <article>
+            <div><b>${esc(j.title||'Oportunidade')}</b><span>${esc(j.company||j.company_name||'')}</span></div>
+            <p>${esc((j.description||'').slice(0,180))}</p>
+            <small>${esc(j.city||'')} ${j.status?`• ${esc(j.status)}`:''}</small>
+          </article>`).join('')||adminEmpty('Nenhuma oportunidade','Não há oportunidades cadastradas.')}
+      </div>
+    </section>`;
+}
+
+async function renderAdminSystem(workspace){
+  let health={};
+  try{
+    const response=await fetch('/api/health');
+    health=await response.json();
+  }catch(_){}
+
+  workspace.innerHTML=`
+    <section class="admin-dashboard-grid">
+      <article class="admin-panel">
+        <div class="admin-panel-head">
+          <div><h2>Informações do sistema</h2><p>Ambiente atual da Rede Sociaudio.</p></div>
+        </div>
+        <div class="admin-health-list">
+          <div><span>Versão</span><b>${esc(health.version||'v4.2.0')}</b></div>
+          <div><span>Status</span><b class="ok">${esc(health.status||'online')}</b></div>
+          <div><span>Domínio</span><b>redesociaudio.com.br</b></div>
+          <div><span>Modo</span><b>Produção</b></div>
+        </div>
+      </article>
+
+      <article class="admin-panel">
+        <div class="admin-panel-head">
+          <div><h2>Segurança administrativa</h2><p>Boas práticas ativas nesta conta.</p></div>
+        </div>
+        <div class="admin-security-list">
+          <div>✓ Conta ADM separada dos usuários comuns</div>
+          <div>✓ Interface administrativa exclusiva</div>
+          <div>✓ Rotas administrativas protegidas pelo backend</div>
+          <div>✓ Sessão separada por autenticação</div>
+        </div>
+      </article>
+    </section>`;
+}
+
+
 function render(){
+  if(isAdminUser() && !window.__allowAdminNormalView){
+    showAdminApp();
+    return;
+  }
+
   const isChat=view==='chat'||view==='messages';
   document.body.classList.toggle('chat-page',isChat);
   document.querySelectorAll('[data-view]').forEach(b=>{
