@@ -4,7 +4,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 
-APP_VERSION = 'v4.0.3 — Correção exata de inicialização'
+APP_VERSION = 'v4.0.4 — Sino em tempo real'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -1314,6 +1314,15 @@ class Handler(SimpleHTTPRequestHandler):
              (SELECT COUNT(*) FROM community_members m WHERE m.community_id=c.id) members,
              EXISTS(SELECT 1 FROM community_members m WHERE m.community_id=c.id AND m.user_id=?) joined
              FROM communities c ORDER BY members DESC,c.name''',(u['id'],)).fetchall()]; c.close(); return self.send_json(rows)
+        if p == '/api/notifications/unread-count':
+            u=self.require_user()
+            if not u:return
+            c=connect()
+            unread=c.execute('SELECT COUNT(*) FROM notifications WHERE user_id=? AND COALESCE(is_read,0)=0',(u['id'],)).fetchone()[0]
+            latest=c.execute('SELECT COALESCE(MAX(id),0) FROM notifications WHERE user_id=?',(u['id'],)).fetchone()[0]
+            c.close()
+            return self.send_json({'unread':int(unread or 0),'latest_id':int(latest or 0)})
+
         if p == '/api/notifications':
             u=self.require_user()
             if not u:return

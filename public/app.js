@@ -2,7 +2,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 
 let chatPoll=null;
 let chatConversationId=null;
-const SOCIAUDIO_VERSION='v4.0.3 Public';
+const SOCIAUDIO_VERSION='v4.0.4 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -156,7 +156,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.0.3 PUBLIC</span>
+        <span class="beta-label">V4.0.4 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -309,7 +309,7 @@ function avatar(u,cls=''){return u.avatar?`<img class="avatar ${cls}" src="${u.a
 function lines(v){return esc(v||'').split(/[,\n]/).filter(Boolean).map(x=>`<span class="skill">${x.trim()}</span>`).join('')}
 function tab(w){login.hidden=w!=='login';register.hidden=w!=='register';msg.textContent=''}
 async function boot(){await applyPlatformSettings();if(token){try{me=(await api('/api/me')).user;renderSidebarIdentity();showApp();return}catch{localStorage.removeItem('sociaudio_token');token=''}}auth.hidden=false;auth.style.display='grid';app.hidden=true}
-function showApp(){mountProfessionalSidebar();auth.hidden=true;auth.style.display='none';app.hidden=false;app.style.display='block';headerName.textContent=me.name;renderSidebarIdentity();if(window.sidebarRole)sidebarRole.textContent=`${me.role} · ${me.plan_label||'Gratuito'}`;adminNav.hidden=!me.is_admin;hydrateIcons();loadAll()}
+function showApp(){mountProfessionalSidebar();auth.hidden=true;auth.style.display='none';app.hidden=false;app.style.display='block';headerName.textContent=me.name;renderSidebarIdentity();if(window.sidebarRole)sidebarRole.textContent=`${me.role} · ${me.plan_label||'Gratuito'}`;adminNav.hidden=!me.is_admin;hydrateIcons();loadAll().finally(()=>startBellRealtime())}
 async function loadAll(){try{
   [posts,users,communities,notifications]=await Promise.all([
     api('/api/posts'),
@@ -325,7 +325,7 @@ async function loadAll(){try{
 loginTab.onclick=()=>{tab('login');loginTab.classList.add('active');registerTab.classList.remove('active')};registerTab.onclick=()=>{tab('register');registerTab.classList.add('active');loginTab.classList.remove('active')};
 login.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/login',{method:'POST',body:JSON.stringify({email:le.value,password:lp.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
 register.onsubmit=async e=>{e.preventDefault();try{token=(await api('/api/register',{method:'POST',body:JSON.stringify({name:rn.value,email:re.value,password:rp.value,role:rr.value,city:rc.value})})).token;localStorage.setItem('sociaudio_token',token);me=(await api('/api/me')).user;renderSidebarIdentity();showApp()}catch(e){msg.textContent=e.message}};
-logoutBtn.onclick=async()=>{try{await api('/api/logout',{method:'POST'})}catch{}localStorage.removeItem('sociaudio_token');location.reload()};
+logoutBtn.onclick=async()=>{stopBellRealtime();try{await api('/api/logout',{method:'POST'})}catch{}localStorage.removeItem('sociaudio_token');location.reload()};
 bindViewNavigation();bellBtn.onclick=()=>renderStableNotifications();
 newPostBtn.onclick=()=>openNewPost();closePost.onclick=()=>{postDlg.close();resetPostDialog()};
 pimg.onchange=async()=>{try{
@@ -1106,6 +1106,60 @@ function safeNotificationCard(n){
   </article>`;
 }
 
+
+// ================================================================
+// REDE SOCIAUDIO v4.0.4 — SINO EM TEMPO REAL
+// ================================================================
+let bellRealtimeTimer=null;
+let bellLatestNotificationId=0;
+let bellRealtimeBusy=false;
+
+async function refreshBellRealtime(forceList=false){
+  if(!token||!me||bellRealtimeBusy)return;
+  bellRealtimeBusy=true;
+  try{
+    const state=await api('/api/notifications/unread-count');
+    const nextUnread=Math.max(0,Number(state?.unread||0));
+    const nextLatest=Math.max(0,Number(state?.latest_id||0));
+    const changed=nextUnread!==notificationUnread || nextLatest!==bellLatestNotificationId;
+
+    notificationUnread=nextUnread;
+    bellLatestNotificationId=nextLatest;
+    updateNotificationBadge();
+
+    if((changed||forceList) && view==='notifications'){
+      if(typeof loadStableNotifications==='function'){
+        await loadStableNotifications();
+      }else if(typeof loadNotifications==='function'){
+        await loadNotifications(true);
+      }
+    }
+  }catch(error){
+    console.warn('[Rede Sociaudio] Não foi possível atualizar o sino:',error);
+  }finally{
+    bellRealtimeBusy=false;
+  }
+}
+
+function startBellRealtime(){
+  stopBellRealtime();
+  if(!token||!me)return;
+  refreshBellRealtime(true);
+  bellRealtimeTimer=setInterval(()=>refreshBellRealtime(false),3000);
+}
+
+function stopBellRealtime(){
+  if(bellRealtimeTimer){
+    clearInterval(bellRealtimeTimer);
+    bellRealtimeTimer=null;
+  }
+}
+
+window.addEventListener('focus',()=>refreshBellRealtime(false));
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden)refreshBellRealtime(false);
+});
+
 function updateNotificationBadge(){
   notificationUnread=Math.max(0,Number(notificationUnread||0));
   const text=notificationUnread>99?'99+':String(notificationUnread);
@@ -1152,7 +1206,7 @@ async function markAllNotificationsRead(){
     notificationItems.forEach(n=>n.is_read=1);
     notificationUnread=Number(result.unread||0);
     updateNotificationBadge();
-    toast('Todas as notificações foram marcadas como lidas.');
+    toast('Todas as notificações foram marcadas como lidas.');refreshBellRealtime(false);
     renderNotifications();
   }catch(e){
     toast(e.message,true);
@@ -2683,8 +2737,7 @@ async function loadAiSession(id,rerender=true){aiSessionId=id;if(rerender){rende
 document.querySelectorAll('[data-view="notifications"],#notificationBtn,.notification-button').forEach(el=>{
   el.onclick=()=>renderStableNotifications();
 });
-loadNotifications();
-notificationPoll=setInterval(()=>loadNotifications(view==='notifications'),5000);
+
 
 checkPlatformHealth();
 setInterval(checkPlatformHealth,120000);

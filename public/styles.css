@@ -4410,3 +4410,26 @@ header .sidebar-brand-panel{
     justify-content:center;
   }
 }
+
+
+/* Rede Sociaudio v4.0.4 — sino em tempo real */
+#bellBtn.has-unread{
+  color:#d92d20!important;
+  background:#fff1f0!important;
+}
+#bellBtn.has-unread [data-icon="bell"]{
+  animation:bellRealtimePulse 1.6s ease-in-out infinite;
+}
+.header-notification-count,
+.notification-badge{
+  background:#e62e2e!important;
+  color:#fff!important;
+  box-shadow:0 0 0 3px #fff!important;
+}
+@keyframes bellRealtimePulse{
+  0%,100%{transform:rotate(0)}
+  15%{transform:rotate(9deg)}
+  30%{transform:rotate(-9deg)}
+  45%{transform:rotate(5deg)}
+  60%{transform:rotate(0)}
+}
