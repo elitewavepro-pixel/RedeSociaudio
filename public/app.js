@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.1.1 Public';
+const SOCIAUDIO_VERSION='v5.2.0 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.1.1 PUBLIC</span>
+        <span class="beta-label">V5.2.0 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -2892,6 +2892,7 @@ function bindViewNavigation(){
   document.querySelectorAll('[data-view]').forEach(button=>{
     button.onclick=()=>{
       view=button.dataset.view;
+  if(view==='professional-profile')return openProfessionalProfile(currentProfileId||me?.id);
       if(view==='notifications'){
         renderStableNotifications();
         return;
@@ -3404,6 +3405,304 @@ async function renderAdminSystem(workspace){
         </div>
       </article>
     </section>`;
+}
+
+
+
+// ================================================================
+// REDE SOCIAUDIO v5.2.0 — PERFIL PROFISSIONAL
+// ================================================================
+let currentProfileId=null;
+
+function profileList(value){
+  return String(value||'')
+    .split(/[,;\n]/)
+    .map(x=>x.trim())
+    .filter(Boolean);
+}
+
+function safeExternalUrl(value){
+  const v=String(value||'').trim();
+  if(!v)return '';
+  if(/^https?:\/\//i.test(v))return v;
+  return 'https://'+v.replace(/^\/+/,'');
+}
+
+function profileSocialLink(label,url,icon){
+  if(!url)return '';
+  return `<a class="pro-profile-social" href="${esc(safeExternalUrl(url))}" target="_blank" rel="noopener">${icon} ${esc(label)}</a>`;
+}
+
+function profilePortfolioCards(value){
+  const items=profileList(value);
+  if(!items.length)return '<p class="pro-profile-muted">Nenhum item de portfólio adicionado ainda.</p>';
+  return `<div class="pro-profile-portfolio-grid">${
+    items.map(item=>{
+      const url=safeExternalUrl(item);
+      return `<a href="${esc(url)}" target="_blank" rel="noopener">
+        <span>↗</span>
+        <b>${esc(item.replace(/^https?:\/\//i,''))}</b>
+      </a>`;
+    }).join('')
+  }</div>`;
+}
+
+async function openProfessionalProfile(userId){
+  currentProfileId=Number(userId||me?.id||0);
+  view='professional-profile';
+
+  content.innerHTML=`
+    <section class="pro-profile-loading">
+      <span></span>
+      <h2>Carregando perfil profissional...</h2>
+    </section>`;
+
+  try{
+    const result=await api(`/api/profile/${currentProfileId}`);
+    renderProfessionalProfile(result.profile);
+  }catch(error){
+    content.innerHTML=`
+      <section class="pro-profile-error">
+        <span>⚠️</span>
+        <h2>Não foi possível carregar este perfil</h2>
+        <p>${esc(error.message||'Tente novamente.')}</p>
+        <button class="primary" onclick="openProfessionalProfile(${currentProfileId})">Tentar novamente</button>
+      </section>`;
+  }
+}
+
+function renderProfessionalProfile(profile){
+  const own=Number(profile.id)===Number(me?.id);
+  const specialties=profileList(profile.specialties);
+  const equipment=profileList(profile.equipment);
+  const availability=profile.availability||'Disponibilidade não informada';
+  const role=profile.role||'Profissional de áudio';
+  const city=profile.city||'Local não informado';
+
+  content.innerHTML=`
+    <section class="pro-profile-page">
+      <div class="pro-profile-hero">
+        <div class="pro-profile-cover" style="${profile.cover?`background-image:url('${esc(profile.cover)}')`:''}">
+          ${!profile.cover?'<div class="pro-profile-cover-pattern"></div>':''}
+        </div>
+
+        <div class="pro-profile-maincard">
+          <div class="pro-profile-avatar-wrap">
+            <div class="pro-profile-avatar">
+              ${profile.avatar
+                ?`<img src="${esc(profile.avatar)}" alt="">`
+                :`<span>${esc((profile.name||'U').slice(0,1).toUpperCase())}</span>`}
+            </div>
+          </div>
+
+          <div class="pro-profile-summary">
+            <div class="pro-profile-name-row">
+              <div>
+                <h1>${esc(profile.name||'Profissional')}</h1>
+                <p class="pro-profile-headline">${esc(profile.headline||role)}</p>
+              </div>
+              <span class="pro-profile-status">${esc(profile.status||'active')}</span>
+            </div>
+
+            <div class="pro-profile-meta">
+              <span>📍 ${esc(city)}</span>
+              <span>🎚️ ${esc(role)}</span>
+              <span>🕒 ${esc(availability)}</span>
+            </div>
+
+            <div class="pro-profile-actions">
+              ${own
+                ?`<button class="primary" onclick="openEditProfessionalProfile()">Editar perfil</button>`
+                :`<button class="primary" onclick="startConversationWithProfile(${profile.id})">Entrar em contato</button>`}
+              ${profile.whatsapp && !own
+                ?`<a class="secondary button" href="https://wa.me/${esc(profile.whatsapp.replace(/\D/g,''))}" target="_blank" rel="noopener">WhatsApp</a>`
+                :''}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pro-profile-layout">
+        <main class="pro-profile-content">
+          <section class="pro-profile-section">
+            <h2>Sobre</h2>
+            <p>${esc(profile.bio||'Este profissional ainda não adicionou uma apresentação.')}</p>
+          </section>
+
+          <section class="pro-profile-section">
+            <div class="pro-profile-section-head">
+              <h2>Especialidades</h2>
+            </div>
+            <div class="pro-profile-chips">
+              ${specialties.length
+                ?specialties.map(x=>`<span>${esc(x)}</span>`).join('')
+                :'<span class="muted-chip">Nenhuma especialidade cadastrada</span>'}
+            </div>
+          </section>
+
+          <section class="pro-profile-section">
+            <h2>Experiência profissional</h2>
+            <p class="pro-profile-preline">${esc(profile.experience||'Experiência ainda não informada.')}</p>
+          </section>
+
+          <section class="pro-profile-section">
+            <h2>Equipamentos e consoles</h2>
+            <div class="pro-profile-chips equipment">
+              ${equipment.length
+                ?equipment.map(x=>`<span>${esc(x)}</span>`).join('')
+                :'<span class="muted-chip">Nenhum equipamento informado</span>'}
+            </div>
+          </section>
+
+          <section class="pro-profile-section">
+            <h2>Portfólio</h2>
+            ${profilePortfolioCards(profile.portfolio)}
+          </section>
+
+          <section class="pro-profile-section">
+            <div class="pro-profile-section-head">
+              <h2>Publicações recentes</h2>
+              <span>${(profile.posts||[]).length} publicações</span>
+            </div>
+            <div class="pro-profile-posts">
+              ${(profile.posts||[]).length
+                ?profile.posts.slice(0,8).map(p=>`
+                  <article>
+                    <div>
+                      <strong>${esc(p.title||'Publicação')}</strong>
+                      <small>${esc(p.created_at||'')}</small>
+                    </div>
+                    ${p.body?`<p>${esc(p.body.slice(0,220))}</p>`:''}
+                    ${p.media_type?.startsWith('image/') && p.media_data
+                      ?`<img src="${esc(p.media_data)}" alt="">`
+                      :''}
+                    ${p.media_type?.startsWith('video/') && p.media_data
+                      ?`<video src="${esc(p.media_data)}" controls preload="metadata"></video>`
+                      :''}
+                  </article>`).join('')
+                :'<p class="pro-profile-muted">Nenhuma publicação ainda.</p>'}
+            </div>
+          </section>
+        </main>
+
+        <aside class="pro-profile-side">
+          <section class="pro-profile-section compact">
+            <h3>Informações profissionais</h3>
+            <div class="pro-profile-info-list">
+              <div><span>Atuação</span><b>${esc(role)}</b></div>
+              <div><span>Cidade</span><b>${esc(city)}</b></div>
+              <div><span>Disponibilidade</span><b>${esc(availability)}</b></div>
+            </div>
+          </section>
+
+          <section class="pro-profile-section compact">
+            <h3>Links</h3>
+            <div class="pro-profile-socials">
+              ${profileSocialLink('Instagram',profile.instagram,'◎')}
+              ${profileSocialLink('LinkedIn',profile.linkedin,'in')}
+              ${profileSocialLink('YouTube',profile.youtube,'▶')}
+              ${profileSocialLink('Site',profile.website,'🌐')}
+              ${(!profile.instagram&&!profile.linkedin&&!profile.youtube&&!profile.website)
+                ?'<p class="pro-profile-muted">Nenhum link adicionado.</p>':''}
+            </div>
+          </section>
+        </aside>
+      </div>
+    </section>`;
+}
+
+async function startConversationWithProfile(userId){
+  try{
+    const result=await api('/api/conversations/start',{
+      method:'POST',
+      body:JSON.stringify({user_id:Number(userId)})
+    });
+    view='messages';
+    render();
+    if(result?.conversation_id){
+      setTimeout(()=>openConversation(result.conversation_id),100);
+    }
+  }catch(error){
+    toast(error.message||'Não foi possível iniciar a conversa.',true);
+  }
+}
+
+function openEditProfessionalProfile(){
+  if(!me)return;
+
+  const dlg=document.getElementById('professionalProfileDlg');
+  if(!dlg)return;
+
+  const map={
+    epHeadline:'headline',
+    epBio:'bio',
+    epSpecialties:'specialties',
+    epExperience:'experience',
+    epEquipment:'equipment',
+    epPortfolio:'portfolio',
+    epInstagram:'instagram',
+    epLinkedin:'linkedin',
+    epYoutube:'youtube',
+    epWebsite:'website',
+    epWhatsapp:'whatsapp',
+    epAvailability:'availability',
+    epCity:'city',
+    epRole:'role',
+    epCover:'cover'
+  };
+
+  Object.entries(map).forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(el)el.value=me[key]||'';
+  });
+
+  dlg.showModal();
+}
+
+async function saveProfessionalProfile(){
+  const button=document.getElementById('epSave');
+  const msgEl=document.getElementById('epMsg');
+
+  const value=id=>(document.getElementById(id)?.value||'').trim();
+
+  const payload={
+    headline:value('epHeadline'),
+    bio:value('epBio'),
+    specialties:value('epSpecialties'),
+    experience:value('epExperience'),
+    equipment:value('epEquipment'),
+    portfolio:value('epPortfolio'),
+    instagram:value('epInstagram'),
+    linkedin:value('epLinkedin'),
+    youtube:value('epYoutube'),
+    website:value('epWebsite'),
+    whatsapp:value('epWhatsapp'),
+    availability:value('epAvailability'),
+    city:value('epCity'),
+    role:value('epRole'),
+    cover:value('epCover')
+  };
+
+  button.disabled=true;
+  button.textContent='Salvando...';
+  msgEl.textContent='';
+
+  try{
+    const result=await api('/api/profile/update',{
+      method:'POST',
+      body:JSON.stringify(payload)
+    });
+    me={...me,...result.user};
+    renderSidebarIdentity();
+    document.getElementById('professionalProfileDlg').close();
+    toast('Perfil profissional atualizado.');
+    await openProfessionalProfile(me.id);
+  }catch(error){
+    msgEl.textContent=error.message||'Não foi possível salvar.';
+  }finally{
+    button.disabled=false;
+    button.textContent='Salvar perfil';
+  }
 }
 
 
@@ -3979,4 +4278,20 @@ window.addEventListener('DOMContentLoaded',()=>{
     bindSimplePostButtons();
   });
   simplePostObserver.observe(document.body,{childList:true,subtree:true});
+});
+
+
+window.addEventListener('DOMContentLoaded',()=>{
+  document.addEventListener('click',event=>{
+    const target=event.target.closest('[data-open-profile],.sidebar-profile,.profile-summary,#profileCard');
+    if(!target)return;
+
+    if(target.closest('button,a') && !target.matches('[data-open-profile]'))return;
+
+    const uid=Number(target.dataset.userId||me?.id||0);
+    if(uid){
+      event.preventDefault();
+      openProfessionalProfile(uid);
+    }
+  });
 });

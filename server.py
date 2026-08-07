@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.1.1 — Upload de Midia Corrigido'
+APP_VERSION = 'v5.2.0 — Perfil Profissional'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -903,7 +903,22 @@ def init_db():
             ('Instalação e projetos','Projeto, instalação e configuração de sistemas para igrejas e eventos.','🔊'),
             ('Treinamento de equipes','Capacitação prática para operadores e equipes de mídia.','🎓')]:
             c.execute('INSERT INTO company_services(company_id,title,description,icon) VALUES(?,?,?,?)',(cid,title,desc,icon))
-    c.commit(); c.close()
+    
+    ensure_column(c,'users','headline',"TEXT DEFAULT ''")
+    ensure_column(c,'users','bio',"TEXT DEFAULT ''")
+    ensure_column(c,'users','specialties',"TEXT DEFAULT ''")
+    ensure_column(c,'users','experience',"TEXT DEFAULT ''")
+    ensure_column(c,'users','equipment',"TEXT DEFAULT ''")
+    ensure_column(c,'users','portfolio',"TEXT DEFAULT ''")
+    ensure_column(c,'users','instagram',"TEXT DEFAULT ''")
+    ensure_column(c,'users','linkedin',"TEXT DEFAULT ''")
+    ensure_column(c,'users','youtube',"TEXT DEFAULT ''")
+    ensure_column(c,'users','website',"TEXT DEFAULT ''")
+    ensure_column(c,'users','whatsapp',"TEXT DEFAULT ''")
+    ensure_column(c,'users','cover',"TEXT DEFAULT ''")
+    ensure_column(c,'users','availability',"TEXT DEFAULT ''")
+
+c.commit(); c.close()
 
 
 def get_admin_settings():
@@ -1953,6 +1968,60 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json({'error':'Não foi possível salvar o arquivo no computador.'},500)
             return self.send_json({'media_data':f'/media/files/{filename}','media_type':media_type,'media_name':original_name,'size':size},201)
         d=self.read_json()
+        if p == '/api/profile/update':
+            u=self.require_user()
+            if not u:return
+
+            allowed={
+                'headline':120,
+                'bio':1200,
+                'specialties':800,
+                'experience':1500,
+                'equipment':1000,
+                'portfolio':2000,
+                'instagram':300,
+                'linkedin':300,
+                'youtube':300,
+                'website':300,
+                'whatsapp':80,
+                'availability':120,
+                'city':120,
+                'role':120,
+                'cover':2000000,
+                'avatar':2000000
+            }
+
+            values={}
+            for key,limit in allowed.items():
+                if key in d:
+                    value=(d.get(key) or '')
+                    if not isinstance(value,str):
+                        value=str(value)
+                    values[key]=value.strip()[:limit]
+
+            if not values:
+                return self.send_json({'error':'Nenhuma alteração recebida.'},400)
+
+            columns=[]
+            params=[]
+            for key,value in values.items():
+                columns.append(f"{key}=?")
+                params.append(value)
+            params.append(u['id'])
+
+            c=connect()
+            c.execute(f"UPDATE users SET {', '.join(columns)} WHERE id=?",params)
+            c.commit()
+            updated=c.execute(
+                '''SELECT id,name,email,role,city,avatar,cover,headline,bio,specialties,
+                          experience,equipment,portfolio,instagram,linkedin,youtube,website,
+                          whatsapp,availability,status,created_at
+                   FROM users WHERE id=?''',
+                (u['id'],)
+            ).fetchone()
+            c.close()
+            return self.send_json({'ok':True,'user':dict(updated)})
+
         if p == '/api/password/forgot':
             email=(d.get('email') or '').strip().lower()
             generic={'ok':True,'message':'Se existir uma conta com este e-mail, enviaremos as instrucoes de redefinicao.'}
