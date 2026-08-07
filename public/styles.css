@@ -5618,3 +5618,38 @@ body.admin-mode .app-shell{
 .market-hero .market-hero-icon svg{
   vertical-align:middle !important;
 }
+
+
+/* Rede Sociaudio v5.1.6 — Centro exato do ícone Marketplace */
+.market-hero .market-hero-icon{
+  position:relative !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  padding:0 !important;
+  line-height:0 !important;
+}
+
+.market-hero .market-hero-icon > .sa-icon{
+  width:58px !important;
+  height:58px !important;
+  min-width:58px !important;
+  min-height:58px !important;
+  flex:0 0 58px !important;
+  display:grid !important;
+  place-items:center !important;
+  position:static !important;
+  margin:0 !important;
+  padding:0 !important;
+  transform:none !important;
+  line-height:0 !important;
+}
+
+.market-hero .market-hero-icon > .sa-icon > svg{
+  width:58px !important;
+  height:58px !important;
+  display:block !important;
+  margin:0 !important;
+  padding:0 !important;
+  transform:none !important;
+}
