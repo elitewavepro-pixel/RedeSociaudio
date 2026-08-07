@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v4.2.0 Public';
+const SOCIAUDIO_VERSION='v4.2.1 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -118,6 +118,7 @@ function setIdentityAvatar(container,user,header=false){
 }
 
 function renderSidebarIdentity(){
+  setTimeout(updateAdminMenuVisibility,0);
   if(typeof me==='undefined'||!me)return;
   const name=document.getElementById('sidebarName');
   const role=document.getElementById('sidebarRole');
@@ -157,7 +158,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V4.2.0 PUBLIC</span>
+        <span class="beta-label">V4.2.1 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -311,6 +312,7 @@ function lines(v){return esc(v||'').split(/[,\n]/).filter(Boolean).map(x=>`<span
 function tab(w){login.hidden=w!=='login';register.hidden=w!=='register';msg.textContent=''}
 async function boot(){await applyPlatformSettings();if(token){try{me=(await api('/api/me')).user;renderSidebarIdentity();showApp();return}catch{localStorage.removeItem('sociaudio_token');token=''}}auth.hidden=false;auth.style.display='grid';app.hidden=true}
 function showApp(){
+  setTimeout(updateAdminMenuVisibility,0);
   if(isAdminUser()){
     document.getElementById('auth').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
@@ -2746,6 +2748,24 @@ function isAdminUser(){
   }
 }
 
+
+// ================================================================
+// REDE SOCIAUDIO v4.2.1 — VISIBILIDADE DO MENU ADMIN
+// ================================================================
+function updateAdminMenuVisibility(){
+  const adminItem=document.getElementById('adminNavItem');
+  if(!adminItem)return;
+
+  const allowed=isAdminUser();
+  adminItem.hidden=!allowed;
+  adminItem.style.display=allowed?'flex':'none';
+  adminItem.setAttribute('aria-hidden',allowed?'false':'true');
+
+  if(!allowed && adminItem.classList.contains('selected')){
+    view='feed';
+  }
+}
+
 function showAdminApp(){
   document.body.classList.add('admin-mode');
   document.body.classList.remove('chat-page');
@@ -3444,4 +3464,9 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('[href*="cadastro=1"],[data-action="register"],.register-link').forEach(el=>{
     el.addEventListener('click',()=>setTimeout(clearRegistrationForm,0));
   });
+});
+
+
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(updateAdminMenuVisibility,100);
 });

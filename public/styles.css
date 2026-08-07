@@ -4999,3 +4999,12 @@ body.admin-mode .app-shell{
   .admin-card-grid{grid-template-columns:1fr}
   .admin-panel-head-row{align-items:stretch;flex-direction:column}
 }
+
+
+/* Rede Sociaudio v4.2.1 — Administração oculta por padrão */
+#adminNavItem{
+  display:none;
+}
+body.admin-mode #adminNavItem{
+  display:none!important;
+}
