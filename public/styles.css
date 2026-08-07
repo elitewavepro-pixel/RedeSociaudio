@@ -6187,3 +6187,348 @@ body.admin-mode .app-shell{
     font-size:19px!important;
   }
 }
+
+
+/* ===============================================================
+   REDE SOCIAUDIO v5.2.3 — MOBILE SOCIAL LAYOUT
+   =============================================================== */
+@media(max-width:760px){
+
+  /* Esconde o topbar desktop no celular */
+  #app>.topbar{
+    display:none!important;
+  }
+
+  body{
+    padding-top:0!important;
+  }
+
+  /* Cabeçalho mobile independente */
+  #mobileSocialHeader.mobile-social-header-v523{
+    position:sticky!important;
+    top:0!important;
+    z-index:170!important;
+    width:100%!important;
+    display:block!important;
+    background:#fff!important;
+    border-bottom:1px solid #e5e7eb!important;
+    box-shadow:0 1px 0 rgba(0,0,0,.02)!important;
+  }
+
+  .mobile-social-top-v523{
+    height:58px!important;
+    display:flex!important;
+    align-items:center!important;
+    gap:10px!important;
+    padding:0 12px!important;
+    box-sizing:border-box!important;
+  }
+
+  .mobile-social-menu-v523{
+    width:34px!important;
+    height:34px!important;
+    min-width:34px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:4px!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+  }
+
+  .mobile-social-menu-v523 span{
+    width:23px!important;
+    height:2px!important;
+    display:block!important;
+    border-radius:2px!important;
+    background:#111827!important;
+  }
+
+  .mobile-social-brand-v523{
+    flex:1!important;
+    min-width:0!important;
+    color:#1769df!important;
+    font-size:27px!important;
+    line-height:1!important;
+    font-weight:800!important;
+    letter-spacing:-.8px!important;
+    white-space:nowrap!important;
+  }
+
+  .mobile-social-brand-v523 b{
+    color:#1769df!important;
+    font-weight:900!important;
+  }
+
+  .mobile-social-actions-v523{
+    display:flex!important;
+    align-items:center!important;
+    gap:7px!important;
+  }
+
+  .mobile-social-action-v523{
+    width:36px!important;
+    height:36px!important;
+    min-width:36px!important;
+    display:grid!important;
+    place-items:center!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:50%!important;
+    background:#f0f2f5!important;
+    color:#111827!important;
+  }
+
+  .mobile-social-action-v523 .sa-icon,
+  .mobile-social-action-v523 svg{
+    width:21px!important;
+    height:21px!important;
+  }
+
+  /* Caixa "No que você está pensando?" */
+  .mobile-social-composer-v523{
+    min-height:64px!important;
+    display:grid!important;
+    grid-template-columns:42px minmax(0,1fr) 38px!important;
+    align-items:center!important;
+    gap:9px!important;
+    padding:8px 12px 10px!important;
+    box-sizing:border-box!important;
+    border-top:1px solid #f2f4f7!important;
+    background:#fff!important;
+  }
+
+  .mobile-social-avatar-v523{
+    width:42px!important;
+    height:42px!important;
+    display:grid!important;
+    place-items:center!important;
+    padding:0!important;
+    overflow:hidden!important;
+    border:0!important;
+    border-radius:50%!important;
+    background:#1769df!important;
+    color:#fff!important;
+    font-weight:850!important;
+  }
+
+  .mobile-social-avatar-v523 img{
+    width:100%!important;
+    height:100%!important;
+    object-fit:cover!important;
+  }
+
+  .mobile-social-thought-v523{
+    width:100%!important;
+    min-width:0!important;
+    height:42px!important;
+    padding:0 14px!important;
+    border:1px solid #d7dce2!important;
+    border-radius:999px!important;
+    background:#fff!important;
+    color:#1d2939!important;
+    font-size:13px!important;
+    font-weight:650!important;
+    text-align:left!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  .mobile-social-photo-v523{
+    width:38px!important;
+    height:38px!important;
+    display:grid!important;
+    place-items:center!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    color:#667085!important;
+  }
+
+  .mobile-social-photo-v523 .sa-icon,
+  .mobile-social-photo-v523 svg{
+    width:22px!important;
+    height:22px!important;
+  }
+
+  /* Stories */
+  #mobileStoryStrip.mobile-story-strip-v523{
+    width:calc(100% + 18px)!important;
+    margin:0 -9px 10px!important;
+    padding:10px 9px 11px!important;
+    display:flex!important;
+    gap:8px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    box-sizing:border-box!important;
+    background:#fff!important;
+    border-bottom:1px solid #e7e9ed!important;
+    scroll-snap-type:x proximity!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  #mobileStoryStrip::-webkit-scrollbar{
+    display:none!important;
+  }
+
+  .mobile-story-card-v523{
+    position:relative!important;
+    width:108px!important;
+    min-width:108px!important;
+    height:164px!important;
+    display:block!important;
+    padding:0!important;
+    overflow:hidden!important;
+    border:0!important;
+    border-radius:13px!important;
+    background:#111827!important;
+    box-shadow:none!important;
+    scroll-snap-align:start!important;
+  }
+
+  .mobile-story-card-v523>span{
+    position:absolute!important;
+    left:8px!important;
+    right:8px!important;
+    bottom:9px!important;
+    z-index:3!important;
+    color:#fff!important;
+    font-size:11px!important;
+    line-height:1.15!important;
+    font-weight:850!important;
+    text-align:left!important;
+  }
+
+  .mobile-story-gradient-v523{
+    position:absolute!important;
+    inset:0!important;
+  }
+
+  .mobile-story-gradient-v523:after{
+    content:""!important;
+    position:absolute!important;
+    inset:0!important;
+    background:linear-gradient(transparent 45%,rgba(0,0,0,.68))!important;
+  }
+
+  .story-a{background:linear-gradient(145deg,#081a35,#1769df,#55a5ff)!important;}
+  .story-b{background:linear-gradient(145deg,#160f2f,#6b37d7,#1d68e5)!important;}
+  .story-c{background:linear-gradient(145deg,#0d2634,#157a8a,#1c9fba)!important;}
+
+  .mobile-story-create-v523{
+    background:#fff!important;
+    border:1px solid #e1e5ea!important;
+  }
+
+  .mobile-story-photo-v523{
+    height:108px!important;
+    display:grid!important;
+    place-items:center!important;
+    overflow:hidden!important;
+    background:#0e376d!important;
+    color:#fff!important;
+    font-size:30px!important;
+    font-weight:900!important;
+  }
+
+  .mobile-story-photo-v523 img{
+    width:100%!important;
+    height:100%!important;
+    object-fit:cover!important;
+  }
+
+  .mobile-story-plus-v523{
+    position:absolute!important;
+    left:50%!important;
+    top:88px!important;
+    z-index:4!important;
+    width:38px!important;
+    height:38px!important;
+    display:grid!important;
+    place-items:center!important;
+    transform:translateX(-50%)!important;
+    border:4px solid #fff!important;
+    border-radius:50%!important;
+    background:#1769df!important;
+    color:#fff!important;
+    font-size:27px!important;
+    line-height:1!important;
+    font-weight:500!important;
+  }
+
+  .mobile-story-create-v523 b{
+    position:absolute!important;
+    left:8px!important;
+    right:8px!important;
+    bottom:10px!important;
+    color:#111827!important;
+    font-size:11px!important;
+    line-height:1.15!important;
+    font-weight:850!important;
+    text-align:center!important;
+  }
+
+  /* Feed full-width mais próximo de app social */
+  #content .post,
+  #content .feed-card{
+    border-radius:0!important;
+    border-left:0!important;
+    border-right:0!important;
+    margin-left:-9px!important;
+    margin-right:-9px!important;
+    width:calc(100% + 18px)!important;
+    max-width:calc(100% + 18px)!important;
+    box-shadow:none!important;
+  }
+
+  #content .composer{
+    display:none!important;
+  }
+
+  /* Bottom nav com seis espaços visuais */
+  #mobileBottomNav.mobile-bottom-nav-v522{
+    height:66px!important;
+    padding:4px 4px max(4px,env(safe-area-inset-bottom))!important;
+  }
+
+  .mobile-bottom-item-v522{
+    width:auto!important;
+    flex:1 1 0!important;
+    max-width:64px!important;
+  }
+
+  .mobile-bottom-publish-v522{
+    width:44px!important;
+    height:44px!important;
+    flex:0 0 44px!important;
+  }
+}
+
+@media(max-width:390px){
+  .mobile-social-brand-v523{
+    font-size:23px!important;
+  }
+
+  .mobile-social-action-v523{
+    width:33px!important;
+    height:33px!important;
+    min-width:33px!important;
+  }
+
+  .mobile-story-card-v523{
+    width:101px!important;
+    min-width:101px!important;
+    height:154px!important;
+  }
+
+  .mobile-story-photo-v523{
+    height:101px!important;
+  }
+
+  .mobile-story-plus-v523{
+    top:81px!important;
+  }
+}

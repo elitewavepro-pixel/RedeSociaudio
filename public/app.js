@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.2.2 Public';
+const SOCIAUDIO_VERSION='v5.2.3 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.2.2 PUBLIC</span>
+        <span class="beta-label">V5.2.3 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -4259,5 +4259,167 @@ window.addEventListener('resize',()=>{
   if(window.innerWidth<=760){
     forceMobileFeedVisible();
     buildIndependentMobileNav();
+  }
+});
+
+
+// ================================================================
+// REDE SOCIAUDIO v5.2.3 — MOBILE SOCIAL LAYOUT
+// ================================================================
+function buildMobileSocialHeader(){
+  if(document.getElementById('mobileSocialHeader'))return;
+
+  const header=document.createElement('header');
+  header.id='mobileSocialHeader';
+  header.className='mobile-social-header-v523';
+  header.innerHTML=`
+    <div class="mobile-social-top-v523">
+      <button class="mobile-social-menu-v523" type="button" aria-label="Mais opções">
+        <span></span><span></span><span></span>
+      </button>
+
+      <div class="mobile-social-brand-v523">Rede <b>Sociaudio</b></div>
+
+      <div class="mobile-social-actions-v523">
+        <button type="button" class="mobile-social-action-v523" data-action="create" aria-label="Criar publicação">
+          <span data-icon="plus"></span>
+        </button>
+        <button type="button" class="mobile-social-action-v523" data-action="search" aria-label="Pesquisar">
+          <span data-icon="search"></span>
+        </button>
+        <button type="button" class="mobile-social-action-v523" data-action="chat" aria-label="Mensagens">
+          <span data-icon="chat"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="mobile-social-composer-v523">
+      <button type="button" class="mobile-social-avatar-v523" data-action="profile"></button>
+      <button type="button" class="mobile-social-thought-v523" data-action="create">
+        No que você está pensando?
+      </button>
+      <button type="button" class="mobile-social-photo-v523" data-action="photo" aria-label="Publicar foto">
+        <span data-icon="image"></span>
+      </button>
+    </div>
+  `;
+
+  document.body.prepend(header);
+
+  const profileBtn=header.querySelector('.mobile-social-avatar-v523');
+  if(me?.avatar){
+    profileBtn.innerHTML=`<img src="${esc(me.avatar)}" alt="">`;
+  }else{
+    const initial=(me?.name||'S').slice(0,1).toUpperCase();
+    profileBtn.innerHTML=`<span>${esc(initial)}</span>`;
+  }
+
+  header.querySelector('[data-action="create"]').onclick=()=>document.getElementById('newPostBtn')?.click();
+  header.querySelector('.mobile-social-thought-v523').onclick=()=>document.getElementById('newPostBtn')?.click();
+
+  header.querySelector('[data-action="search"]').onclick=()=>{
+    const search=document.querySelector('.topbar .search-wrap input, .topbar input[type="search"]');
+    if(search){
+      search.focus();
+      search.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+  };
+
+  header.querySelector('[data-action="chat"]').onclick=()=>{
+    document.getElementById('mainSidebar')?.querySelector('button[data-view="chat"]')?.click();
+  };
+
+  header.querySelector('[data-action="profile"]').onclick=()=>{
+    document.getElementById('mainSidebar')?.querySelector('button[data-view="profile"]')?.click();
+  };
+
+  header.querySelector('[data-action="photo"]').onclick=()=>{
+    const photoButton=[...document.querySelectorAll('button,a')].find(el=>
+      /foto|imagem/i.test(el.textContent||'') || /foto|imagem/i.test(el.getAttribute('aria-label')||'')
+    );
+    if(photoButton)photoButton.click();
+    else document.getElementById('newPostBtn')?.click();
+  };
+
+  header.querySelector('.mobile-social-menu-v523').onclick=()=>{
+    const drawer=document.getElementById('mobileMoreDrawer');
+    if(drawer){
+      drawer.classList.add('open');
+      document.body.classList.add('mobile-menu-open');
+    }
+  };
+
+  try{hydrateIcons()}catch(_){}
+}
+
+function buildMobileStoryStrip(){
+  if(document.getElementById('mobileStoryStrip'))return;
+
+  const content=document.getElementById('content');
+  if(!content)return;
+
+  const strip=document.createElement('section');
+  strip.id='mobileStoryStrip';
+  strip.className='mobile-story-strip-v523';
+
+  strip.innerHTML=`
+    <button type="button" class="mobile-story-card-v523 mobile-story-create-v523">
+      <div class="mobile-story-photo-v523"></div>
+      <div class="mobile-story-plus-v523">+</div>
+      <b>Criar story</b>
+    </button>
+
+    <button type="button" class="mobile-story-card-v523">
+      <div class="mobile-story-gradient-v523 story-a"></div>
+      <span>Dicas de áudio</span>
+    </button>
+
+    <button type="button" class="mobile-story-card-v523">
+      <div class="mobile-story-gradient-v523 story-b"></div>
+      <span>Profissionais</span>
+    </button>
+
+    <button type="button" class="mobile-story-card-v523">
+      <div class="mobile-story-gradient-v523 story-c"></div>
+      <span>Equipamentos</span>
+    </button>
+  `;
+
+  const first=strip.querySelector('.mobile-story-photo-v523');
+  if(me?.avatar){
+    first.innerHTML=`<img src="${esc(me.avatar)}" alt="">`;
+  }else{
+    first.innerHTML=`<span>${esc((me?.name||'S').slice(0,1).toUpperCase())}</span>`;
+  }
+
+  strip.querySelector('.mobile-story-create-v523').onclick=()=>{
+    document.getElementById('newPostBtn')?.click();
+  };
+
+  content.prepend(strip);
+}
+
+function bootMobileSocialLayout(){
+  if(window.innerWidth>760)return;
+
+  buildMobileSocialHeader();
+
+  // Stories only on feed.
+  if(view==='feed'){
+    buildMobileStoryStrip();
+  }else{
+    document.getElementById('mobileStoryStrip')?.remove();
+  }
+
+  syncIndependentMobileNav();
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(bootMobileSocialLayout,700);
+});
+
+window.addEventListener('resize',()=>{
+  if(window.innerWidth<=760){
+    bootMobileSocialLayout();
   }
 });
