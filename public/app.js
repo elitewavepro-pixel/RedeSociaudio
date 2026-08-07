@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.3.0 Public';
+const SOCIAUDIO_VERSION='v5.3.1 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.3.0 PUBLIC</span>
+        <span class="beta-label">V5.3.1 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -4757,6 +4757,7 @@ function bootMobileSocialLayout(){
 
   // Stories only on feed.
   if(view==='feed'){
+    document.getElementById('mobileStoryStrip')?.remove();
     buildMobileStoryStrip();
   }else{
     document.getElementById('mobileStoryStrip')?.remove();

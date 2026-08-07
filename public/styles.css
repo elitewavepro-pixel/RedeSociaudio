@@ -7248,3 +7248,146 @@ body.admin-mode .app-shell{
     font-size:0;
   }
 }
+
+
+/* ===============================================================
+   Rede Sociaudio v5.3.1 — Stories mobile organizados
+   =============================================================== */
+
+@media(max-width:760px){
+
+  /* No celular, o story strip desktop não deve aparecer.
+     Isso remove a duplicação do "Criar story". */
+  #content > .story-strip,
+  #content .story-strip:not(#mobileStoryStrip),
+  .story-strip{
+    display:none!important;
+  }
+
+  /* O strip mobile fica como única faixa de stories */
+  #mobileStoryStrip.mobile-story-strip-v523{
+    display:flex!important;
+    position:relative!important;
+    width:calc(100% + 18px)!important;
+    min-height:172px!important;
+    max-height:172px!important;
+    margin:0 -9px 8px!important;
+    padding:8px 9px 10px!important;
+    gap:8px!important;
+    align-items:flex-start!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    background:#fff!important;
+    border-top:1px solid #eef1f4!important;
+    border-bottom:1px solid #e6e9ed!important;
+    box-sizing:border-box!important;
+    scroll-snap-type:x proximity!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  #mobileStoryStrip.mobile-story-strip-v523::-webkit-scrollbar{
+    display:none!important;
+  }
+
+  #mobileStoryStrip .mobile-story-card-v523{
+    flex:0 0 104px!important;
+    width:104px!important;
+    min-width:104px!important;
+    max-width:104px!important;
+    height:154px!important;
+    min-height:154px!important;
+    max-height:154px!important;
+    margin:0!important;
+    border-radius:13px!important;
+    overflow:hidden!important;
+    scroll-snap-align:start!important;
+    box-shadow:none!important;
+  }
+
+  #mobileStoryStrip .mobile-story-photo-v523{
+    height:101px!important;
+    min-height:101px!important;
+    max-height:101px!important;
+  }
+
+  #mobileStoryStrip .mobile-story-plus-v523{
+    top:81px!important;
+    width:38px!important;
+    height:38px!important;
+  }
+
+  #mobileStoryStrip .mobile-story-create-v523 b{
+    bottom:9px!important;
+    font-size:11px!important;
+  }
+
+  #mobileStoryStrip .mobile-real-story-v530 > span:last-child{
+    left:8px!important;
+    right:8px!important;
+    bottom:9px!important;
+    font-size:11px!important;
+    line-height:1.15!important;
+  }
+
+  /* Remove qualquer faixa/search desktop residual abaixo do compositor mobile */
+  #app > .topbar,
+  #app .topbar{
+    display:none!important;
+  }
+
+  /* Alguns builds antigos deixam um segundo cabeçalho dentro do app.
+     Escondemos somente no mobile quando contém a busca desktop. */
+  #app .header-main:not(#mobileSocialHeader),
+  #app .desktop-header,
+  #app .app-header:not(#mobileSocialHeader){
+    display:none!important;
+  }
+
+  /* Feed começa imediatamente depois dos stories */
+  #content{
+    padding-top:0!important;
+  }
+
+  #content .post:first-of-type,
+  #content .feed-card:first-of-type{
+    margin-top:0!important;
+  }
+
+  /* O compositor antigo do feed continua oculto;
+     usamos apenas o compositor mobile do topo */
+  #content .composer{
+    display:none!important;
+  }
+
+  /* Evita grandes vazios quando existe apenas "Criar story" */
+  #mobileStoryStrip:has(.mobile-story-card-v523:only-child){
+    justify-content:flex-start!important;
+  }
+}
+
+@media(max-width:390px){
+  #mobileStoryStrip.mobile-story-strip-v523{
+    min-height:164px!important;
+    max-height:164px!important;
+  }
+
+  #mobileStoryStrip .mobile-story-card-v523{
+    flex-basis:98px!important;
+    width:98px!important;
+    min-width:98px!important;
+    max-width:98px!important;
+    height:146px!important;
+    min-height:146px!important;
+    max-height:146px!important;
+  }
+
+  #mobileStoryStrip .mobile-story-photo-v523{
+    height:96px!important;
+    min-height:96px!important;
+    max-height:96px!important;
+  }
+
+  #mobileStoryStrip .mobile-story-plus-v523{
+    top:76px!important;
+  }
+}
