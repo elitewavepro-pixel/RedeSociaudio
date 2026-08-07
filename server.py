@@ -4,7 +4,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 
-APP_VERSION = 'Beta 3.2.9 — Mensagens e Notificações corrigidas'
+APP_VERSION = 'Beta 3.2.10 — Mensagens corrigidas'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 

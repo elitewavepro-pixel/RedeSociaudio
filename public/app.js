@@ -1,6 +1,7 @@
 let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
-const SOCIAUDIO_VERSION='Beta 3.2.9';
+let chatPoll=null;
+const SOCIAUDIO_VERSION='Beta 3.2.10';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -154,7 +155,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">BETA 3.2.9</span>
+        <span class="beta-label">BETA 3.2.10</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -1816,10 +1817,10 @@ async function renderAdmin(){
   <section class="card plan-admin"><h2>Planos dos usuários</h2>${users.map(x=>`<div class="plan-row"><span>${avatar(x)}<b>${esc(x.name)}</b><small>${esc(x.email||'')}</small></span><select onchange="setUserPlan(${x.id},this.value)"><option value="free" ${x.plan==='free'?'selected':''}>Gratuito · 250 MB</option><option value="pro" ${x.plan==='pro'?'selected':''}>PRO · 2 GB</option><option value="company" ${x.plan==='company'?'selected':''}>Empresa · 5 GB</option><option value="admin" ${x.plan==='admin'?'selected':''}>Administrador · 5 GB</option></select><select onchange="setUserBadge(${x.id},this.value)"><option value="" ${!x.verified_badge?'selected':''}>Sem selo</option><option value="professional" ${x.verified_badge==='professional'?'selected':''}>Profissional verificado</option><option value="company" ${x.verified_badge==='company'?'selected':''}>Empresa verificada</option><option value="manufacturer" ${x.verified_badge==='manufacturer'?'selected':''}>Fabricante oficial</option><option value="school" ${x.verified_badge==='school'?'selected':''}>Escola parceira</option><option value="specialist" ${x.verified_badge==='specialist'?'selected':''}>Especialista certificado</option></select></div>`).join('')}</section>
   ${posts.map(postCard).join('')}`;
 }
-let chatConversationId=null,chatPoll=null,chatTypingTimer=null,chatTypingLastSent=0;
+let chatConversationId=null,chatTypingTimer=null,chatTypingLastSent=0;
 function chatAvatar(x){return x.other_avatar?`<img class="avatar" src="${x.other_avatar}">`:`<span class="avatar fallback">${esc((x.other_name||x.name||'?')[0])}</span>`}
 async function renderChat(){
-  clearInterval(chatPoll);
+  if(chatPoll){clearInterval(chatPoll);chatPoll=null;}
 
   content.innerHTML=`<section class="chat-safe-loading card">
     <span></span>
