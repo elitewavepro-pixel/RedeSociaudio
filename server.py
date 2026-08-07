@@ -1,3 +1,4 @@
+import json
 import base64, hashlib, hmac, json, mimetypes, os, secrets, sqlite3, webbrowser, threading, time, zipfile, tempfile, shutil, re, smtplib, ssl
 from datetime import datetime, timedelta, timezone
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -5,7 +6,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.3.3 — Mobile Feed Estrutura Real'
+APP_VERSION = 'v5.4.0 — Editor Stories Texto Emojis'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -691,6 +692,7 @@ def init_db():
       user_id INTEGER NOT NULL,
       image_url TEXT NOT NULL,
       caption TEXT DEFAULT '',
+      overlay_json TEXT DEFAULT '[]',
       created_at TEXT NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -705,6 +707,15 @@ def init_db():
       expires_at TEXT NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    try:
+        cols=[r['name'] for r in c.execute("PRAGMA table_info(stories)").fetchall()]
+        if 'overlay_json' not in cols:
+            c.execute("ALTER TABLE stories ADD COLUMN overlay_json TEXT DEFAULT '[]'")
+            c.commit()
+    except Exception:
+        pass
+
     CREATE TABLE IF NOT EXISTS post_media(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       post_id INTEGER NOT NULL,
@@ -1415,7 +1426,7 @@ class Handler(SimpleHTTPRequestHandler):
                 c.execute("DELETE FROM stories WHERE expires_at<=?",(now(),))
                 c.commit()
                 rows=c.execute(
-                    '''SELECT s.id,s.user_id,s.media_data,s.media_type,s.caption,
+                    '''SELECT s.id,s.user_id,s.media_data,s.media_type,s.caption,s.overlay_json,
                               s.created_at,s.expires_at,
                               u.name,u.avatar,u.role
                        FROM stories s
@@ -1859,6 +1870,32 @@ class Handler(SimpleHTTPRequestHandler):
             media_data=(d.get('media_data') or '').strip()
             media_type=(d.get('media_type') or '').strip().lower()[:100]
             caption=(d.get('caption') or '').strip()[:220]
+            raw_overlay=d.get('overlay_json') or []
+            try:
+                if isinstance(raw_overlay,str):
+                    parsed_overlay=json.loads(raw_overlay)
+                else:
+                    parsed_overlay=raw_overlay
+                if not isinstance(parsed_overlay,list):
+                    parsed_overlay=[]
+                cleaned=[]
+                for item in parsed_overlay[:12]:
+                    if not isinstance(item,dict): continue
+                    text=str(item.get('text') or '')[:120]
+                    if not text: continue
+                    cleaned.append({
+                        'text':text,
+                        'x':max(0,min(100,float(item.get('x',50)))),
+                        'y':max(0,min(100,float(item.get('y',50)))),
+                        'size':max(14,min(54,int(item.get('size',28)))),
+                        'color':str(item.get('color') or '#ffffff')[:20],
+                        'bg':str(item.get('bg') or 'transparent')[:30],
+                        'align':str(item.get('align') or 'center')[:10],
+                        'weight':str(item.get('weight') or '800')[:10]
+                    })
+                overlay_json=json.dumps(cleaned,ensure_ascii=False)
+            except Exception:
+                overlay_json='[]'
 
             if not media_data:
                 return self.send_json({'error':'Escolha uma foto ou vídeo para o story.'},400)
@@ -1870,9 +1907,9 @@ class Handler(SimpleHTTPRequestHandler):
             c=connect()
             try:
                 c.execute(
-                    '''INSERT INTO stories(user_id,media_data,media_type,caption,created_at,expires_at)
-                       VALUES(?,?,?,?,?,?)''',
-                    (u['id'],media_data,media_type,caption,created,expires)
+                    '''INSERT INTO stories(user_id,media_data,media_type,caption,overlay_json,created_at,expires_at)
+                       VALUES(?,?,?,?,?,?,?)''',
+                    (u['id'],media_data,media_type,caption,overlay_json,created,expires)
                 )
                 story_id=c.execute('SELECT last_insert_rowid()').fetchone()[0]
                 c.commit()

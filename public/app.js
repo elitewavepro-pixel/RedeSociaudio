@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.3.3 Public';
+const SOCIAUDIO_VERSION='v5.4.0 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.3.3 PUBLIC</span>
+        <span class="beta-label">V5.4.0 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -1626,9 +1626,173 @@ let storyFile=null;
 let storyPreviewUrl='';
 let storyViewerIndex=0;
 let storyTimer=null;
+let storyOverlays=[];
+let storySelectedOverlay=-1;
+let storyTextSizeStep=1;
+let storyTextBackgroundStep=0;
 
 function storyInitial(user){
   return esc((user?.name||'S').trim().slice(0,1).toUpperCase());
+}
+
+
+function resetStoryEditorState(){
+  storyOverlays=[];
+  storySelectedOverlay=-1;
+  storyTextSizeStep=1;
+  storyTextBackgroundStep=0;
+  const panel=document.getElementById('storyEmojiPanel');
+  if(panel)panel.hidden=true;
+  renderStoryOverlays();
+}
+
+function closeStoryEditor(){
+  const dlg=document.getElementById('storyDlg');
+  if(dlg?.open)dlg.close();
+  clearStoryPreview();
+  resetStoryEditorState();
+}
+
+function storyAddText(){
+  const text=prompt('Digite o texto do story:','');
+  if(!text || !text.trim())return;
+  storyOverlays.push({
+    text:text.trim().slice(0,120),
+    x:50,y:48,size:30,color:'#ffffff',bg:'rgba(0,0,0,.28)',
+    align:'center',weight:'800'
+  });
+  storySelectedOverlay=storyOverlays.length-1;
+  renderStoryOverlays();
+}
+
+function storyInsertEmoji(emoji){
+  storyOverlays.push({
+    text:emoji,
+    x:50,y:60,size:42,color:'#ffffff',bg:'transparent',
+    align:'center',weight:'800'
+  });
+  storySelectedOverlay=storyOverlays.length-1;
+  renderStoryOverlays();
+  const panel=document.getElementById('storyEmojiPanel');
+  if(panel)panel.hidden=true;
+}
+
+function storyToggleEmojiPanel(){
+  const panel=document.getElementById('storyEmojiPanel');
+  if(panel)panel.hidden=!panel.hidden;
+}
+
+function storySetTextColor(color){
+  if(storySelectedOverlay<0 || !storyOverlays[storySelectedOverlay]){
+    storyAddText();
+    if(storySelectedOverlay<0)return;
+  }
+  storyOverlays[storySelectedOverlay].color=color;
+  renderStoryOverlays();
+}
+
+function storyChangeTextSize(){
+  if(storySelectedOverlay<0 || !storyOverlays[storySelectedOverlay])return;
+  const sizes=[20,28,36,46,54];
+  storyTextSizeStep=(storyTextSizeStep+1)%sizes.length;
+  storyOverlays[storySelectedOverlay].size=sizes[storyTextSizeStep];
+  renderStoryOverlays();
+}
+
+function storyCycleTextBackground(){
+  if(storySelectedOverlay<0 || !storyOverlays[storySelectedOverlay])return;
+  const backgrounds=['transparent','rgba(0,0,0,.42)','rgba(255,255,255,.82)','rgba(23,105,223,.82)'];
+  storyTextBackgroundStep=(storyTextBackgroundStep+1)%backgrounds.length;
+  storyOverlays[storySelectedOverlay].bg=backgrounds[storyTextBackgroundStep];
+  renderStoryOverlays();
+}
+
+function storyDeleteSelectedOverlay(){
+  if(storySelectedOverlay<0)return;
+  storyOverlays.splice(storySelectedOverlay,1);
+  storySelectedOverlay=Math.min(storySelectedOverlay,storyOverlays.length-1);
+  renderStoryOverlays();
+}
+
+function renderStoryOverlays(){
+  const layer=document.getElementById('storyOverlayLayer');
+  if(!layer)return;
+  layer.innerHTML=storyOverlays.map((o,i)=>`
+    <button type="button"
+      class="story-overlay-item-v540 ${i===storySelectedOverlay?'selected':''}"
+      data-overlay-index="${i}"
+      style="left:${o.x}%;top:${o.y}%;font-size:${o.size}px;color:${esc(o.color)};background:${esc(o.bg)};font-weight:${esc(o.weight)};text-align:${esc(o.align)}">
+      ${esc(o.text)}
+    </button>
+  `).join('');
+
+  layer.querySelectorAll('.story-overlay-item-v540').forEach(el=>{
+    const index=Number(el.dataset.overlayIndex);
+    el.onclick=(event)=>{
+      event.preventDefault();
+      event.stopPropagation();
+      storySelectedOverlay=index;
+      renderStoryOverlays();
+    };
+    makeStoryOverlayDraggable(el,index);
+  });
+}
+
+function makeStoryOverlayDraggable(el,index){
+  let dragging=false;
+
+  const update=(clientX,clientY)=>{
+    const layer=document.getElementById('storyOverlayLayer');
+    if(!layer)return;
+    const r=layer.getBoundingClientRect();
+    const x=Math.max(5,Math.min(95,((clientX-r.left)/r.width)*100));
+    const y=Math.max(7,Math.min(93,((clientY-r.top)/r.height)*100));
+    if(storyOverlays[index]){
+      storyOverlays[index].x=x;
+      storyOverlays[index].y=y;
+      el.style.left=x+'%';
+      el.style.top=y+'%';
+    }
+  };
+
+  el.addEventListener('pointerdown',e=>{
+    dragging=true;
+    storySelectedOverlay=index;
+    try{el.setPointerCapture(e.pointerId)}catch(_){}
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  el.addEventListener('pointermove',e=>{
+    if(!dragging)return;
+    update(e.clientX,e.clientY);
+    e.preventDefault();
+  });
+
+  el.addEventListener('pointerup',e=>{
+    dragging=false;
+    try{el.releasePointerCapture(e.pointerId)}catch(_){}
+  });
+}
+
+function storyOverlayHtml(story){
+  let items=[];
+  try{
+    items=Array.isArray(story.overlay_json)
+      ?story.overlay_json
+      :JSON.parse(story.overlay_json||'[]');
+  }catch(_){items=[]}
+
+  if(!items.length)return '';
+
+  return `<div class="story-viewer-overlay-v540">
+    ${items.map(o=>`
+      <div class="story-viewer-overlay-item-v540"
+        style="left:${Number(o.x||50)}%;top:${Number(o.y||50)}%;font-size:${Number(o.size||28)}px;color:${esc(o.color||'#fff')};background:${esc(o.bg||'transparent')};font-weight:${esc(o.weight||'800')};text-align:${esc(o.align||'center')}">
+        ${esc(o.text||'')}
+      </div>
+    `).join('')}
+  </div>`;
 }
 
 function clearStoryPreview(){
@@ -1645,8 +1809,10 @@ function clearStoryPreview(){
       <div class="story-upload-empty">
         ${icon('photo')}
         <b>Adicionar foto ou vídeo</b>
-        <span>Fotos JPG/PNG ou vídeos MP4/WebM</span>
-      </div>`;
+        <span>Foto ou vídeo de até 60 segundos</span>
+      </div>
+      <div id="storyOverlayLayer" class="story-overlay-layer-v540"></div>`;
+    renderStoryOverlays();
   }
 }
 
@@ -1654,6 +1820,7 @@ function openStoryDialog(){
   const dlg=document.getElementById('storyDlg');
   if(!dlg)return;
   clearStoryPreview();
+  resetStoryEditorState();
   document.getElementById('storyCaption').value='';
   document.getElementById('storyMsg').textContent='';
   dlg.showModal();
@@ -1715,9 +1882,10 @@ async function chooseStoryFile(file){
   storyPreviewUrl=URL.createObjectURL(file);
 
   const preview=document.getElementById('storyPreview');
-  preview.innerHTML=file.type.startsWith('video/')
-    ?`<video src="${storyPreviewUrl}" controls muted playsinline></video>`
-    :`<img src="${storyPreviewUrl}" alt="Prévia do story">`;
+  preview.innerHTML=isStoryVideo
+    ?`<video src="${storyPreviewUrl}" controls muted playsinline></video><div id="storyOverlayLayer" class="story-overlay-layer-v540"></div>`
+    :`<img src="${storyPreviewUrl}" alt="Prévia do story"><div id="storyOverlayLayer" class="story-overlay-layer-v540"></div>`;
+  renderStoryOverlays();
 }
 
 async function publishStory(){
@@ -1761,7 +1929,8 @@ async function publishStory(){
       body:JSON.stringify({
         media_data:mediaData,
         media_type:mediaType,
-        caption:document.getElementById('storyCaption').value.trim()
+        caption:document.getElementById('storyCaption').value.trim(),
+        overlay_json:storyOverlays
       })
     });
 
@@ -1904,6 +2073,7 @@ function renderStoryViewer(){
       ${story.media_type.startsWith('video/')
         ?`<video id="storyViewerVideo" src="${esc(story.media_data)}" autoplay playsinline controls></video>`
         :`<img src="${esc(story.media_data)}" alt="Story de ${esc(story.name)}">`}
+      ${storyOverlayHtml(story)}
     </div>
 
     <button class="story-nav story-nav-next" onclick="storyNext()" aria-label="Próximo story">›</button>

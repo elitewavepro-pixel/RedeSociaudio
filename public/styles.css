@@ -7825,3 +7825,254 @@ body.admin-mode .app-shell{
     font-size:28px!important;
   }
 }
+
+
+/* ===============================================================
+   Rede Sociaudio v5.4.0 — Editor de Stories com texto e emojis
+   =============================================================== */
+.story-editor-v540{
+  width:min(620px,calc(100vw - 22px))!important;
+  max-height:96vh!important;
+}
+
+.story-editor-v540 form{
+  gap:12px!important;
+}
+
+.story-editor-head-v540{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+}
+
+.story-editor-head-v540 h2{
+  margin:2px 0 0!important;
+}
+
+.story-share-top-v540{
+  min-height:40px;
+  padding:0 16px;
+}
+
+.story-editor-tools-v540{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:7px;
+  overflow-x:auto;
+  border:1px solid #e4e7ec;
+  border-radius:13px;
+  background:#f8fafc;
+  -webkit-overflow-scrolling:touch;
+}
+
+.story-editor-tools-v540::-webkit-scrollbar{
+  display:none;
+}
+
+.story-tool-v540{
+  min-width:64px;
+  min-height:54px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  padding:5px 8px;
+  border:0;
+  border-radius:10px;
+  background:#fff;
+  color:#344054;
+  box-shadow:0 1px 2px rgba(16,24,40,.05);
+}
+
+.story-tool-v540 b{
+  font-size:19px;
+  line-height:1;
+}
+
+.story-tool-v540 span{
+  font-size:9px;
+  font-weight:750;
+}
+
+.story-emoji-panel-v540{
+  padding:9px;
+  border:1px solid #e4e7ec;
+  border-radius:13px;
+  background:#fff;
+}
+
+.story-emoji-grid-v540{
+  display:grid;
+  grid-template-columns:repeat(8,minmax(0,1fr));
+  gap:5px;
+}
+
+.story-emoji-grid-v540 button{
+  height:40px;
+  padding:0;
+  border:0;
+  border-radius:8px;
+  background:#f8fafc;
+  font-size:23px;
+}
+
+.story-color-strip-v540{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:2px 0;
+}
+
+.story-color-strip-v540 button{
+  width:28px;
+  height:28px;
+  padding:0;
+  border:3px solid #fff;
+  border-radius:50%;
+  background:var(--story-color);
+  box-shadow:0 0 0 1px #cfd6df;
+}
+
+.story-canvas-v540{
+  position:relative!important;
+  isolation:isolate;
+}
+
+.story-canvas-v540>img,
+.story-canvas-v540>video{
+  position:absolute;
+  inset:0;
+  z-index:1;
+}
+
+.story-overlay-layer-v540{
+  position:absolute;
+  z-index:5;
+  inset:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+
+.story-overlay-item-v540{
+  position:absolute;
+  max-width:88%;
+  transform:translate(-50%,-50%);
+  padding:5px 9px;
+  border:2px solid transparent;
+  border-radius:9px;
+  line-height:1.12;
+  white-space:pre-wrap;
+  overflow-wrap:break-word;
+  text-shadow:0 1px 3px rgba(0,0,0,.28);
+  pointer-events:auto;
+  touch-action:none;
+  user-select:none;
+}
+
+.story-overlay-item-v540.selected{
+  border-color:#fff;
+  outline:2px solid #1769df;
+}
+
+.story-editor-bottom-v540{
+  display:grid;
+  gap:9px;
+}
+
+.story-change-media-v540{
+  justify-self:start;
+}
+
+.story-viewer-media{
+  position:relative;
+}
+
+.story-viewer-overlay-v540{
+  position:absolute;
+  z-index:5;
+  inset:0;
+  pointer-events:none;
+}
+
+.story-viewer-overlay-item-v540{
+  position:absolute;
+  max-width:88%;
+  transform:translate(-50%,-50%);
+  padding:5px 9px;
+  border-radius:9px;
+  line-height:1.12;
+  white-space:pre-wrap;
+  overflow-wrap:break-word;
+  text-shadow:0 1px 3px rgba(0,0,0,.35);
+}
+
+@media(max-width:760px){
+  .story-editor-v540{
+    width:100vw!important;
+    max-width:100vw!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    border-radius:0!important;
+  }
+
+  .story-editor-v540 form{
+    height:100dvh!important;
+    max-height:100dvh!important;
+    padding:14px 12px 16px!important;
+    box-sizing:border-box!important;
+    overflow-y:auto!important;
+    background:#fff!important;
+  }
+
+  .story-editor-head-v540{
+    padding-right:38px;
+  }
+
+  .story-editor-tools-v540{
+    margin:0 -2px;
+  }
+
+  .story-tool-v540{
+    min-width:60px;
+  }
+
+  .story-emoji-grid-v540{
+    grid-template-columns:repeat(8,minmax(0,1fr));
+  }
+
+  .story-create-preview.story-canvas-v540{
+    width:min(100%,390px)!important;
+    height:min(58dvh,560px)!important;
+    aspect-ratio:9/16!important;
+    margin:0 auto!important;
+    background:#111827!important;
+  }
+
+  .story-editor-bottom-v540{
+    padding-bottom:max(8px,env(safe-area-inset-bottom));
+  }
+
+  .story-caption-label textarea{
+    min-height:58px!important;
+  }
+}
+
+@media(max-width:390px){
+  .story-emoji-grid-v540{
+    grid-template-columns:repeat(6,minmax(0,1fr));
+  }
+
+  .story-color-strip-v540{
+    gap:6px;
+  }
+
+  .story-color-strip-v540 button{
+    width:25px;
+    height:25px;
+  }
+}
