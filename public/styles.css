@@ -8865,3 +8865,11 @@ body.admin-mode .app-shell{
 .post-primary-actions .boost-post-btn-v581{color:#1769df!important;font-weight:800!important}
 .post-primary-actions .boost-post-btn-v581 .boost-rocket-v581{font-size:18px!important;line-height:1!important}
 @media(max-width:760px){.post-primary-actions .boost-post-btn-v581 span:last-child{font-size:11px!important}}
+
+/* v5.8.2 — botão Impulsionar consistente em todos os tipos de post do proprietário */
+.boost-post-btn-v582{
+  border:0!important;background:transparent!important;color:#1769df!important;
+  font-weight:800!important;cursor:pointer!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;
+}
+.boost-post-btn-v582 .boost-rocket-v581{font-size:18px!important;line-height:1!important}
