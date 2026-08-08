@@ -6,7 +6,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.7.2 — Versao Centralizada'
+APP_VERSION = 'v5.8.0 — Sociaudio Ads MVP'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
