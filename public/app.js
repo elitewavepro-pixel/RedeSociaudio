@@ -3,7 +3,17 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.7.1 Public';
+const SOCIAUDIO_VERSION='v5.7.2 Public';
+
+function publicVersionText(){
+  return String(SOCIAUDIO_VERSION||'').replace(/^v/i,'V').replace(/\s+Public$/i,' PUBLIC');
+}
+function syncPublicVersionBadges(){
+  document.querySelectorAll('#publicVersionBadge,[data-public-version]').forEach(el=>{
+    el.textContent=publicVersionText();
+  });
+}
+
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +169,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.5.1 PUBLIC</span>
+        <span class="beta-label" id="publicVersionBadge"></span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -419,6 +429,7 @@ async function loadAll(){try{
   notificationUnread=Number(notifications.unread||0);
   updateNotificationBadge();
   render();
+  syncPublicVersionBadges();
 }catch(e){toast(e.message,true)}}
 loginTab.onclick=()=>{
   tab('login');
@@ -5356,3 +5367,5 @@ function storyMakeDirectTextMovable(el){
   el.addEventListener('blur',()=>{ if(!el.textContent.trim()) el.remove(); });
 }
 
+
+try{syncPublicVersionBadges()}catch(_){ }
