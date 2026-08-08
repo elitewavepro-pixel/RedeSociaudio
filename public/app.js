@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.5.1 Public';
+const SOCIAUDIO_VERSION='v5.6.0 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -5161,3 +5161,50 @@ window.addEventListener('resize',()=>{
     bootMobileSocialLayout();
   }
 });
+
+
+let storyDirectTextSeq=0;
+function storyStartDirectText(){
+  storyClosePanels();
+  const layer=document.getElementById('storyDirectTextLayer');
+  if(!layer) return;
+  const el=document.createElement('div');
+  el.className='story-direct-text-v560';
+  el.contentEditable='true';
+  el.spellcheck=true;
+  el.dataset.id='dt'+(++storyDirectTextSeq);
+  el.innerHTML='';
+  el.style.left='50%'; el.style.top='42%';
+  layer.appendChild(el);
+  storyMakeDirectTextMovable(el);
+  requestAnimationFrame(()=>{ el.focus(); try{document.execCommand('selectAll',false,null)}catch(e){} });
+}
+function storyMakeDirectTextMovable(el){
+  let sx=0,sy=0,sl=0,st=0,moved=false;
+  const down=(e)=>{
+    if(el.isContentEditable && document.activeElement===el && !e.altKey) return;
+    moved=false; const p=e.touches?e.touches[0]:e;
+    sx=p.clientX; sy=p.clientY;
+    const r=el.getBoundingClientRect(), pr=el.parentElement.getBoundingClientRect();
+    sl=r.left-pr.left; st=r.top-pr.top;
+    const move=(ev)=>{
+      const q=ev.touches?ev.touches[0]:ev, dx=q.clientX-sx, dy=q.clientY-sy;
+      if(Math.abs(dx)+Math.abs(dy)>4) moved=true;
+      el.style.left=Math.max(0,Math.min(pr.width-r.width,sl+dx))+'px';
+      el.style.top=Math.max(0,Math.min(pr.height-r.height,st+dy))+'px';
+      el.style.transform='none';
+      if(ev.cancelable) ev.preventDefault();
+    };
+    const up=()=>{
+      document.removeEventListener('mousemove',move); document.removeEventListener('mouseup',up);
+      document.removeEventListener('touchmove',move); document.removeEventListener('touchend',up);
+      if(moved) el.blur();
+    };
+    document.addEventListener('mousemove',move); document.addEventListener('mouseup',up);
+    document.addEventListener('touchmove',move,{passive:false}); document.addEventListener('touchend',up);
+  };
+  el.addEventListener('mousedown',down); el.addEventListener('touchstart',down,{passive:true});
+  el.addEventListener('dblclick',()=>el.focus());
+  el.addEventListener('blur',()=>{ if(!el.textContent.trim()) el.remove(); });
+}
+
