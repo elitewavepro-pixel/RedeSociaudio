@@ -3,10 +3,12 @@ import base64, hashlib, hmac, json, mimetypes, os, secrets, sqlite3, webbrowser,
 from datetime import datetime, timedelta, timezone
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.9.0 — Ads Campanhas'
+APP_VERSION = 'v5.10.0 — Checkout Mercado Pago'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -1887,11 +1889,83 @@ class Handler(SimpleHTTPRequestHandler):
             c=connect(); row=c.execute("SELECT * FROM ad_campaigns WHERE code=?",(m.group(1),)).fetchone()
             if not row:c.close();return self.send_json({'error':'Campanha não encontrada.'},404)
             if row['user_id']!=u['id'] and not u.get('is_admin'):c.close();return self.send_json({'error':'Acesso restrito.'},403)
-            checkout_base=os.environ.get('SOCIAUDIO_PAYMENT_CHECKOUT_BASE','').strip()
-            checkout_url=(checkout_base.rstrip('/')+'?campaign='+row['code']) if checkout_base else ''
-            c.execute("UPDATE ad_campaigns SET checkout_url=? WHERE code=?",(checkout_url,row['code'])); c.commit(); c.close()
-            return self.send_json({'ok':True,'campaign_code':row['code'],'status':'awaiting_payment',
-                                   'checkout_url':checkout_url,'payment_configured':bool(checkout_url)})
+            token_mp=os.environ.get('MERCADOPAGO_ACCESS_TOKEN','').strip()
+            if not token_mp:
+                c.close(); return self.send_json({'error':'Mercado Pago ainda não está configurado no servidor.'},503)
+            # Uma preferência nova é criada para cada campanha/pedido, conforme Checkout Pro.
+            base_url=os.environ.get('SOCIAUDIO_PUBLIC_URL','https://redesociaudio.com.br').strip().rstrip('/')
+            payload={
+                'items':[{'id':row['code'],'title':f'Impulsionamento Rede Sociaudio - {row["days"]} dias',
+                          'description':f'Campanha {row["code"]} para publicação {row["post_id"]}',
+                          'quantity':1,'currency_id':'BRL','unit_price':float(row['price'])}],
+                'external_reference':row['code'],
+                'back_urls':{
+                    'success':base_url+'/app?ads_payment=success&campaign='+row['code'],
+                    'pending':base_url+'/app?ads_payment=pending&campaign='+row['code'],
+                    'failure':base_url+'/app?ads_payment=failure&campaign='+row['code']
+                },
+                'auto_return':'approved',
+                'notification_url':base_url+'/api/payments/mercadopago/webhook',
+                'statement_descriptor':'SOCIAUDIO'
+            }
+            try:
+                req=Request('https://api.mercadopago.com/checkout/preferences',
+                            data=json.dumps(payload).encode('utf-8'),
+                            headers={'Authorization':'Bearer '+token_mp,'Content-Type':'application/json'},
+                            method='POST')
+                with urlopen(req,timeout=20) as resp:
+                    mp=json.loads(resp.read().decode('utf-8'))
+                checkout_url=(mp.get('sandbox_init_point') if token_mp.startswith('TEST-') else mp.get('init_point')) or mp.get('init_point') or ''
+                preference_id=str(mp.get('id') or '')
+                if not checkout_url: raise RuntimeError('Mercado Pago não retornou URL de checkout.')
+                c.execute("UPDATE ad_campaigns SET checkout_url=?,payment_provider=?,payment_id=? WHERE code=?",
+                          (checkout_url,'mercadopago',preference_id,row['code']))
+                c.commit(); c.close()
+                return self.send_json({'ok':True,'campaign_code':row['code'],'status':'awaiting_payment',
+                                       'checkout_url':checkout_url,'payment_configured':True})
+            except HTTPError as e:
+                detail=e.read().decode('utf-8','replace')[:1200]
+                c.close(); print('[MERCADOPAGO] HTTP',e.code,detail)
+                return self.send_json({'error':'Mercado Pago recusou a criação do checkout. Verifique as credenciais de teste.'},502)
+            except Exception as e:
+                c.close(); print('[MERCADOPAGO] ERROR',repr(e))
+                return self.send_json({'error':'Não foi possível iniciar o pagamento no Mercado Pago.'},502)
+
+        if p == '/api/payments/mercadopago/webhook':
+            # Webhook público: nunca confia no status recebido. Consulta o pagamento na API do MP.
+            token_mp=os.environ.get('MERCADOPAGO_ACCESS_TOKEN','').strip()
+            if not token_mp:return self.send_json({'ok':True})
+            parsed=urlparse(self.path); qs=parse_qs(parsed.query); d=self.read_json()
+            payment_id=''
+            if isinstance(d,dict):
+                data=d.get('data') or {}
+                if isinstance(data,dict):payment_id=str(data.get('id') or '')
+            payment_id=payment_id or str((qs.get('data.id') or qs.get('id') or [''])[0])
+            if not payment_id:return self.send_json({'ok':True})
+            try:
+                req=Request('https://api.mercadopago.com/v1/payments/'+payment_id,
+                            headers={'Authorization':'Bearer '+token_mp,'Content-Type':'application/json'})
+                with urlopen(req,timeout=20) as resp:
+                    payment=json.loads(resp.read().decode('utf-8'))
+                code=str(payment.get('external_reference') or '')
+                status=str(payment.get('status') or '')
+                if code.startswith('ADS-'):
+                    c=connect(); row=c.execute("SELECT * FROM ad_campaigns WHERE code=?",(code,)).fetchone()
+                    if row:
+                        if status=='approved':
+                            paid=now(); start=datetime.now(timezone.utc); end=start+timedelta(days=int(row['days']))
+                            c.execute("UPDATE ad_campaigns SET status='active',payment_provider='mercadopago',payment_id=?,paid_at=?,starts_at=?,ends_at=? WHERE code=?",
+                                      (payment_id,paid,start.isoformat(),end.isoformat(),code))
+                        elif status in ('rejected','cancelled','refunded','charged_back'):
+                            c.execute("UPDATE ad_campaigns SET status=?,payment_provider='mercadopago',payment_id=? WHERE code=?",
+                                      (status,payment_id,code))
+                        else:
+                            c.execute("UPDATE ad_campaigns SET payment_provider='mercadopago',payment_id=? WHERE code=?",(payment_id,code))
+                        c.commit()
+                    c.close()
+            except Exception as e:
+                print('[MERCADOPAGO WEBHOOK]',repr(e))
+            return self.send_json({'ok':True})
 
         if p == '/api/admin/assistant':
             u=self.require_user()

@@ -4,7 +4,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.9.0 Public';
+const SOCIAUDIO_VERSION='v5.10.0 Public';
 
 function publicVersionText(){
   return String(SOCIAUDIO_VERSION||'').replace(/^v/i,'V').replace(/\s+Public$/i,' PUBLIC');
@@ -5396,7 +5396,7 @@ async function submitBoostOrder(){
 async function openCampaignPayment(code){
   try{
     const r=await api('/api/ads/campaigns/'+encodeURIComponent(code)+'/payment',{method:'POST',body:'{}'});
-    if(r.checkout_url){location.href=r.checkout_url;return}
+    if(r.checkout_url){window.location.assign(r.checkout_url);return}
     document.getElementById('boostMsg').innerHTML='<div class="boost-payment-pending-v590"><b>Campanha registrada no servidor.</b><br>O checkout Pix/cartão será conectado na próxima etapa. Nenhuma cobrança foi simulada.</div>';
   }catch(e){toast(e.message||'Erro ao iniciar pagamento',true)}
 }
