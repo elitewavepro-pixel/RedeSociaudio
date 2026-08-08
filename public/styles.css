@@ -9031,3 +9031,5 @@ body.admin-mode .app-shell{
   .post-primary-actions>button{min-height:50px!important;gap:4px!important;padding:6px 2px!important;font-size:10px!important}
   .boost-icon-v584{width:24px!important;height:24px!important;font-size:13px!important}
 }
+
+.boost-pay-v590{width:100%;margin-top:10px;min-height:46px;border:0;border-radius:12px;background:#1769df;color:#fff;font-weight:850}.boost-wait-v590,.boost-payment-pending-v590,.boost-error-v590{padding:13px;border-radius:12px;font-size:12px;line-height:1.45}.boost-wait-v590{background:#f4f7fb}.boost-payment-pending-v590{background:#eff6ff;color:#1849a9}.boost-error-v590{background:#fff1f3;color:#c01048}

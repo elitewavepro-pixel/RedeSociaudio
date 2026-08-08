@@ -6,7 +6,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.8.4 — Impulsionar Nativo Premium'
+APP_VERSION = 'v5.9.0 — Ads Campanhas'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -519,6 +519,27 @@ def init_db():
     os.makedirs(os.path.dirname(DB), exist_ok=True)
     c = connect()
     c.execute('BEGIN IMMEDIATE')
+    c.execute('''CREATE TABLE IF NOT EXISTS ad_campaigns(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT UNIQUE NOT NULL,
+        user_id INTEGER NOT NULL,
+        post_id INTEGER NOT NULL,
+        goal TEXT NOT NULL DEFAULT 'views',
+        audience TEXT NOT NULL DEFAULT 'all',
+        location TEXT NOT NULL DEFAULT 'brasil',
+        days INTEGER NOT NULL,
+        price REAL NOT NULL,
+        status TEXT NOT NULL DEFAULT 'awaiting_payment',
+        payment_provider TEXT DEFAULT '',
+        payment_id TEXT DEFAULT '',
+        checkout_url TEXT DEFAULT '',
+        impressions INTEGER NOT NULL DEFAULT 0,
+        clicks INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        paid_at TEXT DEFAULT '',
+        starts_at TEXT DEFAULT '',
+        ends_at TEXT DEFAULT ''
+    )''')
     c.executescript('''
     CREATE TABLE IF NOT EXISTS users(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1795,6 +1816,26 @@ class Handler(SimpleHTTPRequestHandler):
             status['counts']=counts
             return self.send_json(status)
 
+        if p == '/api/ads/campaigns':
+            u=self.require_user()
+            if not u:return
+            c=connect()
+            if u.get('is_admin'):
+                rows=c.execute("SELECT * FROM ad_campaigns ORDER BY id DESC LIMIT 200").fetchall()
+            else:
+                rows=c.execute("SELECT * FROM ad_campaigns WHERE user_id=? ORDER BY id DESC LIMIT 100",(u['id'],)).fetchall()
+            c.close()
+            return self.send_json({'items':[dict(x) for x in rows]})
+
+        m=re.fullmatch(r'/api/ads/campaigns/([A-Z0-9-]+)',p)
+        if m:
+            u=self.require_user()
+            if not u:return
+            c=connect(); row=c.execute("SELECT * FROM ad_campaigns WHERE code=?",(m.group(1),)).fetchone(); c.close()
+            if not row:return self.send_json({'error':'Campanha não encontrada.'},404)
+            if row['user_id']!=u['id'] and not u.get('is_admin'):return self.send_json({'error':'Acesso restrito.'},403)
+            return self.send_json({'campaign':dict(row)})
+
         if p == '/':
             path='landing.html'
         elif p in ('/app','/login','/cadastro'):
@@ -1817,6 +1858,41 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         p=urlparse(self.path).path
+
+        if p == '/api/ads/campaigns':
+            u=self.require_user()
+            if not u:return
+            d=self.read_json()
+            try:
+                post_id=int(d.get('post_id') or 0); days=int(d.get('days') or 0)
+            except Exception:
+                return self.send_json({'error':'Dados da campanha inválidos.'},400)
+            plans={3:19.90,7:39.90,15:69.90}
+            if not post_id or days not in plans:return self.send_json({'error':'Plano ou publicação inválidos.'},400)
+            c=connect()
+            post=c.execute("SELECT id FROM posts WHERE id=?",(post_id,)).fetchone()
+            if not post:c.close();return self.send_json({'error':'Publicação não encontrada.'},404)
+            code='ADS-'+secrets.token_hex(5).upper()
+            c.execute('''INSERT INTO ad_campaigns(code,user_id,post_id,goal,audience,location,days,price,status,created_at)
+                         VALUES(?,?,?,?,?,?,?,?,?,?)''',
+                      (code,u['id'],post_id,str(d.get('goal') or 'views'),str(d.get('audience') or 'all'),
+                       str(d.get('location') or 'brasil'),days,plans[days],'awaiting_payment',now()))
+            c.commit(); row=c.execute("SELECT * FROM ad_campaigns WHERE code=?",(code,)).fetchone(); c.close()
+            return self.send_json({'ok':True,'campaign':dict(row)})
+
+        m=re.fullmatch(r'/api/ads/campaigns/([A-Z0-9-]+)/payment',p)
+        if m:
+            u=self.require_user()
+            if not u:return
+            c=connect(); row=c.execute("SELECT * FROM ad_campaigns WHERE code=?",(m.group(1),)).fetchone()
+            if not row:c.close();return self.send_json({'error':'Campanha não encontrada.'},404)
+            if row['user_id']!=u['id'] and not u.get('is_admin'):c.close();return self.send_json({'error':'Acesso restrito.'},403)
+            checkout_base=os.environ.get('SOCIAUDIO_PAYMENT_CHECKOUT_BASE','').strip()
+            checkout_url=(checkout_base.rstrip('/')+'?campaign='+row['code']) if checkout_base else ''
+            c.execute("UPDATE ad_campaigns SET checkout_url=? WHERE code=?",(checkout_url,row['code'])); c.commit(); c.close()
+            return self.send_json({'ok':True,'campaign_code':row['code'],'status':'awaiting_payment',
+                                   'checkout_url':checkout_url,'payment_configured':bool(checkout_url)})
+
         if p == '/api/admin/assistant':
             u=self.require_user()
             if not u:return
