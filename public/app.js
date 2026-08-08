@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.8.0 Public';
+const SOCIAUDIO_VERSION='v5.8.1 Public';
 
 function publicVersionText(){
   return String(SOCIAUDIO_VERSION||'').replace(/^v/i,'V').replace(/\s+Public$/i,' PUBLIC');
@@ -1183,6 +1183,12 @@ function safeLink(url){try{let u=new URL(url);return ['http:','https:'].includes
         ${icon('share')}
         <span>Compartilhar</span>
       </button>
+
+      ${p.user_id===me.id?`
+      <button class="boost-post-btn-v581" onclick="openBoostDialog(${p.id})" title="Impulsionar publicação">
+        <span class="boost-rocket-v581">🚀</span>
+        <span>Impulsionar</span>
+      </button>`:''}
     </div>
 
     ${commentsBlock(p)}
@@ -5376,5 +5382,5 @@ function openBoostDialog(postId){const d=document.getElementById('boostDlg');if(
 function closeBoostDialog(){document.getElementById('boostDlg')?.close()}
 function selectBoostPlan(days,price){document.getElementById('boostDays').value=days;document.getElementById('boostPrice').value=price;document.getElementById('boostTotal').textContent=Number(price).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});document.querySelectorAll('.boost-plans-v580 button').forEach(b=>b.classList.toggle('active',Number(b.dataset.plan)===Number(days)))}
 function submitBoostOrder(){const o={id:'ADS-'+Date.now(),post_id:document.getElementById('boostPostId').value,goal:document.getElementById('boostGoal').value,audience:document.getElementById('boostAudience').value,location:document.getElementById('boostLocation').value,days:+document.getElementById('boostDays').value,price:+document.getElementById('boostPrice').value,status:'aguardando_pagamento',created_at:new Date().toISOString()};let a=[];try{a=JSON.parse(localStorage.getItem(SOCIAUDIO_ADS_KEY)||'[]')}catch(_){}a.unshift(o);localStorage.setItem(SOCIAUDIO_ADS_KEY,JSON.stringify(a));document.getElementById('boostMsg').innerHTML='<div class="boost-success-v580">Campanha '+o.id+' criada.</div>'}
-function enhancePostsWithBoost(){document.querySelectorAll('article.post,.post-card,.feed-card').forEach(card=>{if(card.querySelector('.boost-post-btn-v580'))return;const edit=card.querySelector('[onclick*="editPost"],[onclick*="openEdit"]');if(!edit)return;const m=(edit.getAttribute('onclick')||'').match(/\((?:'|")?([^'")]+)(?:'|")?\)/);if(!m)return;const b=document.createElement('button');b.type='button';b.className='boost-post-btn-v580';b.innerHTML='🚀 <span>Impulsionar</span>';b.onclick=()=>openBoostDialog(m[1]);(edit.closest('.post-actions,.actions,.post-footer')||edit.parentElement).insertBefore(b,edit)})}
+function enhancePostsWithBoost(){return;document.querySelectorAll('article.post,.post-card,.feed-card').forEach(card=>{if(card.querySelector('.boost-post-btn-v580'))return;const edit=card.querySelector('[onclick*="editPost"],[onclick*="openEdit"]');if(!edit)return;const m=(edit.getAttribute('onclick')||'').match(/\((?:'|")?([^'")]+)(?:'|")?\)/);if(!m)return;const b=document.createElement('button');b.type='button';b.className='boost-post-btn-v580';b.innerHTML='🚀 <span>Impulsionar</span>';b.onclick=()=>openBoostDialog(m[1]);(edit.closest('.post-actions,.actions,.post-footer')||edit.parentElement).insertBefore(b,edit)})}
 window.addEventListener('DOMContentLoaded',()=>{new MutationObserver(enhancePostsWithBoost).observe(document.body,{childList:true,subtree:true});enhancePostsWithBoost()});
