@@ -6,7 +6,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.4.1 — Editor Stories Corrigido'
+APP_VERSION = 'v5.5.0 — Editor Stories Avancado'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
@@ -1881,17 +1881,37 @@ class Handler(SimpleHTTPRequestHandler):
                 if not isinstance(parsed_overlay,list):
                     parsed_overlay=[]
                 cleaned=[]
-                for item in parsed_overlay[:12]:
+                for item in parsed_overlay[:20]:
                     if not isinstance(item,dict): continue
+                    kind=str(item.get('type') or 'text')[:16]
+
+                    if kind=='filter':
+                        value=str(item.get('value') or 'normal')[:20]
+                        if value not in ('normal','warm','cool','contrast','mono','vivid'):
+                            value='normal'
+                        cleaned.append({'type':'filter','value':value})
+                        continue
+
+                    if kind=='audio':
+                        url=str(item.get('url') or '')[:800]
+                        name=str(item.get('name') or 'Áudio')[:120]
+                        media_type=str(item.get('media_type') or '')[:80]
+                        if url.startswith('/media/audio/'):
+                            cleaned.append({
+                                'type':'audio','url':url,'name':name,'media_type':media_type
+                            })
+                        continue
+
                     text=str(item.get('text') or '')[:120]
                     if not text: continue
                     cleaned.append({
+                        'type':kind if kind in ('text','emoji','sticker','mention') else 'text',
                         'text':text,
                         'x':max(0,min(100,float(item.get('x',50)))),
                         'y':max(0,min(100,float(item.get('y',50)))),
-                        'size':max(14,min(54,int(item.get('size',28)))),
+                        'size':max(14,min(72,int(item.get('size',28)))),
                         'color':str(item.get('color') or '#ffffff')[:20],
-                        'bg':str(item.get('bg') or 'transparent')[:30],
+                        'bg':str(item.get('bg') or 'transparent')[:40],
                         'align':str(item.get('align') or 'center')[:10],
                         'weight':str(item.get('weight') or '800')[:10]
                     })

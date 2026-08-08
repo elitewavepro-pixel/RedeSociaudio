@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.4.1 Public';
+const SOCIAUDIO_VERSION='v5.5.0 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -159,7 +159,7 @@ function mountProfessionalSidebar(){
   if(brand.dataset.mounted!=='1'){
     brand.innerHTML=`
       <div class="sidebar-brand-row">
-        <span class="beta-label">V5.4.1 PUBLIC</span>
+        <span class="beta-label">V5.5.0 PUBLIC</span>
         <span id="betaHealth" class="beta-health ok">Sistema online</span>
       </div>
       <strong>Marketplace Inteligente<br>de Áudio</strong>`;
@@ -1630,19 +1630,165 @@ let storyOverlays=[];
 let storySelectedOverlay=-1;
 let storyTextSizeStep=1;
 let storyTextBackgroundStep=0;
+let storyFilter='normal';
+let storyAudio=null;
+let storyAudioFile=null;
 
 function storyInitial(user){
   return esc((user?.name||'S').trim().slice(0,1).toUpperCase());
 }
 
 
+
+function storyCloseAllPanels(exceptId=''){
+  ['storyEmojiPanel','storyTextPanel','storyMentionPanel','storyFilterPanel','storyMorePanel'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && id!==exceptId)el.hidden=true;
+  });
+}
+
+function storyTogglePanel(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const willOpen=el.hidden;
+  storyCloseAllPanels(willOpen?id:'');
+  el.hidden=!willOpen;
+}
+
+function storyToggleTextPanel(){storyTogglePanel('storyTextPanel');setTimeout(()=>document.getElementById('storyTextInput')?.focus(),50)}
+function storyToggleMentionPanel(){storyTogglePanel('storyMentionPanel');setTimeout(()=>document.getElementById('storyMentionInput')?.focus(),50)}
+function storyToggleFilterPanel(){storyTogglePanel('storyFilterPanel')}
+function storyToggleMorePanel(){storyTogglePanel('storyMorePanel')}
+
+function storyCommitText(){
+  const input=document.getElementById('storyTextInput');
+  const text=(input?.value||'').trim();
+  if(!text)return;
+  storyOverlays.push({
+    type:'text',text:text.slice(0,120),
+    x:50,y:48,size:32,color:'#ffffff',bg:'rgba(0,0,0,.28)',
+    align:'center',weight:'800'
+  });
+  storySelectedOverlay=storyOverlays.length-1;
+  input.value='';
+  document.getElementById('storyTextPanel').hidden=true;
+  renderStoryOverlays();
+}
+
+function storyInsertSticker(emoji){
+  storyOverlays.push({
+    type:'sticker',text:emoji,
+    x:50,y:58,size:56,color:'#ffffff',bg:'transparent',
+    align:'center',weight:'800'
+  });
+  storySelectedOverlay=storyOverlays.length-1;
+  document.getElementById('storyEmojiPanel').hidden=true;
+  renderStoryOverlays();
+}
+
+function storyCommitMention(){
+  const input=document.getElementById('storyMentionInput');
+  let text=(input?.value||'').trim();
+  if(!text)return;
+  if(!text.startsWith('@'))text='@'+text;
+  storyOverlays.push({
+    type:'mention',text:text.slice(0,60),
+    x:50,y:66,size:28,color:'#ffffff',bg:'rgba(23,105,223,.88)',
+    align:'center',weight:'800'
+  });
+  storySelectedOverlay=storyOverlays.length-1;
+  input.value='';
+  document.getElementById('storyMentionPanel').hidden=true;
+  renderStoryOverlays();
+}
+
+function storyFilterCss(value){
+  return ({
+    normal:'none',
+    warm:'saturate(1.12) sepia(.16) contrast(1.04)',
+    cool:'saturate(1.05) hue-rotate(8deg) brightness(1.03)',
+    contrast:'contrast(1.22) saturate(1.08)',
+    mono:'grayscale(1) contrast(1.08)',
+    vivid:'saturate(1.45) contrast(1.08)'
+  })[value]||'none';
+}
+
+function storySetFilter(value){
+  storyFilter=value||'normal';
+  const preview=document.getElementById('storyPreview');
+  const media=preview?.querySelector(':scope > img, :scope > video');
+  if(media)media.style.filter=storyFilterCss(storyFilter);
+  document.getElementById('storyFilterPanel').hidden=true;
+}
+
+async function storyChooseAudio(file){
+  if(!file)return;
+  const msg=document.getElementById('storyMsg');
+  msg.textContent='Enviando áudio...';
+  try{
+    storyAudioFile=file;
+    const uploaded=await uploadPendingAudio(file);
+    storyAudio={
+      type:'audio',
+      url:uploaded.media_data,
+      name:uploaded.media_name||file.name||'Áudio',
+      media_type:uploaded.media_type||file.type||''
+    };
+    const badge=document.getElementById('storyAudioBadge');
+    document.getElementById('storyAudioName').textContent=storyAudio.name;
+    badge.hidden=false;
+    msg.textContent='';
+  }catch(error){
+    storyAudio=null;storyAudioFile=null;
+    msg.textContent=error.message||'Não foi possível adicionar o áudio.';
+  }finally{
+    const input=document.getElementById('storyAudioFile');
+    if(input)input.value='';
+  }
+}
+
+function storyRemoveAudio(){
+  storyAudio=null;
+  storyAudioFile=null;
+  const badge=document.getElementById('storyAudioBadge');
+  if(badge)badge.hidden=true;
+}
+
+function storySpecialItems(){
+  const items=[];
+  if(storyFilter && storyFilter!=='normal')items.push({type:'filter',value:storyFilter});
+  if(storyAudio)items.push({...storyAudio});
+  return items;
+}
+
+function storyParsedOverlay(story){
+  let items=[];
+  try{
+    items=Array.isArray(story.overlay_json)?story.overlay_json:JSON.parse(story.overlay_json||'[]');
+  }catch(_){items=[]}
+  return items;
+}
+
+function storyViewerFilter(story){
+  const item=storyParsedOverlay(story).find(x=>x&&x.type==='filter');
+  return storyFilterCss(item?.value||'normal');
+}
+
+function storyViewerAudio(story){
+  return storyParsedOverlay(story).find(x=>x&&x.type==='audio'&&x.url);
+}
+
 function resetStoryEditorState(){
   storyOverlays=[];
   storySelectedOverlay=-1;
   storyTextSizeStep=1;
   storyTextBackgroundStep=0;
-  const panel=document.getElementById('storyEmojiPanel');
-  if(panel)panel.hidden=true;
+  storyFilter='normal';
+  storyAudio=null;
+  storyAudioFile=null;
+  storyCloseAllPanels();
+  const badge=document.getElementById('storyAudioBadge');
+  if(badge)badge.hidden=true;
   renderStoryOverlays();
 }
 
@@ -1653,29 +1799,9 @@ function closeStoryEditor(){
   resetStoryEditorState();
 }
 
-function storyAddText(){
-  const text=prompt('Digite o texto do story:','');
-  if(!text || !text.trim())return;
-  storyOverlays.push({
-    text:text.trim().slice(0,120),
-    x:50,y:48,size:30,color:'#ffffff',bg:'rgba(0,0,0,.28)',
-    align:'center',weight:'800'
-  });
-  storySelectedOverlay=storyOverlays.length-1;
-  renderStoryOverlays();
-}
+function storyAddText(){storyToggleTextPanel()}
 
-function storyInsertEmoji(emoji){
-  storyOverlays.push({
-    text:emoji,
-    x:50,y:60,size:42,color:'#ffffff',bg:'transparent',
-    align:'center',weight:'800'
-  });
-  storySelectedOverlay=storyOverlays.length-1;
-  renderStoryOverlays();
-  const panel=document.getElementById('storyEmojiPanel');
-  if(panel)panel.hidden=true;
-}
+function storyInsertEmoji(emoji){storyInsertSticker(emoji)}
 
 function storyToggleEmojiPanel(){
   const panel=document.getElementById('storyEmojiPanel');
@@ -1783,11 +1909,12 @@ function storyOverlayHtml(story){
       :JSON.parse(story.overlay_json||'[]');
   }catch(_){items=[]}
 
+  items=items.filter(o=>o&&['text','emoji','sticker','mention'].includes(o.type||'text'));
   if(!items.length)return '';
 
   return `<div class="story-viewer-overlay-v540">
     ${items.map(o=>`
-      <div class="story-viewer-overlay-item-v540"
+      <div class="story-viewer-overlay-item-v540 ${o.type==='sticker'?'story-viewer-sticker-v550':''}"
         style="left:${Number(o.x||50)}%;top:${Number(o.y||50)}%;font-size:${Number(o.size||28)}px;color:${esc(o.color||'#fff')};background:${esc(o.bg||'transparent')};font-weight:${esc(o.weight||'800')};text-align:${esc(o.align||'center')}">
         ${esc(o.text||'')}
       </div>
@@ -1811,7 +1938,7 @@ function clearStoryPreview(){
         <b>Adicionar foto ou vídeo</b>
         <span>Foto ou vídeo de até 60 segundos</span>
       </div>
-      <div id="storyOverlayLayer" class="story-overlay-layer-v540"></div>`;
+      <div id="storyOverlayLayer" class="story-overlay-layer-v550"></div>`;
     renderStoryOverlays();
   }
 }
@@ -1883,9 +2010,10 @@ async function chooseStoryFile(file){
 
   const preview=document.getElementById('storyPreview');
   preview.innerHTML=isStoryVideo
-    ?`<video src="${storyPreviewUrl}" controls muted playsinline></video><div id="storyOverlayLayer" class="story-overlay-layer-v540"></div>`
-    :`<img src="${storyPreviewUrl}" alt="Prévia do story"><div id="storyOverlayLayer" class="story-overlay-layer-v540"></div>`;
+    ?`<video src="${storyPreviewUrl}" controls muted playsinline></video><div id="storyOverlayLayer" class="story-overlay-layer-v550"></div>`
+    :`<img src="${storyPreviewUrl}" alt="Prévia do story"><div id="storyOverlayLayer" class="story-overlay-layer-v550"></div>`;
   renderStoryOverlays();
+  storySetFilter(storyFilter);
 }
 
 async function publishStory(){
@@ -1930,7 +2058,7 @@ async function publishStory(){
         media_data:mediaData,
         media_type:mediaType,
         caption:document.getElementById('storyCaption').value.trim(),
-        overlay_json:storyOverlays
+        overlay_json:[...storyOverlays,...storySpecialItems()]
       })
     });
 
@@ -2071,9 +2199,10 @@ function renderStoryViewer(){
 
     <div class="story-viewer-media">
       ${story.media_type.startsWith('video/')
-        ?`<video id="storyViewerVideo" src="${esc(story.media_data)}" autoplay playsinline controls></video>`
-        :`<img src="${esc(story.media_data)}" alt="Story de ${esc(story.name)}">`}
+        ?`<video id="storyViewerVideo" src="${esc(story.media_data)}" autoplay playsinline controls style="filter:${storyViewerFilter(story)}"></video>`
+        :`<img src="${esc(story.media_data)}" alt="Story de ${esc(story.name)}" style="filter:${storyViewerFilter(story)}">`}
       ${storyOverlayHtml(story)}
+      ${(()=>{const a=storyViewerAudio(story);return a?`<audio id="storyViewerAudio" src="${esc(a.url)}" autoplay loop></audio><div class="story-viewer-audio-chip-v550">♫ ${esc(a.name||'Áudio')}</div>`:''})()}
     </div>
 
     <button class="story-nav story-nav-next" onclick="storyNext()" aria-label="Próximo story">›</button>
