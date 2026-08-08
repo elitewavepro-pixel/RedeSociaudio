@@ -8873,3 +8873,118 @@ body.admin-mode .app-shell{
   display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;
 }
 .boost-post-btn-v582 .boost-rocket-v581{font-size:18px!important;line-height:1!important}
+
+
+/* ===============================================================
+   Rede Sociaudio v5.8.3 — Impulsionar Premium
+   =============================================================== */
+
+.post-primary-actions-v583,
+.post-primary-actions{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  align-items:center!important;
+  gap:0!important;
+  width:100%!important;
+  border-top:1px solid #edf1f6!important;
+}
+
+.post-primary-actions-v583 > button,
+.post-primary-actions > button{
+  min-width:0!important;
+  min-height:52px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  padding:0 8px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#5f6b7c!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  white-space:nowrap!important;
+  transition:background .18s ease,color .18s ease,transform .18s ease!important;
+}
+
+.post-primary-actions-v583 > button:hover,
+.post-primary-actions > button:hover{
+  background:#f7f9fc!important;
+  color:#1f2937!important;
+}
+
+.post-primary-actions-v583 > button:active,
+.post-primary-actions > button:active{
+  transform:scale(.97)!important;
+}
+
+.boost-post-btn-v583{
+  position:relative!important;
+  color:#1769df!important;
+  font-weight:850!important;
+}
+
+.boost-post-btn-v583::before{
+  content:""!important;
+  position:absolute!important;
+  top:8px!important;
+  bottom:8px!important;
+  left:0!important;
+  width:1px!important;
+  background:#edf1f6!important;
+}
+
+.boost-premium-icon-v583{
+  width:27px!important;
+  height:27px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:9px!important;
+  background:linear-gradient(135deg,#edf5ff,#dceaff)!important;
+  box-shadow:inset 0 0 0 1px rgba(23,105,223,.10)!important;
+  font-size:15px!important;
+  line-height:1!important;
+}
+
+.boost-premium-text-v583{
+  color:#1769df!important;
+  font-weight:850!important;
+}
+
+.boost-post-btn-v583:hover{
+  background:linear-gradient(180deg,#f8fbff,#f3f8ff)!important;
+}
+
+@media(max-width:760px){
+  .post-primary-actions-v583,
+  .post-primary-actions{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+
+  .post-primary-actions-v583 > button,
+  .post-primary-actions > button{
+    min-height:50px!important;
+    padding:0 4px!important;
+    gap:4px!important;
+    font-size:10px!important;
+  }
+
+  .boost-premium-icon-v583{
+    width:24px!important;
+    height:24px!important;
+    border-radius:8px!important;
+    font-size:13px!important;
+  }
+
+  .boost-premium-text-v583{
+    font-size:10px!important;
+  }
+}
+
+@media(max-width:390px){
+  .post-primary-actions-v583 > button span:not(.boost-premium-icon-v583),
+  .post-primary-actions > button span:not(.boost-premium-icon-v583){
+    font-size:9px!important;
+  }
+}

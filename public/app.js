@@ -1,52 +1,61 @@
 function enhancePostsWithBoost(){
   document.querySelectorAll('article.post,.post-card,.feed-card,[data-post-id]').forEach(card=>{
-    if(card.querySelector('.boost-post-btn-v581,.boost-post-btn-v582'))return;
+    if(card.querySelector('.boost-post-btn-v583'))return;
 
-    // A post is considered owned by the logged-in user when its owner-only
-    // Edit/Delete controls are present. This works for text, photo, video,
-    // audio and file/PDF post render variants.
     const ownerControl=card.querySelector(
       '[onclick*="editPost"],[onclick*="deletePost"],[onclick*="openEdit"],[data-action="edit"],[data-action="delete"]'
     );
-    if(!ownerControl)return;
 
-    let postId=card.dataset.postId||card.getAttribute('data-id')||'';
-    if(!postId){
+    // Also consider explicit ownership metadata when available.
+    const cardOwner=card.dataset.userId||card.getAttribute('data-user-id')||'';
+    const ownedByMeta=cardOwner && String(cardOwner)===String(me?.id||'');
+
+    if(!ownerControl && !ownedByMeta)return;
+
+    let postId=card.dataset.postId||card.getAttribute('data-post-id')||card.getAttribute('data-id')||'';
+
+    if(!postId && ownerControl){
       const code=ownerControl.getAttribute('onclick')||'';
-      const m=code.match(/\(\s*['"]?([^,'")\s]+)['"]?/);
-      if(m)postId=m[1];
+      const match=code.match(/\(\s*['"]?([^,'")\s]+)['"]?/);
+      if(match)postId=match[1];
     }
+
     if(!postId)return;
 
-    const actions=
+    const primary=
       card.querySelector('.post-primary-actions')||
+      card.querySelector('.post-actions-primary')||
       card.querySelector('.post-actions')||
-      card.querySelector('.actions')||
-      card.querySelector('.post-footer')||
-      ownerControl.parentElement;
-    if(!actions)return;
+      card.querySelector('.actions');
+
+    if(!primary)return;
+
+    const oldBoost=card.querySelector('.boost-post-btn-v581,.boost-post-btn-v582');
+    if(oldBoost)oldBoost.remove();
 
     const b=document.createElement('button');
     b.type='button';
-    b.className='boost-post-btn-v582';
+    b.className='boost-post-btn-v583';
     b.title='Impulsionar publicação';
-    b.innerHTML='<span class="boost-rocket-v581">🚀</span><span>Impulsionar</span>';
+    b.innerHTML=`
+      <span class="boost-premium-icon-v583">🚀</span>
+      <span class="boost-premium-text-v583">Impulsionar</span>
+    `;
     b.addEventListener('click',e=>{
       e.preventDefault();
       e.stopPropagation();
       openBoostDialog(postId);
     });
 
-    // Put it before Edit when possible, otherwise at the end of actions.
-    if(ownerControl.parentElement===actions) actions.insertBefore(b,ownerControl);
-    else actions.appendChild(b);
+    primary.appendChild(b);
+    primary.classList.add('post-primary-actions-v583');
   });
 }let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[],users=[],communities=[],notifications={items:[],unread:0},view='feed',postImage='',postMediaType='',postMediaName='',postMediaSize=0,pendingPostFile=null,postObjectUrl='',postGallery=[],profileGalleryNew=[],avatarImage='',coverImage='',editingPostId=null,imageChanged=false,openCommentPosts=new Set(),currentQuoteUser=null,lastHireMatches=[];
 
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.8.2 Public';
+const SOCIAUDIO_VERSION='v5.8.3 Public';
 
 function publicVersionText(){
   return String(SOCIAUDIO_VERSION||'').replace(/^v/i,'V').replace(/\s+Public$/i,' PUBLIC');
@@ -1228,7 +1237,7 @@ function safeLink(url){try{let u=new URL(url);return ['http:','https:'].includes
       </button>
 
       ${String(p.user_id)===String(me.id)?`
-      <button class="boost-post-btn-v581" onclick="openBoostDialog(${p.id})" title="Impulsionar publicação">
+      <button class="boost-post-btn-v583" onclick="openBoostDialog(${p.id})" title="Impulsionar publicação">
         <span class="boost-rocket-v581">🚀</span>
         <span>Impulsionar</span>
       </button>`:''}
