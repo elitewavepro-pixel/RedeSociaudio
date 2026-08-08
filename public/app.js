@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.6.0 Public';
+const SOCIAUDIO_VERSION='v5.6.1 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
