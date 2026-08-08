@@ -8988,3 +8988,46 @@ body.admin-mode .app-shell{
     font-size:9px!important;
   }
 }
+
+/* v5.8.4 — barra premium nativa: Curtir | Comentar | Compartilhar | Impulsionar */
+.post-primary-actions{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  width:100%!important;
+  align-items:stretch!important;
+}
+.post-primary-actions>button{
+  min-width:0!important;
+  min-height:56px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  padding:8px 6px!important;
+  border:0!important;
+  background:transparent!important;
+  color:#5d697b!important;
+  font-weight:750!important;
+  white-space:nowrap!important;
+  border-radius:10px!important;
+}
+.post-primary-actions>button:hover{background:#f5f8fc!important;color:#1d2939!important}
+.post-primary-actions .boost-post-btn-v584{
+  color:#1267dc!important;
+  font-weight:850!important;
+  position:relative!important;
+}
+.post-primary-actions .boost-post-btn-v584:before{
+  content:""!important;position:absolute!important;left:0!important;top:12px!important;bottom:12px!important;
+  width:1px!important;background:#e7ecf3!important;
+}
+.boost-icon-v584{
+  width:28px!important;height:28px!important;display:grid!important;place-items:center!important;
+  border-radius:9px!important;background:linear-gradient(145deg,#eef6ff,#dcecff)!important;
+  box-shadow:0 2px 8px rgba(23,105,223,.10),inset 0 0 0 1px rgba(23,105,223,.10)!important;
+  font-size:15px!important;
+}
+@media(max-width:760px){
+  .post-primary-actions>button{min-height:50px!important;gap:4px!important;padding:6px 2px!important;font-size:10px!important}
+  .boost-icon-v584{width:24px!important;height:24px!important;font-size:13px!important}
+}
