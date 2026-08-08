@@ -8564,3 +8564,35 @@ body.admin-mode .app-shell{
     grid-template-columns:repeat(5,minmax(0,1fr))!important;
   }
 }
+
+/* Rede Sociaudio v5.5.1 — Stories Premium Clean */
+.story-editor-v550 .story-more-panel-v550{display:none!important}
+.story-editor-media-action-v551{
+  font-size:19px!important;letter-spacing:0!important;
+  background:rgba(15,18,24,.46)!important;
+  border:1px solid rgba(255,255,255,.15)!important;
+  box-shadow:0 6px 22px rgba(0,0,0,.16)!important
+}
+.story-editor-brand-v550,.story-editor-back-v550{
+  background:rgba(15,18,24,.46)!important;
+  border:1px solid rgba(255,255,255,.13)!important;
+  box-shadow:0 6px 22px rgba(0,0,0,.14)!important
+}
+.story-toolbar-v550{
+  left:12px!important;right:12px!important;bottom:14px!important;
+  padding:12px 7px 8px!important;border-radius:24px!important;
+  background:linear-gradient(to top,rgba(4,6,10,.30),rgba(4,6,10,0))!important
+}
+.story-toolbar-v550 button>b{
+  width:48px!important;height:48px!important;
+  background:rgba(16,19,25,.54)!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  box-shadow:0 7px 22px rgba(0,0,0,.18)!important
+}
+.story-toolbar-v550 button:active>b{transform:scale(.94)!important}
+.story-publish-bar-v550{
+  background:#090b0f!important;border-top:1px solid rgba(255,255,255,.06)!important
+}
+.story-publish-v550{
+  border-radius:14px!important;box-shadow:0 8px 24px rgba(23,105,223,.22)!important
+}
