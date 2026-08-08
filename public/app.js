@@ -4,7 +4,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.10.0 Public';
+const SOCIAUDIO_VERSION='v5.10.1 Public';
 
 function publicVersionText(){
   return String(SOCIAUDIO_VERSION||'').replace(/^v/i,'V').replace(/\s+Public$/i,' PUBLIC');
@@ -1489,6 +1489,21 @@ document.addEventListener('visibilitychange',()=>{
   if(!document.hidden)refreshBellRealtime(false);
 });
 
+
+function syncNotificationBadgesMobile(count){
+  const n=Math.max(0,Number(count)||0), text=n>99?'99+':String(n);
+  const selectors=['#notificationBadge','#notificationUnreadBadge','#mobileNotificationBadge','.notification-badge','.mobile-notification-badge','[data-notification-badge]'];
+  selectors.forEach(sel=>document.querySelectorAll(sel).forEach(el=>{
+    if(n>0){el.textContent=text;el.hidden=false;el.style.display='';el.classList.add('has-unread')}
+    else{el.textContent='';el.hidden=true;el.style.display='none';el.classList.remove('has-unread')}
+  }));
+  document.querySelectorAll('[href*="notification"],[onclick*="notification"],[data-view="notifications"],[data-tab="notifications"],.mobile-nav-notifications').forEach(btn=>{
+    let badge=btn.querySelector('.mobile-notification-badge-v5101');
+    if(!badge){badge=document.createElement('span');badge.className='mobile-notification-badge-v5101';btn.style.position=btn.style.position||'relative';btn.appendChild(badge)}
+    badge.hidden=n<=0; badge.textContent=n>0?text:'';
+  });
+}
+
 function updateNotificationBadge(){
   notificationUnread=Math.max(0,Number(notificationUnread||0));
   const text=notificationUnread>99?'99+':String(notificationUnread);
@@ -1514,6 +1529,8 @@ function updateNotificationBadge(){
       ?`${notificationUnread} notificação(ões) não lida(s)`
       :'Nenhuma notificação não lida');
   }
+
+  try{syncNotificationBadgesMobile(notificationUnreadNumber)}catch(_){}
 }
 
 async function markNotificationRead(id){
@@ -5402,3 +5419,6 @@ async function openCampaignPayment(code){
 }
 function enhancePostsWithBoost(){return;document.querySelectorAll('article.post,.post-card,.feed-card').forEach(card=>{if(card.querySelector('.boost-post-btn-v580'))return;const edit=card.querySelector('[onclick*="editPost"],[onclick*="openEdit"]');if(!edit)return;const m=(edit.getAttribute('onclick')||'').match(/\((?:'|")?([^'")]+)(?:'|")?\)/);if(!m)return;const b=document.createElement('button');b.type='button';b.className='boost-post-btn-v580';b.innerHTML='🚀 <span>Impulsionar</span>';b.onclick=()=>openBoostDialog(m[1]);(edit.closest('.post-actions,.actions,.post-footer')||edit.parentElement).insertBefore(b,edit)})}
 window.addEventListener('DOMContentLoaded',()=>{new MutationObserver(enhancePostsWithBoost).observe(document.body,{childList:true,subtree:true});enhancePostsWithBoost()});
+
+const _mobileNotificationObserver=new MutationObserver(()=>{try{syncNotificationBadgesMobile(notificationUnreadNumber)}catch(_){}});
+window.addEventListener('DOMContentLoaded',()=>{try{_mobileNotificationObserver.observe(document.body,{childList:true,subtree:true});syncNotificationBadgesMobile(notificationUnreadNumber)}catch(_){}});

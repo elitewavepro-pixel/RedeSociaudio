@@ -9033,3 +9033,14 @@ body.admin-mode .app-shell{
 }
 
 .boost-pay-v590{width:100%;margin-top:10px;min-height:46px;border:0;border-radius:12px;background:#1769df;color:#fff;font-weight:850}.boost-wait-v590,.boost-payment-pending-v590,.boost-error-v590{padding:13px;border-radius:12px;font-size:12px;line-height:1.45}.boost-wait-v590{background:#f4f7fb}.boost-payment-pending-v590{background:#eff6ff;color:#1849a9}.boost-error-v590{background:#fff1f3;color:#c01048}
+
+.mobile-notification-badge-v5101{
+  position:absolute!important;top:2px!important;right:10px!important;min-width:18px!important;height:18px!important;
+  padding:0 5px!important;display:flex!important;align-items:center!important;justify-content:center!important;
+  border:2px solid #fff!important;border-radius:999px!important;background:#ef233c!important;color:#fff!important;
+  font-size:9px!important;font-weight:900!important;z-index:30!important;box-sizing:border-box!important;
+}
+.mobile-notification-badge-v5101[hidden]{display:none!important}
+@media(max-width:760px){
+[href*="notification"],[onclick*="notification"],[data-view="notifications"],[data-tab="notifications"],.mobile-nav-notifications{position:relative!important}
+}
