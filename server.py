@@ -6,7 +6,7 @@ from urllib.parse import urlparse, parse_qs
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.6.1 — Stories Editor Direto Deploy Corrigido'
+APP_VERSION = 'v5.7.1 — Stories Basico'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 

@@ -3,7 +3,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.6.1 Public';
+const SOCIAUDIO_VERSION='v5.7.1 Public';
 
 window.addEventListener('error',event=>{
   console.error('[Rede Sociaudio]',event.error||event.message);
@@ -1795,7 +1795,7 @@ function closeStoryEditor(){
   const dlg=document.getElementById('storyDlg');
   if(dlg?.open)dlg.close();
   clearStoryPreview();
-  resetStoryEditorState();
+  storyBasicReset();
 }
 
 function storyAddText(){storyToggleTextPanel()}
@@ -1921,6 +1921,154 @@ function storyOverlayHtml(story){
   </div>`;
 }
 
+
+// ================================================================
+// REDE SOCIAUDIO v5.7.1 — STORIES BÁSICO
+// ================================================================
+let storyBasicCaption = {
+  text:'',
+  x:50,
+  y:50,
+  size:32,
+  color:'#ffffff'
+};
+
+function storyBasicReset(){
+  storyBasicCaption={text:'',x:50,y:50,size:32,color:'#ffffff'};
+  storyBasicRenderCaption();
+}
+
+function storyBasicCaptionElement(){
+  return document.getElementById('storyBasicCaptionText');
+}
+
+function storyBasicAddCaption(){
+  let layer=document.getElementById('storyBasicTextLayer');
+  if(!layer)return;
+
+  if(!storyBasicCaption.text){
+    storyBasicCaption.text='Digite sua legenda';
+  }
+
+  storyBasicRenderCaption();
+
+  const el=storyBasicCaptionElement();
+  if(!el)return;
+  el.contentEditable='true';
+  el.focus();
+
+  try{
+    const range=document.createRange();
+    range.selectNodeContents(el);
+    const sel=window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }catch(_){}
+}
+
+function storyBasicRenderCaption(){
+  const layer=document.getElementById('storyBasicTextLayer');
+  if(!layer)return;
+
+  if(!storyBasicCaption.text){
+    layer.innerHTML='';
+    return;
+  }
+
+  layer.innerHTML=`
+    <div id="storyBasicCaptionText"
+      class="story-basic-caption-v571"
+      contenteditable="false"
+      style="left:${storyBasicCaption.x}%;top:${storyBasicCaption.y}%;font-size:${storyBasicCaption.size}px;color:${storyBasicCaption.color}">
+      ${esc(storyBasicCaption.text)}
+    </div>
+  `;
+
+  const el=storyBasicCaptionElement();
+  if(!el)return;
+
+  el.addEventListener('input',()=>{
+    storyBasicCaption.text=(el.textContent||'').slice(0,120);
+  });
+
+  el.addEventListener('blur',()=>{
+    storyBasicCaption.text=(el.textContent||'').trim().slice(0,120);
+    if(!storyBasicCaption.text){
+      storyBasicCaption.text='';
+      storyBasicRenderCaption();
+    }
+  });
+
+  makeStoryBasicCaptionDraggable(el);
+}
+
+function makeStoryBasicCaptionDraggable(el){
+  let dragging=false;
+  let moved=false;
+
+  el.addEventListener('pointerdown',e=>{
+    // When editing, a normal tap positions the cursor.
+    if(document.activeElement===el && el.contentEditable==='true')return;
+
+    dragging=true;
+    moved=false;
+    try{el.setPointerCapture(e.pointerId)}catch(_){}
+    e.preventDefault();
+  });
+
+  el.addEventListener('pointermove',e=>{
+    if(!dragging)return;
+    const layer=document.getElementById('storyBasicTextLayer');
+    if(!layer)return;
+
+    const r=layer.getBoundingClientRect();
+    storyBasicCaption.x=Math.max(8,Math.min(92,((e.clientX-r.left)/r.width)*100));
+    storyBasicCaption.y=Math.max(8,Math.min(92,((e.clientY-r.top)/r.height)*100));
+    el.style.left=storyBasicCaption.x+'%';
+    el.style.top=storyBasicCaption.y+'%';
+    moved=true;
+    e.preventDefault();
+  });
+
+  el.addEventListener('pointerup',e=>{
+    dragging=false;
+    try{el.releasePointerCapture(e.pointerId)}catch(_){}
+  });
+
+  // Double click/tap opens text editing again.
+  el.addEventListener('dblclick',()=>{
+    el.contentEditable='true';
+    el.focus();
+  });
+}
+
+function storyBasicTextLarger(){
+  if(!storyBasicCaption.text)storyBasicAddCaption();
+  storyBasicCaption.size=Math.min(64,storyBasicCaption.size+4);
+  storyBasicRenderCaption();
+}
+
+function storyBasicTextSmaller(){
+  if(!storyBasicCaption.text)return;
+  storyBasicCaption.size=Math.max(18,storyBasicCaption.size-4);
+  storyBasicRenderCaption();
+}
+
+function storyBasicOverlayPayload(){
+  if(!storyBasicCaption.text)return [];
+  return [{
+    type:'text',
+    text:storyBasicCaption.text,
+    x:storyBasicCaption.x,
+    y:storyBasicCaption.y,
+    size:storyBasicCaption.size,
+    color:storyBasicCaption.color,
+    bg:'transparent',
+    align:'center',
+    weight:'800'
+  }];
+}
+
 function clearStoryPreview(){
   if(storyPreviewUrl){
     try{URL.revokeObjectURL(storyPreviewUrl)}catch(_){}
@@ -1932,21 +2080,22 @@ function clearStoryPreview(){
   const preview=document.getElementById('storyPreview');
   if(preview){
     preview.innerHTML=`
-      <div class="story-upload-empty">
+      <div class="story-basic-empty-v571">
         ${icon('photo')}
-        <b>Adicionar foto ou vídeo</b>
-        <span>Foto ou vídeo de até 60 segundos</span>
+        <b>Escolher foto ou vídeo</b>
+        <small>Toque aqui para selecionar</small>
       </div>
-      <div id="storyOverlayLayer" class="story-overlay-layer-v550"></div>`;
-    renderStoryOverlays();
+      <div id="storyBasicTextLayer" class="story-basic-text-layer-v571"></div>
+    `;
   }
+  storyBasicRenderCaption();
 }
 
 function openStoryDialog(){
   const dlg=document.getElementById('storyDlg');
   if(!dlg)return;
   clearStoryPreview();
-  resetStoryEditorState();
+  storyBasicReset();
   document.getElementById('storyCaption').value='';
   document.getElementById('storyMsg').textContent='';
   dlg.showModal();
@@ -2009,10 +2158,9 @@ async function chooseStoryFile(file){
 
   const preview=document.getElementById('storyPreview');
   preview.innerHTML=isStoryVideo
-    ?`<video src="${storyPreviewUrl}" controls muted playsinline></video><div id="storyOverlayLayer" class="story-overlay-layer-v550"></div>`
-    :`<img src="${storyPreviewUrl}" alt="Prévia do story"><div id="storyOverlayLayer" class="story-overlay-layer-v550"></div>`;
-  renderStoryOverlays();
-  storySetFilter(storyFilter);
+    ?`<video src="${storyPreviewUrl}" controls muted playsinline></video><div id="storyBasicTextLayer" class="story-basic-text-layer-v571"></div>`
+    :`<img src="${storyPreviewUrl}" alt="Prévia do story"><div id="storyBasicTextLayer" class="story-basic-text-layer-v571"></div>`;
+  storyBasicRenderCaption();
 }
 
 async function publishStory(){
@@ -2057,7 +2205,7 @@ async function publishStory(){
         media_data:mediaData,
         media_type:mediaType,
         caption:document.getElementById('storyCaption').value.trim(),
-        overlay_json:[...storyOverlays,...storySpecialItems()]
+        overlay_json:storyBasicOverlayPayload()
       })
     });
 

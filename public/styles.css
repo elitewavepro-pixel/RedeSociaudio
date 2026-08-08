@@ -8624,3 +8624,239 @@ body.admin-mode .app-shell{
 @media(max-width:700px){
   .story-direct-text-v560{font-size:28px!important;max-width:90%!important}
 }
+
+
+/* ===============================================================
+   Rede Sociaudio v5.7.1 — Stories Básico
+   =============================================================== */
+.story-basic-dialog-v571{
+  width:min(520px,100vw)!important;
+  max-width:520px!important;
+  height:min(920px,100dvh)!important;
+  max-height:100dvh!important;
+  padding:0!important;
+  margin:auto!important;
+  border:0!important;
+  border-radius:22px!important;
+  overflow:hidden!important;
+  background:#090b0f!important;
+}
+.story-basic-dialog-v571::backdrop{background:rgba(0,0,0,.82)!important}
+
+.story-basic-dialog-v571 form{
+  width:100%!important;
+  height:100%!important;
+  display:grid!important;
+  grid-template-rows:minmax(0,1fr) 78px auto!important;
+  padding:0!important;
+  margin:0!important;
+  overflow:hidden!important;
+  background:#090b0f!important;
+}
+
+.story-basic-stage-v571{
+  position:relative!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  background:#101217!important;
+}
+
+.story-basic-media-v571{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+}
+
+.story-basic-preview-v571{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  overflow:hidden!important;
+  background:#101217!important;
+}
+
+.story-basic-preview-v571>img,
+.story-basic-preview-v571>video{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  background:#101217!important;
+}
+
+.story-basic-empty-v571{
+  position:absolute!important;
+  inset:0!important;
+  display:grid!important;
+  place-content:center!important;
+  justify-items:center!important;
+  gap:8px!important;
+  color:#fff!important;
+  text-align:center!important;
+}
+.story-basic-empty-v571 .sa-icon,
+.story-basic-empty-v571 svg{
+  width:46px!important;
+  height:46px!important;
+  color:#2680ff!important;
+}
+.story-basic-empty-v571 b{font-size:15px!important}
+.story-basic-empty-v571 small{color:#98a2b3!important;font-size:11px!important}
+
+.story-basic-back-v571{
+  position:absolute!important;
+  z-index:30!important;
+  top:max(14px,env(safe-area-inset-top))!important;
+  left:14px!important;
+  width:44px!important;
+  height:44px!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  border:1px solid rgba(255,255,255,.16)!important;
+  border-radius:50%!important;
+  background:rgba(12,15,20,.52)!important;
+  color:#fff!important;
+  font-size:34px!important;
+  line-height:1!important;
+  backdrop-filter:blur(12px)!important;
+}
+
+.story-basic-text-layer-v571{
+  position:absolute!important;
+  z-index:20!important;
+  inset:0!important;
+  overflow:hidden!important;
+  pointer-events:none!important;
+}
+
+.story-basic-caption-v571{
+  position:absolute!important;
+  transform:translate(-50%,-50%)!important;
+  max-width:88%!important;
+  padding:4px 6px!important;
+  outline:0!important;
+  border:1px dashed transparent!important;
+  background:transparent!important;
+  line-height:1.08!important;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  text-align:center!important;
+  text-shadow:0 2px 9px rgba(0,0,0,.72)!important;
+  white-space:pre-wrap!important;
+  overflow-wrap:break-word!important;
+  pointer-events:auto!important;
+  touch-action:none!important;
+  cursor:move!important;
+  user-select:none!important;
+}
+.story-basic-caption-v571[contenteditable="true"]{
+  border-color:rgba(255,255,255,.55)!important;
+  background:rgba(0,0,0,.12)!important;
+  cursor:text!important;
+  user-select:text!important;
+}
+
+.story-basic-tools-v571{
+  position:absolute!important;
+  z-index:30!important;
+  left:12px!important;
+  right:12px!important;
+  bottom:16px!important;
+  display:flex!important;
+  justify-content:space-around!important;
+  align-items:flex-end!important;
+  gap:5px!important;
+}
+
+.story-basic-tools-v571 button{
+  width:70px!important;
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  gap:5px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  color:#fff!important;
+}
+.story-basic-tools-v571 button>b{
+  width:48px!important;
+  height:48px!important;
+  display:grid!important;
+  place-items:center!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  border-radius:50%!important;
+  background:rgba(16,19,25,.56)!important;
+  backdrop-filter:blur(10px)!important;
+  font-size:18px!important;
+  box-shadow:0 7px 22px rgba(0,0,0,.18)!important;
+}
+.story-basic-tools-v571 button>span{
+  color:#fff!important;
+  font-size:9px!important;
+  font-weight:750!important;
+  text-shadow:0 2px 5px rgba(0,0,0,.75)!important;
+}
+
+.story-basic-publish-v571{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  padding:12px 14px!important;
+  border-top:1px solid rgba(255,255,255,.07)!important;
+  background:#090b0f!important;
+}
+.story-basic-publish-v571>div span,
+.story-basic-publish-v571>div small{
+  display:block!important;
+}
+.story-basic-publish-v571>div span{
+  color:#fff!important;
+  font-size:12px!important;
+  font-weight:800!important;
+}
+.story-basic-publish-v571>div small{
+  margin-top:3px!important;
+  color:#98a2b3!important;
+  font-size:9px!important;
+}
+.story-basic-publish-v571 button{
+  min-height:48px!important;
+  padding:0 20px!important;
+  border-radius:14px!important;
+  font-size:14px!important;
+  font-weight:850!important;
+}
+
+.story-basic-message-v571{
+  position:absolute!important;
+  z-index:60!important;
+  left:14px!important;
+  right:14px!important;
+  bottom:84px!important;
+  color:#fff!important;
+  text-align:center!important;
+  font-size:10px!important;
+  pointer-events:none!important;
+}
+
+@media(max-width:760px){
+  .story-basic-dialog-v571{
+    width:100vw!important;
+    max-width:100vw!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    border-radius:0!important;
+  }
+  .story-basic-dialog-v571 form{
+    grid-template-rows:minmax(0,1fr) calc(72px + env(safe-area-inset-bottom)) auto!important;
+  }
+  .story-basic-publish-v571{
+    padding-bottom:max(12px,env(safe-area-inset-bottom))!important;
+  }
+}
