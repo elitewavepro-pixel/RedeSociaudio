@@ -4,7 +4,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.10.1 Public';
+const SOCIAUDIO_VERSION='v5.10.2 Public';
 
 function publicVersionText(){
   return String(SOCIAUDIO_VERSION||'').replace(/^v/i,'V').replace(/\s+Public$/i,' PUBLIC');
@@ -5422,3 +5422,44 @@ window.addEventListener('DOMContentLoaded',()=>{new MutationObserver(enhancePost
 
 const _mobileNotificationObserver=new MutationObserver(()=>{try{syncNotificationBadgesMobile(notificationUnreadNumber)}catch(_){}});
 window.addEventListener('DOMContentLoaded',()=>{try{_mobileNotificationObserver.observe(document.body,{childList:true,subtree:true});syncNotificationBadgesMobile(notificationUnreadNumber)}catch(_){}});
+
+// V5.10.2 — Assuntos em alta: hubs de conteúdo e filtro por tópico.
+const TRENDING_TOPICS_V5102={
+  SoundcraftUi24R:{title:'Soundcraft Ui24R',intro:'Dicas de operação, roteamento, cenas, ganho, equalização e solução de problemas na Soundcraft Ui24R.',terms:['soundcraft','ui24r','ui 24r','ui24']},
+  Microfonia:{title:'Microfonia',intro:'Conteúdos sobre causas, prevenção e correção de microfonia em sistemas de PA, palco e igrejas.',terms:['microfonia','feedback','realimentação','microphone feedback']},
+  EqualizaçãoVocal:{title:'Equalização Vocal',intro:'Técnicas para encontrar frequências problemáticas, dar presença e clareza à voz e construir uma equalização consistente.',terms:['equalização vocal','eq vocal','voz','vocal','equalização']},
+  ÁudioParaIgrejas:{title:'Áudio para Igrejas',intro:'Conteúdos práticos para operação, montagem, alinhamento, monitoração e treinamento de equipes de áudio em igrejas.',terms:['áudio para igrejas','igreja','culto','som de igreja','áudio igreja']},
+  MonitorInEar:{title:'Monitor In-Ear',intro:'Conteúdos sobre mix de monitor, ganho, conforto, isolamento, posicionamento e boas práticas para sistemas In-Ear.',terms:['monitor in-ear','in-ear','inear','iem','monitor']}
+};
+function normalizeTopicV5102(value){return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ' ).trim()}
+function postMatchesTopicV5102(p,topic){
+  const hay=normalizeTopicV5102([p.title,p.body,p.content,p.category,p.type,p.author_name,p.user_name,p.name].filter(Boolean).join(' '));
+  return (TRENDING_TOPICS_V5102[topic]?.terms||[]).some(t=>hay.includes(normalizeTopicV5102(t)));
+}
+function renderTrendingTopic(topic){
+  const cfg=TRENDING_TOPICS_V5102[topic];
+  if(!cfg)return renderAllTrendingTopics();
+  const matches=posts.filter(p=>postMatchesTopicV5102(p,topic));
+  content.innerHTML=`<section class="trending-topic-page">
+    <div class="page-title"><button class="secondary" type="button" onclick="view='feed';render()">← Voltar ao feed</button><h1># ${esc(cfg.title)}</h1><p>${esc(cfg.intro)}</p></div>
+    <section class="card trending-topic-intro"><span class="trending-topic-label">ASSUNTO EM ALTA</span><h2>Conteúdos sobre ${esc(cfg.title)}</h2><p>Veja publicações da comunidade relacionadas a este assunto. Use a pesquisa para encontrar pessoas, empresas e conteúdos específicos.</p></section>
+    <div class="trending-topic-posts">${matches.length?matches.map(postCard).join(''):`<div class="card empty"><h3>Ainda não há publicações sobre este assunto.</h3><p>Publique uma dica, pergunta ou experiência usando <b>#${esc(topic)}</b> para ajudar a criar este conteúdo.</p><button class="primary" onclick="openNewPost()">Criar publicação</button></div>`}</div>
+  </section>`;
+  hydrateIcons(content);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function renderAllTrendingTopics(){
+  content.innerHTML=`<div class="page-title"><button class="secondary" type="button" onclick="view='feed';render()">← Voltar ao feed</button><h1>Assuntos em alta</h1><p>Explore os temas mais relevantes da comunidade.</p></div><div class="trending-topic-grid">${Object.entries(TRENDING_TOPICS_V5102).map(([key,cfg])=>`<button type="button" class="card trending-topic-card" onclick="renderTrendingTopic('${key}')"><span>#</span><strong>${esc(cfg.title)}</strong><small>${esc(cfg.intro)}</small></button>`).join('')}</div>`;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function bindTrendingTopicsV5102(){
+  document.querySelectorAll('[data-trending-topic]').forEach(el=>{
+    if(el.dataset.trendingBound==='1')return;
+    el.dataset.trendingBound='1';
+    el.addEventListener('click',e=>{e.preventDefault();renderTrendingTopic(el.dataset.trendingTopic)});
+  });
+  const all=document.getElementById('viewAllTrending');
+  if(all&&all.dataset.trendingBound!=='1'){all.dataset.trendingBound='1';all.addEventListener('click',renderAllTrendingTopics)}
+}
+const _trendObserverV5102=new MutationObserver(()=>bindTrendingTopicsV5102());
+window.addEventListener('DOMContentLoaded',()=>{try{_trendObserverV5102.observe(document.body,{childList:true,subtree:true});bindTrendingTopicsV5102()}catch(_){}});

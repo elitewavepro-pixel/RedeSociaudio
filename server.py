@@ -8,7 +8,7 @@ from urllib.error import HTTPError, URLError
 from email.message import EmailMessage
 
 
-APP_VERSION = 'v5.10.1 — Notificacoes Mobile'
+APP_VERSION = 'v5.10.2 — Assuntos em alta'
 APP_ENV = os.environ.get('APP_ENV','production')
 STARTED_AT = datetime.now(timezone.utc).isoformat()
 
