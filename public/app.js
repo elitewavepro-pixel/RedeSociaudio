@@ -4,7 +4,7 @@ let token=localStorage.getItem('sociaudio_token')||'',me=null,posts=[],stories=[
 let chatPoll=null;
 let chatConversationId=null;
 let quoteRequestFilter='novo';
-const SOCIAUDIO_VERSION='v5.10.2 Public';
+const SOCIAUDIO_VERSION='v5.10.3 Public';
 
 function publicVersionText(){
   return String(SOCIAUDIO_VERSION||'').replace(/^v/i,'V').replace(/\s+Public$/i,' PUBLIC');
@@ -45,6 +45,14 @@ async function checkPlatformHealth(){
 }
 
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const normalizeSearchText=value=>String(value??'')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase()
+  .trim();
+
+
 
 const ICONS={
 brain:'<svg viewBox="0 0 24 24"><path d="M9 4.5a3.5 3.5 0 0 0-5 3.2 3.8 3.8 0 0 0 1.2 7.3A3.7 3.7 0 0 0 9 19.5M15 4.5a3.5 3.5 0 0 1 5 3.2 3.8 3.8 0 0 1-1.2 7.3 3.7 3.7 0 0 1-3.8 4.5M9 4.5v15M15 4.5v15M9 8h2.5M15 11h-2.5M9 15h2.5M15 7.5h-2"/></svg>',
@@ -4357,14 +4365,28 @@ function render(){
   if(view==='admin')return renderAdmin();
   return renderFeed(view==='saved');
 }
-search.oninput=scheduleGlobalSearch;
-search.onkeydown=e=>{
-  if(e.key==='Enter'){
-    e.preventDefault();
-    clearTimeout(globalSearchTimer);
-    performGlobalSearch(true);
-  }
-};const toastEl=$('#toast');hydrateIcons();boot();
+const globalSearchInput=document.getElementById('search');
+const globalSearchIcon=document.querySelector('.search-wrap .search-icon');
+
+if(globalSearchInput){
+  globalSearchInput.addEventListener('input',scheduleGlobalSearch);
+  globalSearchInput.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      clearTimeout(globalSearchTimer);
+      performGlobalSearch(true);
+    }
+  });
+}
+if(globalSearchIcon){
+  globalSearchIcon.style.cursor='pointer';
+  globalSearchIcon.addEventListener('click',()=>{
+    if(globalSearchInput){
+      globalSearchInput.focus();
+      if(String(globalSearchInput.value||'').trim()) performGlobalSearch(true);
+    }
+  });
+}const toastEl=$('#toast');hydrateIcons();boot();
 
 
 // V13 — Vagas e oportunidades
